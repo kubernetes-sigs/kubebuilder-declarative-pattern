@@ -1,16 +1,10 @@
-# Kubernetes Template Project
+# kubebuilder-declarative-pattern
 
-The Kubernetes Template Project is a template for starting new projects in the GitHub organizations owned by Kubernetes. All Kubernetes projects, at minimum, must have the following files:
+kubebuilder-declarative-pattern provides a set of tools for building declarative cluster operators with kubebuilder. Declarative operators provide a fast path to orchestrating Kubernetes deployments to enable domain experts to focus their component instead of re-answering questions like 'how do I get this YAML into the cluster?' or 'how do I update it?'.
 
-- a `README.md` outlining the project goals, sponsoring sig, and community contact information
-- an `OWNERS` with the project leads listed as approvers ([docs on `OWNERS` files][owners])
-- a `CONTRIBUTING.md` outlining how to contribute to the project
-- an unmodified copy of `code-of-conduct.md` from this repo, which outlines community behavior and the consequences of breaking the code
-- a `LICENSE` which must be Apache 2.0 for code projects, or [Creative Commons 4.0] for documentation repositories, without any custom content
-- a `SECURITY_CONTACTS` with the contact points for the Product Security Team 
-  to reach out to for triaging and handling of incoming issues. They must agree to abide by the
-  [Embargo Policy](https://github.com/kubernetes/sig-release/blob/master/security-release-process-documentation/security-release-process.md#embargo-policy) 
-  and will be removed and replaced if they violate that agreement.
+## Documentation
+
+- [Managing Addons with Operators (Video, KubeCon'18)](https://www.youtube.com/watch?v=LPejvfBR5_w)
 
 ## Community, discussion, contribution, and support
 
