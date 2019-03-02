@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -26,6 +27,8 @@ type Reconciler struct {
 	client    client.Client
 	config    *rest.Config
 	kubectl   kubectlClient
+
+	mgr manager.Manager
 
 	// Client that can manage Application CRD
 	//applicationClient *applicationclient.Clientset
@@ -58,6 +61,7 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, pack
 
 	r.client = mgr.GetClient()
 	r.config = mgr.GetConfig()
+	r.mgr = mgr
 
 	/*
 		var err error
@@ -83,8 +87,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 	// Fetch the object
 	instance := r.prototype.DeepCopyObject().(DeclarativeObject)
-	err := r.client.Get(ctx, request.NamespacedName, instance)
-	if err != nil {
+	if err := r.client.Get(ctx, request.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
@@ -268,9 +271,27 @@ func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObj
 		}
 		if owner == nil {
 			log.WithValues("object", o).Info("no owner resolved")
+			continue
+		}
+		if owner.GetName() == "" {
+			log.WithValues("object", o).Info("has no name")
+			continue
+		}
+		if string(owner.GetUID()) == "" {
+			log.WithValues("object", o).Info("has no UID")
+			continue
 		}
 
-		gvk := owner.GetObjectKind().GroupVersionKind()
+		gvk, err := apiutil.GVKForObject(owner, r.mgr.GetScheme())
+		if gvk.Group == "" || gvk.Version == "" {
+			log.WithValues("object", o).WithValues("GroupVersionKind", gvk).Info("is not valid")
+			continue
+		}
+
+		// TODO, error/skip if:
+		// - owner is namespaced and o is not
+		// - owner is in a different namespace than o
+
 		ownerRefs := []interface{}{
 			map[string]interface{}{
 				"apiVersion":         gvk.Group + "/" + gvk.Version,

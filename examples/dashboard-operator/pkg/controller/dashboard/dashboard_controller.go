@@ -42,10 +42,12 @@ func Add(mgr manager.Manager) error {
 
 	r := &ReconcileDashboard{}
 
+	srcLabels := declarative.SourceLabel(mgr.GetScheme())
+
 	r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
-		declarative.WithLabels(declarative.SourceLabel),
+		declarative.WithLabels(srcLabels),
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
 		declarative.WithPreserveNamespace(),
 	)
@@ -62,7 +64,7 @@ func Add(mgr manager.Manager) error {
 	}
 
 	// Watch for changes to deployed objects
-	_, err = declarative.WatchAll(mgr.GetConfig(), c, r, declarative.SourceLabel)
+	_, err = declarative.WatchAll(mgr.GetConfig(), c, r, srcLabels)
 	if err != nil {
 		return err
 	}
