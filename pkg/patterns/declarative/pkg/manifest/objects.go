@@ -169,6 +169,35 @@ func (o *Object) SetNestedField(value interface{}, fields ...string) error {
 	return err
 }
 
+func (o *Object) SetNestedFieldNoCopy(value interface{}, fields ...string) error {
+	if o.object.Object == nil {
+		o.object.Object = make(map[string]interface{})
+	}
+	// err := unstructured.SetNestedField(o.object.Object, value, fields...)
+
+	m := o.object.Object
+
+	for i, field := range fields[:len(fields)-1] {
+		if val, ok := m[field]; ok {
+			if valMap, ok := val.(map[string]interface{}); ok {
+				m = valMap
+			} else {
+				return fmt.Errorf("value cannot be set because %v is not a map[string]interface{}", fields[:i+1])
+			}
+		} else {
+			newVal := make(map[string]interface{})
+			m[field] = newVal
+			m = newVal
+		}
+	}
+	m[fields[len(fields)-1]] = value
+
+	// Invalidate cached json
+	o.json = nil
+
+	return nil
+}
+
 func (o *Object) JSON() ([]byte, error) {
 	if o.json != nil {
 		return o.json, nil

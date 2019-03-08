@@ -165,3 +165,31 @@ spec:
       targetPort: 8443
   selector:
     k8s-app: kubernetes-dashboard
+
+
+---
+# ------------------- Application ------------------- #
+apiVersion: app.k8s.io/v1beta1
+kind: Application
+metadata:
+  name: kubernetes-dashboard
+  namespace: kube-system
+spec:
+  descriptor:
+    type: "kubernetes-dashboard"
+    description: |
+      This is a demo of the kubebuilder-declarative-pattern project and not a production ready installation.
+      Kubernetes Dashboard is a general purpose, web-based UI for Kubernetes clusters. 
+      It allows users to manage applications running in the cluster and troubleshoot them, as well as manage the cluster itself.
+    icons:
+    - src: "https://github.com/kubernetes/kubernetes/raw/master/logo/logo.png"
+      type: "image/png"
+    maintainers:
+    - name: Maintainer
+      email: maintainer@example.org
+    keywords:
+    - "addon"
+    - "dashboard"
+    links:
+    - description: Project Homepage
+      url: "https://github.com/kubernetes/dashboard"

@@ -73,6 +73,7 @@ func (c *Client) Apply(ctx context.Context, namespace string, manifest string, e
 	err := c.cmdSite.Run(cmd)
 	if err != nil {
 		log.WithValues("stdout", stdout.String()).WithValues("stderr", stderr.String()).Error(err, "error from running kubectl apply")
+		log.Info(fmt.Sprintf("manifest:\n%v", manifest))
 		return fmt.Errorf("error from running kubectl apply: %v", err)
 	}
 
