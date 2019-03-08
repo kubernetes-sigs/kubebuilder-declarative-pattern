@@ -80,19 +80,15 @@ support (and we can hopefully evolve the contract with just a recompile!)
 
 So in `pkg/apis/addons/v1alpha1/dashboard_types.go`:
 
-<<<<<<< HEAD
-* add an import for `"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"`
-=======
-* add an import for `addonv1alpha1 "sigs.k8s.io/controller-runtime/alpha/patterns/addon/pkg/apis/v1alpha1"`
->>>>>>> 2af6c71c... pattern/declarative,addons: implement Status
-* add a field `addon.CommonSpec` to the Spec object (and remove the placeholders)
-* add a field `addon.CommonStatus` to the Status object (and remove the placeholders)
+* add an import for `addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"`
+* add a field `addonv1alpha1.CommonSpec` to the Spec object (and remove the placeholders)
+* add a field `addonv1alpha1.CommonStatus` to the Status object (and remove the placeholders)
 
 We'll also need to add some accessor functions (we could use reflection, but
 this doesn't feel too onerous - ?):
 
 ```go
-import addonv1alpha1 "sigs.k8s.io/controller-runtime/alpha/patterns/addon/pkg/apis/v1alpha1"
+import addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 
 var _ addonv1alpha1.CommonObject = &Dashboard{}
 
