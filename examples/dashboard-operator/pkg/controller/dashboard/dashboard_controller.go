@@ -44,13 +44,18 @@ func Add(mgr manager.Manager) error {
 
 	srcLabels := declarative.SourceLabel(mgr.GetScheme())
 
-	r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
+	err := r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(srcLabels),
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
 		declarative.WithPreserveNamespace(),
+		declarative.WithApplyPrune(),
 	)
+
+	if err != nil {
+		return err
+	}
 
 	c, err := controller.New("dashboard-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
