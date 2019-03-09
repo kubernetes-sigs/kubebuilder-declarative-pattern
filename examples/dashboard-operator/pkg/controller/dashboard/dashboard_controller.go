@@ -55,16 +55,16 @@ type ReconcileDashboard struct {
 // TODO: can be scoped to resourceNames: ["heapster", "http:heapster:", "https:heapster:"], verbs: ["get"]
 // +kubebuilder:rbac:groups="",resources=services/proxy,verbs=get
 
-func Add(mgr manager.Manager) error {
+// newReconciler returns a initialized ReconcileDashboard
+func newReconciler(mgr manager.Manager) (r *ReconcileDashboard, srcLabels declarative.LabelMaker, err error) {
 	labels := map[string]string{
 		"k8s-app": "kubernetes-dashboard",
 	}
 
-	r := &ReconcileDashboard{}
+	r = &ReconcileDashboard{}
+	srcLabels = declarative.SourceLabel(mgr.GetScheme())
 
-	srcLabels := declarative.SourceLabel(mgr.GetScheme())
-
-	err := r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
+	err = r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(srcLabels),
@@ -75,6 +75,11 @@ func Add(mgr manager.Manager) error {
 		declarative.WithObjectTransform(addon.TransformApplicationFromStatus),
 	)
 
+	return
+}
+
+func Add(mgr manager.Manager) error {
+	r, srcLabels, err := newReconciler(mgr)
 	if err != nil {
 		return err
 	}
