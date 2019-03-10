@@ -23,6 +23,7 @@ bases:
 
 patches:
 - manager_image_patch.yaml
+- manager_resource_patch.yaml
 
 vars:
 - name: WEBHOOK_SECRET_NAME

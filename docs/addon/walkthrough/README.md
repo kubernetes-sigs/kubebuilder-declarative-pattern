@@ -1,24 +1,37 @@
-## Walkthrough of creating a new operator
+## Walkthrough: Creating a new Operator
 
-This walkthrough is for creating a new operator, to run the kubernetes
-dashboard.
+This walkthrough is for creating an operator to run the kubernetes dashboard.
 
 ### Basics
 
-Install kubebuilder from https://github.com/kubernetes-sigs/kubebuilder/releases if you have not yet already done so.
+Install the following depenencies:
 
-Create a new directory and use kubebuilder to create a basic operator for you:
+- [kubebuilder](https://book.kubebuilder.io/getting_started/installation_and_setup.html)
+- [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md)
+- docker
+- kubectl
+- golang
+- [dep](https://github.com/golang/dep#installation)
+
+Create a new directory and use kubebuilder to scafold the operator:
 
 ```
-mkdir dashboard-operator/
-cd dashboard-operator/
-kubebuilder init --domain sigs.k8s.io --license apache2 --owner "The Kubernetes Authors" --dep=true --pattern=addon
+cd $(go env GOPATH)
+mkdir -p src/sigs.k8s.io/dashboard-operator/
+cd src/sigs.k8s.io/dashboard-operator/
+kubebuilder init --domain sigs.k8s.io --license apache2 --owner "The Kubernetes Authors" --dep=true
+```
+
+Add the patterns to your project:
+
+```
+dep ensure -add sigs.k8s.io/kubebuilder-declarative-pattern
 ```
 
 ### Adding our first CRD
 
 ```
-kubebuilder create api --group addons --version v1alpha1 --kind Dashboard --controller --resource --namespaced=true --pattern=addon
+kubebuilder create api --group addons --version v1alpha1 --kind Dashboard --controller --resource --namespaced=true
 ```
 
 This creates API type definitions under `pkg/apis/addons/v1alpha1/`, and a basic
@@ -32,11 +45,13 @@ controller under `pkg/controller/dashboard/`
 ### Adding a manifest
 
 The addon operator pattern is based on declarative manifests; the framework is
-able to load the manifests and apply them.  Today we exec `kubectl apply`, but
-when server-side-apply is available we'll use that.  We suggest that even
-advanced operators should use a manifest for their core objects, but will be
-able to manipulate the manifest before applying them (for example adding labels
-or changing namespaces, and likely tweaking resources or flags as well.)
+able to load the manifests and apply them. Today we exec `kubectl apply`, but
+when [server-side-apply](https://github.com/kubernetes/enhancements/issues/555) 
+is available we'll use that.  
+
+We suggest that even advanced operators use a manifest for their core objects.
+It's always possible to manipulate the manifest before applying them (eg, adding labels,
+changing namespaces, and tweaking flags)
 
 Some other advantages:
 
@@ -78,17 +93,25 @@ We begin by editing the api type, we add some common fields.  The idea is that
 CommonSpec and CommonStatus form a common contract that we expect all addons to
 support (and we can hopefully evolve the contract with just a recompile!)
 
-So in `pkg/apis/addons/v1alpha1/dashboard_types.go`:
+Modify `pkg/apis/addons/v1alpha1/dashboard_types.go` to:
 
 * add an import for `addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"`
-* add a field `addonv1alpha1.CommonSpec` to the Spec object (and remove the placeholders)
-* add a field `addonv1alpha1.CommonStatus` to the Status object (and remove the placeholders)
+* add a field `addonv1alpha1.CommonSpec` to the Spec object
+* add a field `addonv1alpha1.CommonStatus` to the Status object
+* add the accessor functions (ComponentName, CommonSpec, ..)
 
-We'll also need to add some accessor functions (we could use reflection, but
-this doesn't feel too onerous - ?):
+Your `dashboard_types.go` file should now additionally contain:
 
 ```go
 import addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
+
+type DashboardSpec struct {
+	addonv1alpha1.CommonSpec
+}
+
+type DashboardStatus struct {
+	addonv1alpha1.CommonStatus
+}
 
 var _ addonv1alpha1.CommonObject = &Dashboard{}
 
@@ -114,11 +137,11 @@ func (c *Dashboard) SetCommonStatus(s addonv1alpha1.CommonStatus) {
 
 We replace the controller code `pkg/controller/dashboard/dashboard_controller.go`:
 
-We are delegating most of the logic to `operators.StandardReconciler`
+We are delegating most of the logic to `declarative.Reconciler`
 
 ```go
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2019 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -136,14 +159,14 @@ limitations under the License.
 package dashboard
 
 import (
-	api "sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator/pkg/apis/addons/v1alpha1"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	api "sigs.k8s.io/dashboard-operator/pkg/apis/addons/v1alpha1"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 )
 
 var _ reconcile.Reconciler = &ReconcileDashboard{}
@@ -154,6 +177,11 @@ type ReconcileDashboard struct {
 }
 
 func Add(mgr manager.Manager) error {
+	return add(mgr, newReconciler(mgr))
+}
+
+// newReconciler returns a new reconcile.Reconciler
+func newReconciler(mgr manager.Manager) *ReconcileDashboard {
 	labels := map[string]string{
 		"k8s-app": "kubernetes-dashboard",
 	}
@@ -163,10 +191,15 @@ func Add(mgr manager.Manager) error {
 	r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
-		declarative.WithLabels(declarative.SourceLabel),
+		declarative.WithLabels(declarative.SourceLabel(mgr.GetScheme())),
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
+		declarative.WithApplyPrune(),
 	)
 
+	return r
+}
+
+func add(mgr manager.Manager, r *ReconcileDashboard) error {
 	c, err := controller.New("dashboard-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
@@ -179,13 +212,14 @@ func Add(mgr manager.Manager) error {
 	}
 
 	// Watch for changes to deployed objects
-	_, err = declarative.WatchAll(mgr.GetConfig(), c, r, declarative.SourceLabel)
+	_, err = declarative.WatchAll(mgr.GetConfig(), c, r, declarative.SourceLabel(mgr.GetScheme()))
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
+
 
 ```
 
@@ -202,16 +236,29 @@ Because api.Dashboard implements `addon.CommonObject` the
 framework is then able to access CommonSpec and CommonStatus above, which
 includes the version specifier.
 
-We still need to specify which objects we watch in the `add` function, but we'll
-likely be able to simplify this also in future.
-
 ### Misc
 
-* Please add this boilerplate to the top of the main() function in cmd/manager/main.go:
+1. Add an import and init call to the top of the main() function in `cmd/manager/main.go`:
 
-```go
-addon.Init()
-```
+	```go
+	import (
+		//..
+		"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
+	)
+	func main() {
+		// ...
+		addon.Init()
+	}
+	```
+
+1. Remove the boilerplate tests generated by kubebuilder:
+
+	```bash
+	rm pkg/controller/dashboard/dashboard_controller_suite_test.go
+	rm pkg/controller/dashboard/dashboard_controller_test.go
+	rm pkg/apis/addons/v1alpha1/dashboard_types_test.go
+	rm pkg/apis/addons/v1alpha1/v1alpha1_suite_test.go
+	```
 
 ### Testing it locally
 
@@ -221,8 +268,7 @@ the controller locally.
 We need to generate and register the CRDs:
 
 ```bash
-make manifests
-kubectl apply -f config/crds/
+make install
 ```
 
 Create a dashboard CR:
@@ -240,48 +286,123 @@ should see the deployment etc that the operator has created.
 
 e.g. `kubectl get pods -l k8s-app=kubernetes-dashboard`
 
-### Running on-cluster
+## Running on-cluster
 
-Previously we were running on your machine, using your kubernetes credentials.
-For real-world operation, we want to run as a Pod on the cluster, likely launched as part
-of a Deployment.  For that, we'll need a Docker image and some manifests.
+Previously we were running on your machine using your kubernetes credentials.
+We want to run as a Pod on the cluster for real world operator. For that, 
+we'll need a Docker image and some manifests.
 
-We can use bazel to create a docker image and remove the autogenerated image.
+### Building the operator image
 
-```bazel
-rm Dockerfile
-cat > BUILD.bazel <<EOF
-load(
-  "@io_bazel_rules_docker//container:container.bzl",
-  "container_image",
-  "container_push",
-)
+1. Modify the IMG value in the `Makefile` to reflect a docker registry that you 
+   can write to:
 
-container_image(
-  name = "image",
-  base = "//images:kubectl_base",
-  cmd = ["/manager"],
-  directory = "/",
-  files = ["//dashboard-operator/cmd/manager"],
-  tars = ["//dashboard-operator/channels:tar"],
-)
+   ```make
+   # Image URL to use all building/pushing image targets
+   IMG ?= gcr.io/<my-cool-project>/dashboard-operator:latest
+   ```
 
-container_push(
-  name = "push-image",
-  format = "Docker",
-  image = ":image",
-  registry = "{STABLE_DOCKER_REGISTRY}",
-  repository = "{STABLE_PROJECT_NAME}/dashboard-operator",
-  stamp = True,
-  tag = "{STABLE_DOCKER_TAG}",
-)
-EOF
-```
+1. Create a patch to modify the memory limit for the operator:
+   ```bash
+   echo << EOF > config/default/manager_resource_patch.yaml
+	apiVersion: apps/v1
+	kind: StatefulSet
+	metadata:
+	  name: controller-manager
+	  namespace: system
+	spec:
+	  template:
+	    spec:
+	      containers:
+	      - name: manager
+	        resources:
+	          limits:
+	            cpu: 100m
+	            memory: 150Mi
+	          requests:
+	            cpu: 100m
+	            memory: 20Mi
+   EOF
+   ```
 
-### Manifests & RBAC
+1. Reference the patch by adding `manager_resource_patch.yaml` to the `patches` section of `config/default/kustomization.yaml`:
+
+	```yaml
+	patches:
+	- manager_resource_patch.yaml
+	# ... existing patches
+	```
+
+	This is requried to run kubectl in the container.
+
+1. Modify the `Dockerfile` to pull in kubectl, the manifests (in `channels/`),
+   and run in a slim container:
+
+   ```Dockerfile
+	FROM ubuntu:latest as kubectl
+	RUN apt-get update
+	RUN apt-get install -y curl
+	RUN curl -fsSL https://dl.k8s.io/release/v1.13.4/bin/linux/amd64/kubectl > /usr/bin/kubectl
+	RUN chmod a+rx /usr/bin/kubectl
+
+	# Build the manager binary
+	FROM golang:1.10.3 as builder
+
+	# Copy in the go src
+	WORKDIR /go/src/sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator
+	COPY pkg/      pkg/
+	COPY cmd/      cmd/
+	COPY vendor/   vendor/
+
+	# Build
+	RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator/cmd/manager
+
+	# Copy the operator and dependencies into a thin image
+	FROM gcr.io/distroless/static:latest
+	WORKDIR /
+	COPY --from=builder /go/src/sigs.k8s.io/dashboard-operator/manager .
+	COPY --from=kubectl /usr/bin/kubectl /usr/bin/kubectl
+	COPY channels/ channels/
+	ENTRYPOINT ["./manager"]
+   ```
+
+1. Verify everything worked by building and pushing the image:
+
+	```bash
+	make docker-build docker-push
+	```
+
+### Generated RBAC Rules
 
 We need a simple deployment to run our operator, and we want to run it under a
-tightly-scoped RBAC role.
+tightly-scoped RBAC role. To do that we use kubebuilder's RBAC role generation
+based off of source annotations. In the future we may be able to generate RBAC
+rules from the manfiest.
+
+1. Paste this snippet into `pkg/controller/dashboard/dashboard_controller.go`
+   for the proper RBAC rules needed by the dashboard-operator.
+
+	```go
+	//
+	// RBAC Rules for running the controller in the cluster:
+	//
+	// for WithApplyPrune
+	// +kubebuilder:rbac:groups=*,resources=*,verbs=list
+	// +kubebuilder:rbac:groups=addons.sigs.k8s.io,resources=dashboards,verbs=get;list;watch;create;update;delete;patch
+	// +kubebuilder:rbac:groups="",resources=services;serviceaccounts;secrets,verbs=get;list;watch;create;update;delete;patch
+	// +kubebuilder:rbac:groups=apps;extensions,resources=deployments,verbs=get;list;watch;create;update;delete;patch
+	// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;delete;patch
+	// +kubebuilder:rbac:groups="",resources=secrets;configmaps,verbs=create
+	// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;update;delete
+	// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;delete
+	// +kubebuilder:rbac:groups="",resources=services,verbs=proxy
+	// +kubebuilder:rbac:groups="",resources=services/proxy,verbs=get
+	```
+
+1. Regenerate the manifests with the new rules:
+	```bash
+	make manifests
+	```
 
 RBAC is the real pain-point here - we end up with a lot of permissions:
 * The operator needs RBAC rules to see the CRDs.
@@ -306,22 +427,18 @@ The last one in particular can result in a non-trivial RBAC policy.  My approach
   example scoping to resourceNames), in which case we can - and should - copy
   it.  That's what we did here for dashboard.
 
-TODO: What happens when the next version of dashboard needs more permissions?
+### Installing the operator in the cluster
 
-For dashboard, the iterative cycle looks like:
-* `kubectl logs dashboard-operator<tab>`
-* add permissions to yaml files
-* `kubectl apply -f k8s/`
-* `kubectl delete pod -l component=dashboard-operator`
-* repeat!
-
-The results are in the k8s/ folder of dashboard-operator/
-
-Once you get the RBAC permissions correct, the procedure to run is:
-
+```bash
+make docker-build docker-push
+make deploy
 ```
-bazel run :push-image
-kubectl apply -f k8s/
+
+You can troubleshoot the operator by inspecting the controller:
+
+```bash
+kubectl -n dashboard-operator-system get statefulset
+kubectl -n dashboard-operator-system logs dashboard-operator-controller-manager-0 manager
 ```
 
 ## Manifest simplification: Automatic labels
@@ -331,77 +448,96 @@ manifest, but will use them to distinguish multiple instances.  Even if you're
 writing something you expect to be a singleton instance, it can be tedious and
 error-prone to specify labels on every object in the manifest.
 
-Instead, the StandardReconciler can add labels to every object in the manifest:
+Instead, the Reconciler can add labels to every object in the manifest:
 
 ```go
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-       // TODO: Dynamic labels?
        labels := map[string]string{
                "k8s-app": "kubernetes-dashboard",
        }
 
        r := &ReconcileDashboard{}
        r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
-               operators.WithObjectTransform(operators.AddLabels(labels)),
-...
-
+               declarative.WithObjectTransform(declarative.AddLabels(labels)),
+			   ...
+	   )
 ```
 
-NOTE: operators.AddLabels does not _yet_ add selectors to Deployments /
-Daemonsets, nor to the templates.  But - like kustomize - this should happen
-real-soon-now.  TODO
+**NOTE**: operators.AddLabels does not [_yet_](https://github.com/kubernetes-sigs/kubebuilder-declarative-pattern/issues/21)
+add selectors to Deployments/DaemonSets, nor to the templates.
 
-By adding the above label transformation, we can remove the labels from the
-manifest.
+## Manifest simplification: Automatic Namespace
 
-## Manifest simplification: Automatic namespace
-
-The operator framework automatically creates objects in the same namespace as
+The framework automatically creates objects in the same namespace as
 the CR (by specifying the namespace to kubectl).  As such, we can remove the
 namespaces from the manifest.
 
 NOTE: We don't currently apply the namespace within objects.  For example, we
 don't set the namespace on a RoleBinding subjects.namespace.  However, it seems
 that most objects default to the same namespace - but presumably
-ClusterRoleBinding will not.  TODO
+ClusterRoleBinding will not. 
 
 NOTE: For non-namespaces objects (ClusterRole and ClusterRoleBinding), we often
-need to name them with the namespace to support multiple instances.  We
-currently do this for istio using a string-substitution hack.  TODO
+need to name them with the namespace to support multiple instances.
 
-### Customize Application
+### Manage an Application
 
-The operator framework automatically creates an 
-[application](https://github.com/kubernetes-sigs/application) 
-instance for each CR. The application can contain human readable information
-in addition to deployment status that can be surfaced in various user interfaces 
-(e.g. Google Cloud Console). 
+The framework can manage an [application](https://github.com/kubernetes-sigs/application) 
+instance. The application contains human readable information in addition to deployment 
+status that can be surfaced in various user interfaces.
 
-You can pass in a base application object to provide information for your addon:
+1. Fetch the Application CRD and place it with your operators CRD:
 
-```go
-	import applicationv1beta1 "github.com/kubernetes-sigs/application/pkg/apis/app/v1beta1"
-	// ..
-	app := applicationv1beta1.Application{
-		Spec: applicationv1beta1.ApplicationSpec{
-			Descriptor: applicationv1beta1.Descriptor{
-				Description: "Kubernetes Dashboard is a general purpose, web-based UI for Kubernetes clusters. It allows users to manage applications running in the cluster and troubleshoot them, as well as manage the cluster itself.",
-				Links:       []applicationv1beta1.Link{{Description: "Project Homepage", Url: "https://github.com/kubernetes/dashboard"}},
-				Keywords:    []string{"dashboard", "addon"},
-			},
-		},
-	}
-	
-	r.Reconciler.Init(mgr, &api.KubeDNS{}, "kubedns",
-		operators.WithGroupVersionKind(api.SchemeGroupVersion.WithKind("dashboard")),
- 		operators.WithApplication(app),
- 	)
+	```bash
+	curl https://raw.githubusercontent.com/kubernetes-sigs/application/master/config/crds/app_v1beta1_application.yaml -o config/crds/app_v1beta1_application.yaml
+	```
 
-```
+1. Add an instance of the Application CR in your manifest:
+
+	```bash
+	echo <<EOF >> channels/packages/dashboard/1.8.3/manifest.yaml
+	# ------------------- Application ------------------- #
+	apiVersion: app.k8s.io/v1beta1
+	kind: Application
+	metadata:
+	  name: kubernetes-dashboard
+	spec:
+	  descriptor:
+	    type: "kubernetes-dashboard"
+	    description: "Kubernetes Dashboard is a general purpose, web-based UI for Kubernetes clusters. It allows users to manage applications running in the cluster and troubleshoot them, as well as manage the cluster itself."
+	    icons:
+	    - src: "https://github.com/kubernetes/kubernetes/raw/master/logo/logo.png"
+	      type: "image/png"
+	    maintainers:
+	    - name: Maintainer
+	      email: maintainer@example.org
+	    keywords:
+	    - "addon"
+	    - "dashboard"
+	    links:
+	    - description: Project Homepage
+	      url: "https://github.com/kubernetes/dashboard"
+	EOF
+	```
+
+1. Add the two options for managing the Application to your controller:
+
+	```go
+		r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
+			...
+			declarative.WithManagedApplication(srcLabels),
+			declarative.WithObjectTransform(addon.TransformApplicationFromStatus),
+			...
+		)
+	```
+
+1. Rebuild the operator, reinstall the CRDs, and start the new operator. You can now see the Application:
+
+	```bash
+	kubectl -n kube-system get applications -oyaml
+	```
 
 ### Next steps
 
 * Read about [adding tests](tests.md)
 * Remove cruft from the manifest yaml (Namespaces, Names, Labels)
-* Split up this document into sections?
-
+* Explore avaliable [options](https://godoc.org/sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative)
