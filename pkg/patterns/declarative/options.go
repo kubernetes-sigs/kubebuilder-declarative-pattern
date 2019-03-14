@@ -179,4 +179,15 @@ func WithPreserveNamespace() reconcilerOption {
 	}
 }
 
+// WithManagedApplication is a transform that will modify the Application object
+// in the deployment to match the configuration of the rest of the deployment.
+func WithManagedApplication(labelMaker LabelMaker) reconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.objectTransformations = append(p.objectTransformations, func(ctx context.Context, instance DeclarativeObject, objects *manifest.Objects) error {
+			return transformApplication(ctx, instance, objects, labelMaker)
+		})
+		return p
+	}
+}
+
 type reconcilerOption func(params reconcilerParams) reconcilerParams

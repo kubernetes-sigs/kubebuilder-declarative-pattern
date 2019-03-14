@@ -71,22 +71,6 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 	}
 
 	return nil
-
-	/*
-		var phase applicationv1beta1.ApplicationAssemblyPhase
-		if status.Healthy {
-			phase = applicationv1beta1.Succeeded
-		} else {
-			phase = applicationv1beta1.Pending
-		}
-
-		if app.Spec.AssemblyPhase != phase {
-			app.Spec.AssemblyPhase = phase
-			if _, err := r.applicationClient.AppV1beta1().Applications(name.Namespace).Update(app); err != nil {
-				log.Error(err, "updating assembly phase on application")
-			}
-		}
-	*/
 }
 
 func (a *aggregator) deployment(ctx context.Context, src addonv1alpha1.CommonObject, name string) (bool, error) {
