@@ -17,7 +17,7 @@ type reconcilerParams struct {
 	objectTransformations []ObjectTransform
 	manifestController    ManifestController
 
-	//prune bool
+	prune             bool
 	preserveNamespace bool
 
 	sink       Sink
@@ -133,17 +133,17 @@ func applyPrivateRegistryToContainer(registry string) func(map[string]interface{
 	}
 }
 
-/*
-// WithApplyPrune turns on the alpha --prune behavior of kubectl apply. This behavior deletes any
+// WithApplyPrune turns on the --prune behavior of kubectl apply. This behavior deletes any
 // objects that exist in the API server that are not deployed by the current version of the manifest
 // which match a label specific to the addon instance.
+//
+// This option requires WithLabels to be used
 func WithApplyPrune() reconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.prune = true
 		return p
 	}
 }
-*/
 
 // WithOwner sets an owner ref on each deployed object by the OwnerSelector
 func WithOwner(ownerFn OwnerSelector) reconcilerOption {

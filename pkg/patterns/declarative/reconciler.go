@@ -3,6 +3,7 @@ package declarative
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +18,6 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/kubectlcmd"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
-	//applicationclient "github.com/kubernetes-sigs/application/pkg/client/clientset/versioned"
 )
 
 var _ reconcile.Reconciler = &Reconciler{}
@@ -29,9 +29,6 @@ type Reconciler struct {
 	kubectl   kubectlClient
 
 	mgr manager.Manager
-
-	// Client that can manage Application CRD
-	//applicationClient *applicationclient.Clientset
 
 	packageName string
 	options     reconcilerParams
@@ -49,12 +46,7 @@ type DeclarativeObject interface {
 // For mocking
 var kubectl = kubectlcmd.New()
 
-func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, packageName string, opts ...reconcilerOption) {
-	/*if !initialized {
-		panic("attempting to initialize declarative.Reconciler without calling addon.Init() setup function")
-	}
-	*/
-
+func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, packageName string, opts ...reconcilerOption) error {
 	r.prototype = prototype
 	r.packageName = packageName
 	r.kubectl = kubectl
@@ -63,21 +55,9 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, pack
 	r.config = mgr.GetConfig()
 	r.mgr = mgr
 
-	/*
-		var err error
-			r.applicationClient, err = applicationclient.NewForConfig(mgr.GetConfig())
-			if err != nil {
-				panic(err)
-			}
-	*/
-
 	r.applyOptions(opts...)
 
-	/*
-		if r.options.groupVersionKind == nil {
-			panic("GroupVersionKind is a required option, add operators.WithGroupVersionKind(...) to this method call")
-		}
-	*/
+	return r.validateOptions()
 }
 
 // +rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
@@ -138,19 +118,15 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 
 	extraArgs := []string{"--force"}
-	/*
-		if r.options.prune {
-				selectorArg := ""
-				for k, v := range r.labels(name) {
-					if selectorArg != "" {
-						selectorArg += ","
-					}
-					selectorArg += fmt.Sprintf("%s=%s", k, v)
-				}
 
-				extraArgs = append(extraArgs, "--prune", "--selector", selectorArg)
-			}
-	*/
+	if r.options.prune {
+		var labels []string
+		for k, v := range r.options.labelMaker(ctx, instance) {
+			labels = append(labels, fmt.Sprintf("%s=%s", k, v))
+		}
+
+		extraArgs = append(extraArgs, "--prune", "--selector", strings.Join(labels, ","))
+	}
 
 	ns := ""
 	if !r.options.preserveNamespace {
@@ -253,6 +229,21 @@ func (r *Reconciler) applyOptions(opts ...reconcilerOption) {
 	}
 
 	r.options = params
+}
+
+// Validate compatibility of selected options
+func (r *Reconciler) validateOptions() error {
+	var errs []string
+
+	if r.options.prune && r.options.labelMaker == nil {
+		errs = append(errs, "WithApplyPrune must be used with the WithLabels option")
+	}
+
+	if len(errs) != 0 {
+		return fmt.Errorf(strings.Join(errs, ","))
+	}
+
+	return nil
 }
 
 func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObject, objects *manifest.Objects) error {
