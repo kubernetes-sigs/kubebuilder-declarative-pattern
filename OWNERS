@@ -3,6 +3,6 @@
 approvers:
   - kubebuilder-admins
   - justinsb
-  # - johnsonj # TODO: uncomment once a member, ref: https://github.com/kubernetes/org/issues/418#issuecomment-465357261
+  - johnsonj
 labels:
   - sig/api-machinery
