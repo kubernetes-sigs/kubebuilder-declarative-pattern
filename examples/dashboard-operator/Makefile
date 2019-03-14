@@ -45,7 +45,7 @@ teardown: manifests
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
-	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+	go run ../../vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
 
 # Run go fmt against code
 fmt:
@@ -61,7 +61,9 @@ generate:
 
 # Build the docker image
 docker-build:
-	cp -r ../vendor ./
+	cp -r ../../vendor ./
+	mkdir -p vendor/sigs.k8s.io/kubebuilder-declarative-pattern
+	cp -r ../../pkg vendor/sigs.k8s.io/kubebuilder-declarative-pattern
 	docker build . -t ${IMG}
 	@echo "updating kustomize image patch file for manager resource"
 	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
