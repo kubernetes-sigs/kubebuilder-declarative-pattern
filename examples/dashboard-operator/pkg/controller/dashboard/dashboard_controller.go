@@ -35,6 +35,25 @@ type ReconcileDashboard struct {
 	declarative.Reconciler
 }
 
+// for WithApplyPrune
+// +kubebuilder:rbac:groups=*,resources=*,verbs=list
+
+// +kubebuilder:rbac:groups=addons.sigs.k8s.io,resources=dashboards,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups="",resources=services;serviceaccounts;secrets,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups=apps;extensions,resources=deployments,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;delete;patch
+
+// RBAC roles that need to be granted:
+// +kubebuilder:rbac:groups="",resources=secrets;configmaps,verbs=create
+// TODO: can be scoped to resourceNames: ["kubernetes-dashboard-key-holder", "kubernetes-dashboard-certs"]
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;update;delete
+// TODO: can be scoped to resourceNames: ["kubernetes-dashboard-settings"]
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;delete
+// TODO: can be scoped to resourceNames: ["heapster"]
+// +kubebuilder:rbac:groups="",resources=services,verbs=proxy
+// TODO: can be scoped to resourceNames: ["heapster", "http:heapster:", "https:heapster:"], verbs: ["get"]
+// +kubebuilder:rbac:groups="",resources=services/proxy,verbs=get
+
 func Add(mgr manager.Manager) error {
 	labels := map[string]string{
 		"k8s-app": "kubernetes-dashboard",

@@ -1,0 +1,12 @@
+# See the OWNERS_ALIASES docs: https://go.k8s.io/owners#owners_aliases
+
+aliases:
+  kubebuilder-admins:
+    - DirectXMan12
+    - droot
+    - grodrigues3
+    - Liujingfang1
+    - mengqiy
+    - monopole
+    - pmorie
+    - pwittrock
