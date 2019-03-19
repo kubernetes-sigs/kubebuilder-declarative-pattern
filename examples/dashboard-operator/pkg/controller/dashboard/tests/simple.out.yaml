@@ -32,20 +32,20 @@ metadata:
 spec:
   assemblyPhase: Pending
   componentGroupKinds:
-  - group: rbac.authorization.k8s.io
-    kind: RoleBinding
-  - group: apps
-    kind: Deployment
-  - group: ""
-    kind: Service
   - group: app.k8s.io
     kind: Application
+  - group: apps
+    kind: Deployment
+  - group: rbac.authorization.k8s.io
+    kind: Role
+  - group: rbac.authorization.k8s.io
+    kind: RoleBinding
   - group: ""
     kind: Secret
   - group: ""
+    kind: Service
+  - group: ""
     kind: ServiceAccount
-  - group: rbac.authorization.k8s.io
-    kind: Role
   descriptor:
     description: "This is a demo of the kubebuilder-declarative-pattern project and
       not a production ready installation.\nKubernetes Dashboard is a general purpose,
