@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Image URL to use all building/pushing image targets
-IMG ?= gcr.io/jrjohnson-gke/dashboard-operator:latest
+IMG ?= ${USER}/dashboard-operator:latest
 
 all: test manager
 
