@@ -56,7 +56,7 @@ func uniqueGroupKind(objects *manifest.Objects) []metav1.GroupKind {
 		unique = append(unique, gk)
 	}
 	sort.Slice(unique, func(i, j int) bool {
-		return unique[i].String() < unique[i].String()
+		return unique[i].String() < unique[j].String()
 	})
 	return unique
 }
