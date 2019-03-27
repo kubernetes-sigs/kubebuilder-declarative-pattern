@@ -324,10 +324,9 @@ func ParseObjects(ctx context.Context, manifest string) (*Objects, error) {
 			return nil, fmt.Errorf("error decoding object: %v", err)
 		}
 
-		var json []byte
 		// We don't reuse the manifest because it's probably yaml, and we want to use json
 		// json = yaml
-		o, err := newObject(out, json)
+		o, err := NewObject(out)
 		if err != nil {
 			return nil, err
 		}
@@ -349,4 +348,9 @@ func newObject(u *unstructured.Unstructured, json []byte) (*Object, error) {
 	o.Name = u.GetName()
 
 	return o, nil
+}
+
+func NewObject(u *unstructured.Unstructured) (*Object, error) {
+	var json []byte
+	return newObject(u, json)
 }
