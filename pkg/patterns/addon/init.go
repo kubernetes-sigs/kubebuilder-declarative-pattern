@@ -20,14 +20,25 @@ import (
 	"flag"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 )
 
 var initialized bool
 
 // Init should be called at the beginning of the main function for all addon operator controllers
+//
+// This function configures the environment and declarative library
+// with defaults specific to addons.
 func Init() {
 	flag.Set("logtostderr", "true")
 	logf.SetLogger(logf.ZapLogger(true))
+
+	if declarative.DefaultManifestLoader == nil {
+		declarative.DefaultManifestLoader = func() declarative.ManifestController {
+			return loaders.NewManifestLoader()
+		}
+	}
 
 	initialized = true
 }
