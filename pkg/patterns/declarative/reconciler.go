@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/kubectlcmd"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
@@ -238,10 +237,9 @@ func (r *Reconciler) applyOptions(opts ...reconcilerOption) {
 		params = opt(params)
 	}
 
-	// Default to filesystem manifest controller if not set
-	// TODO: Default to https?
+	// Default the manifest controller if not set
 	if params.manifestController == nil {
-		params.manifestController = loaders.NewManifestLoader()
+		params.manifestController = DefaultManifestLoader()
 	}
 
 	r.options = params
