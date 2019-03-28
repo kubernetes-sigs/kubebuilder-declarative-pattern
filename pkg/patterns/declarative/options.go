@@ -24,8 +24,17 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
+
+type ManifestLoaderFunc func() ManifestController
+
+// DefaultManifestLoader is the manifest loader we use when a manifest loader is not otherwise configured
+// We curently default to loading from the filesystem, but may change this default in future
+var DefaultManifestLoader ManifestLoaderFunc = func() ManifestController {
+	return loaders.NewManifestLoader()
+}
 
 type reconcilerParams struct {
 	rawManifestOperations []ManifestOperation
