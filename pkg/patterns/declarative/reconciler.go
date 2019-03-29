@@ -238,7 +238,7 @@ func (r *Reconciler) applyOptions(opts ...reconcilerOption) {
 	}
 
 	// Default the manifest controller if not set
-	if params.manifestController == nil {
+	if params.manifestController == nil && DefaultManifestLoader != nil {
 		params.manifestController = DefaultManifestLoader()
 	}
 
@@ -251,6 +251,10 @@ func (r *Reconciler) validateOptions() error {
 
 	if r.options.prune && r.options.labelMaker == nil {
 		errs = append(errs, "WithApplyPrune must be used with the WithLabels option")
+	}
+
+	if r.options.manifestController == nil {
+		errs = append(errs, "ManifestController must be set either by configuring DefaultManifestLoader or specifying the WithManifestController option")
 	}
 
 	if len(errs) != 0 {
