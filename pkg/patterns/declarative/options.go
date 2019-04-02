@@ -18,10 +18,7 @@ package declarative
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
@@ -31,6 +28,14 @@ type ManifestLoaderFunc func() ManifestController
 
 // DefaultManifestLoader is the manifest loader we use when a manifest loader is not otherwise configured
 var DefaultManifestLoader ManifestLoaderFunc
+
+// Options are a set of reconcilerOptions applied to all controllers
+var Options struct {
+	// Begin options are applied before evaluating controller specific options
+	Begin []reconcilerOption
+	// End options are applied after evaluating controller specific options
+	End []reconcilerOption
+}
 
 type reconcilerParams struct {
 	rawManifestOperations []ManifestOperation
@@ -99,58 +104,6 @@ func WithManifestController(mc ManifestController) reconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.manifestController = mc
 		return p
-	}
-}
-
-func withImageRegistryTransform(privateRegistry, imagePullSecret string) func(context.Context, DeclarativeObject, *manifest.Objects) error {
-	return func(c context.Context, o DeclarativeObject, m *manifest.Objects) error {
-		return applyImageRegistry(c, o, m, privateRegistry, imagePullSecret)
-	}
-}
-
-func applyImageRegistry(ctx context.Context, operatorObject DeclarativeObject, manifest *manifest.Objects, registry, secret string) error {
-	if registry == "" && secret == "" {
-		return nil
-	}
-	for _, manifestItem := range manifest.Items {
-		if manifestItem.Kind == "Deployment" || manifestItem.Kind == "DaemonSet" ||
-			manifestItem.Kind == "StatefulSet" || manifestItem.Kind == "Job" ||
-			manifestItem.Kind == "CronJob" {
-			if registry != "" {
-				if err := manifestItem.MutateContainers(applyPrivateRegistryToContainer(registry)); err != nil {
-					return fmt.Errorf("error applying private registry: %v", err)
-				}
-			}
-			if secret != "" {
-				if err := manifestItem.MutatePodSpec(applyImagePullSecret(secret)); err != nil {
-					return fmt.Errorf("error applying image pull secret: %v", err)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func applyImagePullSecret(secret string) func(map[string]interface{}) error {
-	return func(podSpec map[string]interface{}) error {
-		imagePullSecret := map[string]interface{}{"name": secret}
-		if err := unstructured.SetNestedSlice(podSpec, []interface{}{imagePullSecret}, "imagePullSecrets"); err != nil {
-			return fmt.Errorf("error applying pull image secret: %v", err)
-		}
-		return nil
-	}
-}
-
-func applyPrivateRegistryToContainer(registry string) func(map[string]interface{}) error {
-	return func(container map[string]interface{}) error {
-		image, _, err := unstructured.NestedString(container, "image")
-		if err != nil {
-			return fmt.Errorf("error reading container image: %v", err)
-		}
-		parts := strings.Split(image, "/")
-		imageName := parts[len(parts)-1]
-		container["image"] = registry + "/" + imageName
-		return nil
 	}
 }
 
