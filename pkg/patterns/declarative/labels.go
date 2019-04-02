@@ -19,6 +19,7 @@ package declarative
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -58,7 +59,7 @@ func SourceLabel(scheme *runtime.Scheme) LabelMaker {
 		}
 
 		return map[string]string{
-			fmt.Sprintf("%s/%s", gvk.Group, gvk.Kind): o.GetName(),
+			fmt.Sprintf("%s/%s", gvk.Group, strings.ToLower(gvk.Kind)): o.GetName(),
 		}
 	}
 }
