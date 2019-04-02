@@ -45,8 +45,7 @@ type Reconciler struct {
 
 	mgr manager.Manager
 
-	packageName string
-	options     reconcilerParams
+	options reconcilerParams
 }
 
 type kubectlClient interface {
@@ -61,9 +60,8 @@ type DeclarativeObject interface {
 // For mocking
 var kubectl = kubectlcmd.New()
 
-func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, packageName string, opts ...reconcilerOption) error {
+func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts ...reconcilerOption) error {
 	r.prototype = prototype
-	r.packageName = packageName
 	r.kubectl = kubectl
 
 	r.client = mgr.GetClient()

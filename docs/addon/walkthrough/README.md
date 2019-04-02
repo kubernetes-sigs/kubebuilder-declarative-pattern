@@ -188,7 +188,7 @@ func newReconciler(mgr manager.Manager) *ReconcileDashboard {
 
 	r := &ReconcileDashboard{}
 
-	r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
+	r.Reconciler.Init(mgr, &api.Dashboard{},
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(declarative.SourceLabel(mgr.GetScheme())),
