@@ -64,7 +64,7 @@ func newReconciler(mgr manager.Manager) (r *ReconcileDashboard, srcLabels declar
 	r = &ReconcileDashboard{}
 	srcLabels = declarative.SourceLabel(mgr.GetScheme())
 
-	err = r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
+	err = r.Reconciler.Init(mgr, &api.Dashboard{},
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(srcLabels),
