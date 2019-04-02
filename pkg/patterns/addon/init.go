@@ -17,14 +17,21 @@ limitations under the License.
 package addon
 
 import (
+	"context"
 	"flag"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 var initialized bool
+
+var (
+	privateRegistry = flag.String("private-registry", "", "private image registry, if set overwrites the image repo on all pods")
+	imagePullSecret = flag.String("image-pull-secret", "", "secret used accessing private image registry, if set imagePullSecret annotation is added to all pods")
+)
 
 // Init should be called at the beginning of the main function for all addon operator controllers
 //
@@ -33,12 +40,23 @@ var initialized bool
 func Init() {
 	flag.Set("logtostderr", "true")
 	logf.SetLogger(logf.ZapLogger(true))
+	log := logf.Log.WithName("addons")
 
 	if declarative.DefaultManifestLoader == nil {
 		declarative.DefaultManifestLoader = func() declarative.ManifestController {
 			return loaders.NewManifestLoader()
 		}
 	}
+
+	declarative.Options.Begin = append(declarative.Options.Begin, declarative.WithObjectTransform(func(ctx context.Context, obj declarative.DeclarativeObject, m *manifest.Objects) error {
+		if *privateRegistry != "" || *imagePullSecret != "" {
+			log.Info("applying private reigstry options")
+			return declarative.ImageRegistryTransform(*privateRegistry, *imagePullSecret)(ctx, obj, m)
+		}
+		return nil
+	}))
+
+	log.Info("initialized")
 
 	initialized = true
 }

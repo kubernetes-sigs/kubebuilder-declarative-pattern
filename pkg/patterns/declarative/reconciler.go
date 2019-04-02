@@ -223,15 +223,8 @@ func (r *Reconciler) loadRawManifest(ctx context.Context, o DeclarativeObject) (
 func (r *Reconciler) applyOptions(opts ...reconcilerOption) {
 	params := reconcilerParams{}
 
-	/*
-		rc := getRuntimeConfig()
-		if rc.ManifestSource == Filesystem {
-			params.manifestController = manifest.NewController()
-		} // TODO support https / bundles?
-		if rc.PrivateImageRepository != nil {
-			params.objectTransformations = append(params.objectTransformations, withImageRegistryTransform(rc.PrivateImageRepository.Repository, rc.PrivateImageRepository.ImagePullSecret))
-		}
-	*/
+	opts = append(Options.Begin, opts...)
+	opts = append(opts, Options.End...)
 
 	for _, opt := range opts {
 		params = opt(params)
