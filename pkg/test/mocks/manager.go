@@ -35,6 +35,13 @@ type Manager struct {
 	Scheme *runtime.Scheme
 }
 
+func NewManager(c FakeClient) Manager {
+	return Manager{
+		client: c,
+		cache:  FakeCache{},
+	}
+}
+
 func (Manager) Add(manager.Runnable) error {
 	panic("implement me")
 }
