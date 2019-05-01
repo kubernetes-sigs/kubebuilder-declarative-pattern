@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-The patterns package contains tools for building operators with
-http://sigs.k8s.io/controller-runtime/
-
-See the subpackages for specific pattern implementations.
+The status package provides implementations for discovering and updating
+the CommonStatus on an Addon.
 */
-package patterns
+package status

@@ -2,10 +2,6 @@
 
 kubebuilder-declarative-pattern provides a set of tools for building declarative cluster operators with kubebuilder. Declarative operators provide a fast path to orchestrating Kubernetes deployments to enable domain experts to focus their component instead of re-answering questions like 'how do I get this YAML into the cluster?' or 'how do I update it?'.
 
-## 🚧 Work in Progress 🚧
-
-This repo is under very active development and will change rapidly over the short term. Follow the [Work in Progress](https://github.com/kubernetes-sigs/kubebuilder-declarative-pattern/issues/3) issue for an all clear when it is ready for development.
-
 ## Development
 
 ### Running Smoke Tests
@@ -19,6 +15,8 @@ IMG=<a writeable image path, eg, gcr.io/my-project/controller:latest> go run smo
 
 ## Documentation
 
+- [Building an Operator (walkthrough)](./docs/addon/walkthrough/README.md)
+- [Pattern Documentation](https://godoc.org/sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns)
 - [Managing Addons with Operators (Video, KubeCon'18)](https://www.youtube.com/watch?v=LPejvfBR5_w)
 
 ## Community, discussion, contribution, and support

@@ -37,6 +37,8 @@ type ManifestLoader struct {
 	repo Repository
 }
 
+// NewManifestLoader provides a Repository that resolves versions based on an Addon object
+// and loads manifests from the filesystem.
 func NewManifestLoader() *ManifestLoader {
 	// TODO: Accept as a parameter - but it's hard to have a flag per controller
 	repo := NewFSRepository(FlagChannel)

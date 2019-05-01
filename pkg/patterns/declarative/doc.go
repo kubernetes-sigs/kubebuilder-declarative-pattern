@@ -15,9 +15,8 @@ limitations under the License.
 */
 
 /*
-The patterns package contains tools for building operators with
-http://sigs.k8s.io/controller-runtime/
-
-See the subpackages for specific pattern implementations.
+The declarative package contains tools and a controller compatible with
+http://sigs.k8s.io/controller-runtime to manage a Kubernetes deployment
+based off of a instance of a CustomResource in the cluster.
 */
-package patterns
+package declarative
