@@ -21,6 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// CommonObject is an interface that must be implemented by
+// all Addon objects in order to use the Addon pattern
 type CommonObject interface {
 	runtime.Object
 	metav1.Object
@@ -30,14 +32,20 @@ type CommonObject interface {
 	SetCommonStatus(CommonStatus)
 }
 
+// CommonSpec defines the set of configuration attributes that must be exposed on all addons.
 type CommonSpec struct {
+	// Version specifies the exact addon version to be deployed, eg 1.2.3
+	// It should not be specified if Channel is specified
 	Version string `json:"version,omitempty"`
+	// Channel specifies a channel that can be used to resolve a specific addon, eg: stable
+	// It will be ignored if Version is specified
 	Channel string `json:"channel,omitempty"`
 }
 
 //go:generate go run ../../../../../../vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i ./... -h ../../../../../../hack/boilerplate.go.txt
-
 // +k8s:deepcopy-gen=true
+
+// CommonSpec is a set of status attributes that must be exposed on all addons.
 type CommonStatus struct {
 	Healthy bool     `json:"healthy"`
 	Errors  []string `json:"errors,omitempty"`

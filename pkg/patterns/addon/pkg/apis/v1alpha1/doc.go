@@ -15,9 +15,16 @@ limitations under the License.
 */
 
 /*
-The patterns package contains tools for building operators with
-http://sigs.k8s.io/controller-runtime/
+The v1alpha1 API provides a set of common fields for addon objects.
 
-See the subpackages for specific pattern implementations.
+What is the purpose of this API?
+
+The API provides a common set of spec and status fields that are required
+to manage addons consistently.
+
+How stable is this API?
+
+This is an evolving API and will change without bumping the version number
+until it is promoted to a beta API.
 */
-package patterns
+package v1alpha1

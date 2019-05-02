@@ -15,9 +15,7 @@ limitations under the License.
 */
 
 /*
-The patterns package contains tools for building operators with
-http://sigs.k8s.io/controller-runtime/
-
-See the subpackages for specific pattern implementations.
+The loaders package implements loading of raw kubernetes manifests based off
+of the CommonSpec of an Addon object.
 */
-package patterns
+package loaders
