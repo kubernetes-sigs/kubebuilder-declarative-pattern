@@ -50,3 +50,13 @@ type CommonStatus struct {
 	Healthy bool     `json:"healthy"`
 	Errors  []string `json:"errors,omitempty"`
 }
+
+// Patchable is a trait for addon CRDs that expose a raw set of Patches to be
+// applied to the declarative manifest.
+type Patchable interface {
+	PatchSpec() PatchSpec
+}
+
+type PatchSpec struct {
+	Patches []*runtime.RawExtension `json:"patches,omitempty"`
+}

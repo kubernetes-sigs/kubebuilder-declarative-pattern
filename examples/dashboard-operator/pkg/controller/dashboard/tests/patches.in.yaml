@@ -1,0 +1,14 @@
+apiVersion: addons.sigs.k8s.io/v1alpha1
+kind: Dashboard
+metadata:
+  name: dashboard-sample
+  namespace: kube-system
+spec:
+  patches:
+  - apiVersion: apps/v1beta2
+    kind: Deployment
+    metadata:
+      name: kubernetes-dashboard
+      namespace: kube-system
+    spec:
+      replicas: 5
