@@ -57,6 +57,7 @@ type Patchable interface {
 	PatchSpec() PatchSpec
 }
 
+// +k8s:deepcopy-gen=true
 type PatchSpec struct {
 	Patches []*runtime.RawExtension `json:"patches,omitempty"`
 }
