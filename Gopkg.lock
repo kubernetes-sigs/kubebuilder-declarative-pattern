@@ -29,6 +29,14 @@
   version = "v2.8.0"
 
 [[projects]]
+  digest = "1:2fd7ea1c64915c77ef4649b1b2113f449897d00721383925eca9a1c4b4071910"
+  name = "github.com/evanphx/json-patch"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "5858425f75500d40c52783dce87d085a483ce135"
+  version = "v4.2.0"
+
+[[projects]]
   digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
   name = "github.com/ghodss/yaml"
   packages = ["."]
@@ -847,6 +855,8 @@
   analyzer-version = 1
   input-imports = [
     "github.com/emicklei/go-restful",
+    "github.com/evanphx/json-patch",
+    "github.com/golang/glog",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/pkg/errors",
@@ -865,14 +875,17 @@
     "k8s.io/apimachinery/pkg/runtime/serializer/json",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/diff",
+    "k8s.io/apimachinery/pkg/util/strategicpatch",
     "k8s.io/apimachinery/pkg/util/yaml",
-    "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/dynamic",
+    "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/tools/cache",
+    "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/record",
+    "k8s.io/client-go/util/homedir",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "sigs.k8s.io/controller-runtime/pkg/cache",
