@@ -185,6 +185,17 @@ func (o *Object) SetNestedField(value interface{}, fields ...string) error {
 	return err
 }
 
+func (o *Object) SetNestedSlice(value []interface{}, fields ...string) error {
+	if o.object.Object == nil {
+		o.object.Object = make(map[string]interface{})
+	}
+	err := unstructured.SetNestedSlice(o.object.Object, value, fields...)
+	// Invalidate cached json
+	o.json = nil
+
+	return err
+}
+
 func (o *Object) SetNestedFieldNoCopy(value interface{}, fields ...string) error {
 	if o.object.Object == nil {
 		o.object.Object = make(map[string]interface{})

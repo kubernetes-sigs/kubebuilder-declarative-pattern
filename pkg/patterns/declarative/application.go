@@ -38,8 +38,19 @@ func transformApplication(ctx context.Context, instance DeclarativeObject, objec
 		return errors.New("cannot transformApplication without an app.k8s.io/Application in the manifest")
 	}
 
-	app.SetNestedFieldNoCopy(metav1.LabelSelector{MatchLabels: labelMaker(ctx, instance)}, "spec", "selector")
-	app.SetNestedFieldNoCopy(uniqueGroupKind(objects), "spec", "componentGroupKinds")
+	labels := labelMaker(ctx, instance)
+	convertedLabels := map[string]interface{}{}
+	for k, v := range labels {
+		convertedLabels[k] = v
+	}
+	labelSelector := map[string]interface{}{"matchLabels": convertedLabels}
+	app.SetNestedField(labelSelector, "spec", "selector")
+
+	componentGroupKinds := []interface{}{}
+	for _, gk := range uniqueGroupKind(objects) {
+		componentGroupKinds = append(componentGroupKinds, map[string]interface{}{"group": gk.Group, "kind": gk.Kind})
+	}
+	app.SetNestedSlice(componentGroupKinds, "spec", "componentGroupKinds")
 
 	return nil
 }
