@@ -4,9 +4,9 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: dashboards.addons.sigs.k8s.io
+  name: dashboards.addons.example.org
 spec:
-  group: addons.sigs.k8s.io
+  group: addons.example.org
   names:
     kind: Dashboard
     plural: dashboards

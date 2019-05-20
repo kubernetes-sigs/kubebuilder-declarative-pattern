@@ -19,7 +19,7 @@ Create a new directory and use kubebuilder to scafold the operator:
 cd $(go env GOPATH)
 mkdir -p src/sigs.k8s.io/dashboard-operator/
 cd src/sigs.k8s.io/dashboard-operator/
-kubebuilder init --domain sigs.k8s.io --license apache2 --owner "The Kubernetes Authors" --dep=true
+kubebuilder init --domain addons.example.org --license apache2 --owner "TODO($USER): assign copyright" --dep=true
 ```
 
 Add the patterns to your project:

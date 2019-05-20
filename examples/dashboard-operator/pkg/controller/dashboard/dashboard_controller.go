@@ -39,7 +39,7 @@ type ReconcileDashboard struct {
 // for WithApplyPrune
 // +kubebuilder:rbac:groups=*,resources=*,verbs=list
 
-// +kubebuilder:rbac:groups=addons.sigs.k8s.io,resources=dashboards,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups=addons.example.org,resources=dashboards,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups="",resources=services;serviceaccounts;secrets,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups=apps;extensions,resources=deployments,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;delete;patch
