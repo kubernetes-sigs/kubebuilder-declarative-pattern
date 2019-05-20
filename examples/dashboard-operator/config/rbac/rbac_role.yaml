@@ -11,7 +11,7 @@ rules:
   verbs:
   - list
 - apiGroups:
-  - addons.sigs.k8s.io
+  - addons.example.org
   resources:
   - dashboards
   verbs:

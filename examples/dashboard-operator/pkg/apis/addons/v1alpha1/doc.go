@@ -19,5 +19,5 @@ limitations under the License.
 // +k8s:deepcopy-gen=package,register
 // +k8s:conversion-gen=sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator/pkg/apis/addons
 // +k8s:defaulter-gen=TypeMeta
-// +groupName=addons.sigs.k8s.io
+// +groupName=addons.example.org
 package v1alpha1
