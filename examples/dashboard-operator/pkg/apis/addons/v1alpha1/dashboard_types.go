@@ -23,15 +23,17 @@ import (
 
 // DashboardSpec defines the desired state of Dashboard
 type DashboardSpec struct {
-	addonv1alpha1.CommonSpec
+	addonv1alpha1.CommonSpec `json:",inline"`
+	addonv1alpha1.PatchSpec  `json:",inline"`
 }
 
 // DashboardStatus defines the observed state of Dashboard
 type DashboardStatus struct {
-	addonv1alpha1.CommonStatus
+	addonv1alpha1.CommonStatus `json:",inline"`
 }
 
 var _ addonv1alpha1.CommonObject = &Dashboard{}
+var _ addonv1alpha1.Patchable = &Dashboard{}
 
 func (c *Dashboard) ComponentName() string {
 	return "dashboard"
@@ -47,6 +49,10 @@ func (c *Dashboard) GetCommonStatus() addonv1alpha1.CommonStatus {
 
 func (c *Dashboard) SetCommonStatus(s addonv1alpha1.CommonStatus) {
 	c.Status.CommonStatus = s
+}
+
+func (c *Dashboard) PatchSpec() addonv1alpha1.PatchSpec {
+	return c.Spec.PatchSpec
 }
 
 // +genclient

@@ -71,8 +71,9 @@ func newReconciler(mgr manager.Manager) (r *ReconcileDashboard, srcLabels declar
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
 		declarative.WithPreserveNamespace(),
 		declarative.WithApplyPrune(),
-		declarative.WithManagedApplication(srcLabels),
 		declarative.WithObjectTransform(addon.TransformApplicationFromStatus),
+		declarative.WithManagedApplication(srcLabels),
+		declarative.WithObjectTransform(addon.ApplyPatches),
 	)
 
 	return
