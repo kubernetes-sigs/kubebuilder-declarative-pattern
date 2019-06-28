@@ -44,11 +44,11 @@ func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out runtime.O
 	return nil
 }
 
-func (FakeClient) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) error {
+func (FakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOptionFunc) error {
 	panic("not implemented")
 }
 
-func (FakeClient) Create(ctx context.Context, obj runtime.Object) error {
+func (FakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOptionFunc) error {
 	panic("not implemented")
 }
 
@@ -56,7 +56,11 @@ func (FakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client
 	return nil
 }
 
-func (FakeClient) Update(ctx context.Context, obj runtime.Object) error {
+func (FakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOptionFunc) error {
+	return nil
+}
+
+func (FakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOptionFunc) error {
 	return nil
 }
 
