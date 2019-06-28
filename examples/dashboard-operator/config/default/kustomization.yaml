@@ -12,22 +12,32 @@ namePrefix: dashboard-operator-
 #commonLabels:
 #  someName: someValue
 
-# Each entry in this list must resolve to an existing
-# resource definition in YAML.  These are the resource
-# files that kustomize reads, modifies and emits as a
-# YAML string, with resources separated by document
-# markers ("---").
 bases:
+- ../crd
 - ../rbac
 - ../manager
+# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in crd/kustomization.yaml
+#- ../webhook
+# [CERTMANAGER] To enable cert-manager, uncomment next line. 'WEBHOOK' components are required.
+#- ../certmanager
 
 patches:
 - manager_image_patch.yaml
-- manager_resource_patch.yaml
+  # Protect the /metrics endpoint by putting it behind auth.
+  # Only one of manager_auth_proxy_patch.yaml and
+  # manager_prometheus_metrics_patch.yaml should be enabled.
+- manager_auth_proxy_patch.yaml
+  # If you want your controller-manager to expose the /metrics
+  # endpoint w/o any authn/z, uncomment the following line and
+  # comment manager_auth_proxy_patch.yaml.
+  # Only one of manager_auth_proxy_patch.yaml and
+  # manager_prometheus_metrics_patch.yaml should be enabled.
+#- manager_prometheus_metrics_patch.yaml
 
-vars:
-- name: WEBHOOK_SECRET_NAME
-  objref:
-    kind: Secret
-    name: webhook-server-secret
-    apiVersion: v1
+# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in crd/kustomization.yaml
+#- manager_webhook_patch.yaml
+
+# [CAINJECTION] Uncomment next line to enable the CA injection in the admission webhooks.
+# Uncomment 'CAINJECTION' in crd/kustomization.yaml to enable the CA injection in the admission webhooks.
+# 'CERTMANAGER' needs to be enabled to use ca injection
+#- webhookcainjection_patch.yaml

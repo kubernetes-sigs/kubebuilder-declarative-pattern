@@ -22,6 +22,4 @@ bin
 *.swp
 *.swo
 *~
-
-# Ignore vendored file
 vendor/
