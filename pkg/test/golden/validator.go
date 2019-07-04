@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/diff"
+	clientScheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
@@ -51,6 +52,7 @@ func NewValidator(t *testing.T, b *scheme.Builder) *validator {
 	addon.Init()
 	v.findChannelsPath()
 
+	v.mgr = mocks.NewManager(mocks.NewClient(clientScheme.Scheme))
 	v.mgr.Scheme = v.scheme
 	return v
 }

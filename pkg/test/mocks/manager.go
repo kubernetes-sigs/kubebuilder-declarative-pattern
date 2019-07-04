@@ -25,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // Mock Types for Reconciler tests:
@@ -66,7 +68,7 @@ func (m Manager) GetScheme() *runtime.Scheme {
 
 func (m Manager) GetClient() client.Client {
 	if m.client == nil {
-		m.client = FakeClient{}
+		m.client = NewClient(scheme.Scheme)
 	}
 	return m.client
 }
