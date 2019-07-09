@@ -1,4 +1,5 @@
 /*
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,3 +13,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+package controllers
+
+import (
+	"testing"
+
+	api "dashboard-operator/api/v1alpha1"
+
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/golden"
+)
+
+func TestDashboard(t *testing.T) {
+	v := golden.NewValidator(t, api.SchemeBuilder)
+	dr := &DashboardReconciler{
+		Client: v.Manager().GetClient(),
+	}
+	err := dr.setupReconciler(v.Manager())
+	if err != nil {
+		t.Fatalf("creating reconciler: %v", err)
+	}
+
+	v.Validate(dr.Reconciler)
+}

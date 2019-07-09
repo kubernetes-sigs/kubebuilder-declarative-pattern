@@ -6,40 +6,43 @@ This walkthrough is for creating an operator to run the kubernetes dashboard.
 
 Install the following depenencies:
 
-- [kubebuilder](https://book.kubebuilder.io/getting_started/installation_and_setup.html)
+- [kubebuilder](https://book.kubebuilder.io/quick-start.html#installation) (tested with 2.0.0-alpha.4)
 - [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md)
 - docker
 - kubectl
-- golang
-- [dep](https://github.com/golang/dep#installation)
+- golang (>=1.11 for go modules)
 
 Create a new directory and use kubebuilder to scafold the operator:
 
 ```
-cd $(go env GOPATH)
-mkdir -p src/sigs.k8s.io/dashboard-operator/
-cd src/sigs.k8s.io/dashboard-operator/
-kubebuilder init --domain addons.example.org --license apache2 --owner "TODO($USER): assign copyright" --dep=true
+export GO111MODULE=on
+mkdir -p dashboard-operator/
+cd dashboard-operator/
+kubebuilder init --domain example.org --license apache2 --owner "TODO($USER): assign copyright" 
 ```
 
 Add the patterns to your project:
 
 ```
-dep ensure -add sigs.k8s.io/kubebuilder-declarative-pattern
+go get sigs.k8s.io/kubebuilder-declarative-pattern
 ```
 
 ### Adding our first CRD
 
 ```
-kubebuilder create api --group addons --version v1alpha1 --kind Dashboard --controller --resource --namespaced=true
+# generate the API/controllers
+kubebuilder create api --controller=true --example=false --group=addons --kind=Dashboard --make=false --namespaced=true --resource=true --version=v1alpha1
+# remove the  test suites that are more checking that kubebuilder is working
+find . -name "*_test.go" -delete
 ```
 
-This creates API type definitions under `pkg/apis/addons/v1alpha1/`, and a basic
-controller under `pkg/controller/dashboard/`
 
-* Generate code: `go generate ./pkg/... ./cmd/...` (or `make generate`)
+This creates API type definitions under `api/v1alpha1/`, and a basic
+controller under `controllers/`
 
-* You should now be able to `go run ./cmd/manager/main.go` (or `make run`),
+* Generate code: `make generate`
+
+* You should now be able to `go run main.go` (or `make run`),
   though it will exit with an error from being unable to find the dashboard CRD.
 
 ### Adding a manifest
@@ -93,7 +96,7 @@ We begin by editing the api type, we add some common fields.  The idea is that
 CommonSpec and CommonStatus form a common contract that we expect all addons to
 support (and we can hopefully evolve the contract with just a recompile!)
 
-Modify `pkg/apis/addons/v1alpha1/dashboard_types.go` to:
+Modify `api/v1alpha1/dashboard_types.go` to:
 
 * add an import for `addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"`
 * add a field `addonv1alpha1.CommonSpec` to the Spec object
@@ -106,11 +109,11 @@ Your `dashboard_types.go` file should now additionally contain:
 import addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 
 type DashboardSpec struct {
-	addonv1alpha1.CommonSpec
+	addonv1alpha1.CommonSpec `json:",inline"`
 }
 
 type DashboardStatus struct {
-	addonv1alpha1.CommonStatus
+	addonv1alpha1.CommonStatus `json:",inline"`
 }
 
 var _ addonv1alpha1.CommonObject = &Dashboard{}
@@ -135,11 +138,13 @@ func (c *Dashboard) SetCommonStatus(s addonv1alpha1.CommonStatus) {
 
 ### Using the framework in the controller
 
-We replace the controller code `pkg/controller/dashboard/dashboard_controller.go`:
+We replace the controller code `controllers/dashboard_controller.go`:
 
 We are delegating most of the logic to `declarative.Reconciler`
 
 ```go
+package controllers
+
 /*
 Copyright 2019 The Kubernetes Authors.
 
@@ -156,50 +161,57 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dashboard
-
 import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	api "sigs.k8s.io/dashboard-operator/pkg/apis/addons/v1alpha1"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
+
+	"github.com/go-logr/logr"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	api "dashboard-operator/api/v1alpha1"
 )
 
-var _ reconcile.Reconciler = &ReconcileDashboard{}
+var _ reconcile.Reconciler = &DashboardReconciler{}
 
-// ReconcileDashboard reconciles a Dashboard object
-type ReconcileDashboard struct {
+// DashboardReconciler reconciles a Dashboard object
+type DashboardReconciler struct {
 	declarative.Reconciler
+	client.Client
+	Log logr.Logger
+
+	watchLabels declarative.LabelMaker
 }
 
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
-}
-
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) *ReconcileDashboard {
+func (r *DashboardReconciler) setupReconciler(mgr ctrl.Manager) error {
 	labels := map[string]string{
 		"k8s-app": "kubernetes-dashboard",
 	}
 
-	r := &ReconcileDashboard{}
+	r.watchLabels = declarative.SourceLabel(mgr.GetScheme())
 
-	r.Reconciler.Init(mgr, &api.Dashboard{},
+	return r.Reconciler.Init(mgr, &api.Dashboard{},
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
-		declarative.WithLabels(declarative.SourceLabel(mgr.GetScheme())),
+		declarative.WithLabels(r.watchLabels),
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
+		declarative.WithPreserveNamespace(),
 		declarative.WithApplyPrune(),
 	)
-
-	return r
 }
 
-func add(mgr manager.Manager, r *ReconcileDashboard) error {
+// +kubebuilder:rbac:groups=addons.example.org,resources=dashboards,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=addons.example.org,resources=dashboards/status,verbs=get;update;patch
+func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := r.setupReconciler(mgr); err != nil {
+		return err
+	}
+
 	c, err := controller.New("dashboard-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
@@ -212,7 +224,7 @@ func add(mgr manager.Manager, r *ReconcileDashboard) error {
 	}
 
 	// Watch for changes to deployed objects
-	_, err = declarative.WatchAll(mgr.GetConfig(), c, r, declarative.SourceLabel(mgr.GetScheme()))
+	_, err = declarative.WatchAll(mgr.GetConfig(), c, r, r.watchLabels)
 	if err != nil {
 		return err
 	}
@@ -220,7 +232,23 @@ func add(mgr manager.Manager, r *ReconcileDashboard) error {
 	return nil
 }
 
+// for WithApplyPrune
+// +kubebuilder:rbac:groups=*,resources=*,verbs=list
 
+// +kubebuilder:rbac:groups=addons.example.org,resources=dashboards,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups="",resources=services;serviceaccounts;secrets,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups=apps;extensions,resources=deployments,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;delete;patch
+// RBAC roles that need to be granted:
+// +kubebuilder:rbac:groups="",resources=secrets;configmaps,verbs=create
+// TODO: can be scoped to resourceNames: ["kubernetes-dashboard-key-holder", "kubernetes-dashboard-certs"]
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;update;delete
+// TODO: can be scoped to resourceNames: ["kubernetes-dashboard-settings"]
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;delete
+// TODO: can be scoped to resourceNames: ["heapster"]
+// +kubebuilder:rbac:groups="",resources=services,verbs=proxy
+// TODO: can be scoped to resourceNames: ["heapster", "http:heapster:", "https:heapster:"], verbs: ["get"]
+// +kubebuilder:rbac:groups="",resources=services/proxy,verbs=get
 ```
 
 The important things to note here:
@@ -238,7 +266,7 @@ includes the version specifier.
 
 ### Misc
 
-1. Add an import and init call to the top of the main() function in `cmd/manager/main.go`:
+1. Add an import and init call to the top of the main() function in `main.go`:
 
 	```go
 	import (
@@ -246,18 +274,9 @@ includes the version specifier.
 		"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
 	)
 	func main() {
-		// ...
+		// after: ctrl.SetLogger(zap.Logger(true))
 		addon.Init()
 	}
-	```
-
-1. Remove the boilerplate tests generated by kubebuilder:
-
-	```bash
-	rm pkg/controller/dashboard/dashboard_controller_suite_test.go
-	rm pkg/controller/dashboard/dashboard_controller_test.go
-	rm pkg/apis/addons/v1alpha1/dashboard_types_test.go
-	rm pkg/apis/addons/v1alpha1/v1alpha1_suite_test.go
 	```
 
 ### Testing it locally
@@ -349,13 +368,13 @@ we'll need a Docker image and some manifests.
 	FROM golang:1.10.3 as builder
 
 	# Copy in the go src
-	WORKDIR /go/src/sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator
+	WORKDIR /go/src/dashboard-operator
 	COPY pkg/      pkg/
 	COPY cmd/      cmd/
 	COPY vendor/   vendor/
 
 	# Build
-	RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator/cmd/manager
+	RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager dashboard-operator/cmd/manager
 
 	# Copy the operator and dependencies into a thin image
 	FROM gcr.io/distroless/static:latest
@@ -379,30 +398,7 @@ tightly-scoped RBAC role. To do that we use kubebuilder's RBAC role generation
 based off of source annotations. In the future we may be able to generate RBAC
 rules from the manfiest.
 
-1. Paste this snippet into `pkg/controller/dashboard/dashboard_controller.go`
-   for the proper RBAC rules needed by the dashboard-operator.
-
-	```go
-	//
-	// RBAC Rules for running the controller in the cluster:
-	//
-	// for WithApplyPrune
-	// +kubebuilder:rbac:groups=*,resources=*,verbs=list
-	// +kubebuilder:rbac:groups=addons.sigs.k8s.io,resources=dashboards,verbs=get;list;watch;create;update;delete;patch
-	// +kubebuilder:rbac:groups="",resources=services;serviceaccounts;secrets,verbs=get;list;watch;create;update;delete;patch
-	// +kubebuilder:rbac:groups=apps;extensions,resources=deployments,verbs=get;list;watch;create;update;delete;patch
-	// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;delete;patch
-	// +kubebuilder:rbac:groups="",resources=secrets;configmaps,verbs=create
-	// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;update;delete
-	// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;delete
-	// +kubebuilder:rbac:groups="",resources=services,verbs=proxy
-	// +kubebuilder:rbac:groups="",resources=services/proxy,verbs=get
-	```
-
-1. Regenerate the manifests with the new rules:
-	```bash
-	make manifests
-	```
+The RBAC rules are included in the `dashboard_controller.go` snippet you pasted above.
 
 RBAC is the real pain-point here - we end up with a lot of permissions:
 * The operator needs RBAC rules to see the CRDs.
@@ -524,7 +520,7 @@ status that can be surfaced in various user interfaces.
 	```go
 		r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
 			...
-			declarative.WithManagedApplication(srcLabels),
+			declarative.WithManagedApplication(r.watchLabels),
 			declarative.WithObjectTransform(addon.TransformApplicationFromStatus),
 			...
 		)

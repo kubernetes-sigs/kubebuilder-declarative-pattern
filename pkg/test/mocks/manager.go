@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 // Mock Types for Reconciler tests:
@@ -34,6 +34,8 @@ type Manager struct {
 	config rest.Config
 	Scheme *runtime.Scheme
 }
+
+var _ manager.Manager = &Manager{}
 
 func NewManager(c FakeClient) Manager {
 	return Manager{
@@ -84,10 +86,18 @@ func (Manager) GetRecorder(name string) record.EventRecorder {
 	panic("implement me")
 }
 
-func (Manager) GetAdmissionDecoder() types.Decoder {
+func (Manager) GetRESTMapper() meta.RESTMapper {
 	panic("implement me")
 }
 
-func (Manager) GetRESTMapper() meta.RESTMapper {
+func (Manager) GetAPIReader() client.Reader {
+	panic("implement me")
+}
+
+func (Manager) GetEventRecorderFor(name string) record.EventRecorder {
+	panic("implement me")
+}
+
+func (Manager) GetWebhookServer() *webhook.Server {
 	panic("implement me")
 }

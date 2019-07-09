@@ -57,14 +57,16 @@ the env-var cheat code.
     )
     
     func TestController(t *testing.T) {
-      v := &tests.StandardValidator{
-        T:             t,
-        SchemeBuilder: api.SchemeBuilder,
-      }
-    
-      r := newReconciler(v.Manager()).(*Reconcile{{operator}})
-    
-      v.Validate(r.StandardReconciler)
+	v := golden.NewValidator(t, api.SchemeBuilder)
+	dr := &{{operator}}Reconciler{
+		Client: v.Manager().GetClient(),
+	}
+	err := dr.setupReconciler(v.Manager())
+	if err != nil {
+		t.Fatalf("creating reconciler: %v", err)
+	}
+
+	v.Validate(dr.Reconciler)
     }
    ```
 

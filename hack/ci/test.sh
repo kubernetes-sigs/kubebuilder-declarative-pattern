@@ -21,5 +21,9 @@ set -o pipefail
 REPO_ROOT=$(dirname "${BASH_SOURCE}")/../..
 cd "${REPO_ROOT}"
 
+export GO111MODULE=on
+
 go test sigs.k8s.io/kubebuilder-declarative-pattern/pkg/...
-go test sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator/pkg/controller/...
+
+cd examples/dashboard-operator
+go test dashboard-operator/controllers/...
