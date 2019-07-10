@@ -284,26 +284,39 @@ includes the version specifier.
 We can register the Dashboard CRD and a Dashboard object, and then try running
 the controller locally.
 
-We need to generate and register the CRDs:
+1) We need to generate and register the CRDs:
 
 ```bash
 make install
 ```
 
-Create a dashboard CR:
+You can verify that the CRD is regesterd successfully:
+
+```
+kubectl get crds dashboards.addons.example.org
+```
+
+2) Create a dashboard CR:
 
 ```bash
 kubectl apply -n kube-system -f config/samples/addons_v1alpha1_dashboard.yaml
 ```
 
-You should now be able to run the controller using:
+You can verify the CR is created successfully:
+
+```
+kubectl get DashBoards -n kube-system
+```
+
+3) You should now be able to run the controller using:
 
 `make run`
 
 You should see your operator apply the manifest.  You can then control-C and you
 should see the deployment etc that the operator has created.
 
-e.g. `kubectl get pods -l k8s-app=kubernetes-dashboard`
+e.g. `kubectl get pods -l k8s-app=kubernetes-dashboard -n kube-system` or
+`kubectl get deploy kubernetes-dashboard -n kube-system`.
 
 ## Running on-cluster
 
@@ -316,80 +329,82 @@ we'll need a Docker image and some manifests.
 1. Modify the IMG value in the `Makefile` to reflect a docker registry that you 
    can write to:
 
-   ```make
-   # Image URL to use all building/pushing image targets
-   IMG ?= gcr.io/<my-cool-project>/dashboard-operator:latest
-   ```
+```make
+# Image URL to use all building/pushing image targets
+IMG ?= gcr.io/<my-cool-project>/dashboard-operator:latest
+```
 
 1. Create a patch to modify the memory limit for the operator:
-   ```bash
-   echo << EOF > config/default/manager_resource_patch.yaml
-	apiVersion: apps/v1
-	kind: StatefulSet
-	metadata:
-	  name: controller-manager
-	  namespace: system
-	spec:
-	  template:
-	    spec:
-	      containers:
-	      - name: manager
-	        resources:
-	          limits:
-	            cpu: 100m
-	            memory: 150Mi
-	          requests:
-	            cpu: 100m
-	            memory: 20Mi
-   EOF
-   ```
+
+```bash
+echo << EOF > config/default/manager_resource_patch.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: system
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        resources:
+          limits:
+            cpu: 100m
+            memory: 150Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+EOF
+```
 
 1. Reference the patch by adding `manager_resource_patch.yaml` to the `patches` section of `config/default/kustomization.yaml`:
 
-	```yaml
-	patches:
-	- manager_resource_patch.yaml
-	# ... existing patches
-	```
+```yaml
+patches:
+- manager_resource_patch.yaml
+# ... existing patches
+```
 
-	This is requried to run kubectl in the container.
+This is requried to run kubectl in the container.
 
 1. Modify the `Dockerfile` to pull in kubectl, the manifests (in `channels/`),
    and run in a slim container:
 
-   ```Dockerfile
-	FROM ubuntu:latest as kubectl
-	RUN apt-get update
-	RUN apt-get install -y curl
-	RUN curl -fsSL https://dl.k8s.io/release/v1.13.4/bin/linux/amd64/kubectl > /usr/bin/kubectl
-	RUN chmod a+rx /usr/bin/kubectl
+```Dockerfile
+FROM ubuntu:latest as kubectl
+RUN apt-get update
+RUN apt-get install -y curl
+RUN curl -fsSL https://dl.k8s.io/release/v1.13.4/bin/linux/amd64/kubectl > /usr/bin/kubectl
+RUN chmod a+rx /usr/bin/kubectl
 
-	# Build the manager binary
-	FROM golang:1.10.3 as builder
+# Build the manager binary
+FROM golang:1.10.3 as builder
 
-	# Copy in the go src
-	WORKDIR /go/src/dashboard-operator
-	COPY pkg/      pkg/
-	COPY cmd/      cmd/
-	COPY vendor/   vendor/
+# Copy in the go src
+WORKDIR /go/src/dashboard-operator
+COPY vendor/   vendor/
+COPY main.go main.go
+COPY api/ api/
+COPY controllers/ controllers/
 
-	# Build
-	RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager dashboard-operator/cmd/manager
+# Build
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 
-	# Copy the operator and dependencies into a thin image
-	FROM gcr.io/distroless/static:latest
-	WORKDIR /
-	COPY --from=builder /go/src/sigs.k8s.io/dashboard-operator/manager .
-	COPY --from=kubectl /usr/bin/kubectl /usr/bin/kubectl
-	COPY channels/ channels/
-	ENTRYPOINT ["./manager"]
-   ```
+# Copy the operator and dependencies into a thin image
+FROM gcr.io/distroless/static:latest
+WORKDIR /
+COPY --from=builder /go/src/dashboard-operator/manager .
+COPY --from=kubectl /usr/bin/kubectl /usr/bin/kubectl
+COPY channels/ channels/
+ENTRYPOINT ["./manager"]
+```
 
 1. Verify everything worked by building and pushing the image:
 
-	```bash
-	make docker-build docker-push
-	```
+```bash
+make docker-build docker-push
+```
 
 ### Generated RBAC Rules
 
@@ -426,16 +441,34 @@ The last one in particular can result in a non-trivial RBAC policy.  My approach
 ### Installing the operator in the cluster
 
 ```bash
-make docker-build docker-push
+# install the CRD, and start the operator
 make deploy
 ```
 
 You can troubleshoot the operator by inspecting the controller:
 
 ```bash
-kubectl -n dashboard-operator-system get statefulset
-kubectl -n dashboard-operator-system logs dashboard-operator-controller-manager-0 manager
+kubectl -n dashboard-operator-system get deploy
+kubectl -n dashboard-operator-system logs <dashboard-operator-controller-manager-pod-name> manager
 ```
+
+### Create a dashboard CR
+
+```bash
+kubectl apply -n kube-system -f config/samples/addons_v1alpha1_dashboard.yaml
+```
+
+You can verify the CR is created successfully:
+
+```
+kubectl get DashBoards -n kube-system
+```
+
+You can verify that the operator has created the `kubernetes-dashboard`
+deployment:
+
+e.g. `kubectl get pods -l k8s-app=kubernetes-dashboard -n kube-system` or
+`kubectl get deploy kubernetes-dashboard -n kube-system`.
 
 ## Manifest simplification: Automatic labels
 
