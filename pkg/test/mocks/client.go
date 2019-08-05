@@ -2,30 +2,42 @@ package mocks
 
 import (
 	"context"
-	"fmt"
-	"reflect"
 
+	"encoding/json"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 // FakeClient is a struct that implements client.Client for use in tests.
 type FakeClient struct {
-	c             map[client.ObjectKey]runtime.Object
 	ErrIfNotFound bool
+	tracker       testing.ObjectTracker
+	scheme        *runtime.Scheme
 }
 
-func NewClient(c map[client.ObjectKey]runtime.Object) FakeClient {
+func NewClient(clientScheme *runtime.Scheme) FakeClient {
+	tracker := testing.NewObjectTracker(clientScheme, scheme.Codecs.UniversalDecoder())
 	return FakeClient{
-		c: c,
+		tracker: tracker,
+		scheme:  clientScheme,
 	}
 }
 
 func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out runtime.Object) error {
-	obj, ok := f.c[key]
-	if !ok {
+	gvr, err := getGVRFromObject(out, f.scheme)
+	if err != nil {
+		return err
+	}
+	o, err := f.tracker.Get(gvr, key.Namespace, key.Name)
+	if err != nil {
+		//return err
 		if f.ErrIfNotFound {
 			return apierrors.NewNotFound(schema.GroupResource{}, key.Name)
 		}
@@ -33,23 +45,38 @@ func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out runtime.O
 		// necessary data first.
 		return nil
 	}
-	obj = obj.DeepCopyObject()
-
-	outVal := reflect.ValueOf(out)
-	objVal := reflect.ValueOf(obj)
-	if !objVal.Type().AssignableTo(outVal.Type()) {
-		return fmt.Errorf("cache had type %s, but %s was asked for", objVal.Type(), outVal.Type())
+	j, err := json.Marshal(o)
+	if err != nil {
+		return err
 	}
-	reflect.Indirect(outVal).Set(reflect.Indirect(objVal))
-	return nil
+	decoder := scheme.Codecs.UniversalDecoder()
+	_, _, err = decoder.Decode(j, nil, out)
+	return err
 }
 
 func (FakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOptionFunc) error {
 	panic("not implemented")
 }
 
-func (FakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOptionFunc) error {
-	panic("not implemented")
+func (f FakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOptionFunc) error {
+	createOptions := &client.CreateOptions{}
+	createOptions.ApplyOptions(opts)
+
+	for _, dryRunOpt := range createOptions.DryRun {
+		if dryRunOpt == metav1.DryRunAll {
+			return nil
+		}
+	}
+
+	gvr, err := getGVRFromObject(obj, f.scheme)
+	if err != nil {
+		return err
+	}
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return err
+	}
+	return f.tracker.Create(gvr, obj, accessor.GetNamespace())
 }
 
 func (FakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
@@ -66,4 +93,13 @@ func (FakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client
 
 func (FakeClient) Status() client.StatusWriter {
 	panic("not implemented")
+}
+
+func getGVRFromObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionResource, error) {
+	gvk, err := apiutil.GVKForObject(obj, scheme)
+	if err != nil {
+		return schema.GroupVersionResource{}, err
+	}
+	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
+	return gvr, nil
 }
