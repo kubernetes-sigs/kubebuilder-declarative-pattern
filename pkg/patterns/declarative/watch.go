@@ -86,7 +86,7 @@ func (w *watchAll) Notify(ctx context.Context, dest DeclarativeObject, objs *man
 	filter := metav1.ListOptions{LabelSelector: labelSelector.String()}
 
 	for _, gvk := range uniqueGroupVersionKind(objs) {
-		key := fmt.Sprintf("%s,%s", gvk.String(), labelSelector.String())
+		key := fmt.Sprintf("%s,%s,%s", gvk.String(), labelSelector.String(), dest.GetNamespace())
 		if _, ok := w.registered[key]; ok {
 			continue
 		}
