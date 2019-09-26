@@ -113,7 +113,7 @@ func uniqueGroupVersionKind(objects *manifest.Objects) []schema.GroupVersionKind
 		unique = append(unique, gvk)
 	}
 	sort.Slice(unique, func(i, j int) bool {
-		return unique[i].String() < unique[i].String()
+		return unique[i].String() < unique[j].String()
 	})
 	return unique
 }
