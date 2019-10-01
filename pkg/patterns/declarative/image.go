@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
+
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
@@ -32,6 +34,7 @@ func ImageRegistryTransform(registry, imagePullSecret string) ObjectTransform {
 }
 
 func applyImageRegistry(ctx context.Context, operatorObject DeclarativeObject, manifest *manifest.Objects, registry, secret string) error {
+	log := log.Log
 	if registry == "" && secret == "" {
 		return nil
 	}
@@ -40,11 +43,13 @@ func applyImageRegistry(ctx context.Context, operatorObject DeclarativeObject, m
 			manifestItem.Kind == "StatefulSet" || manifestItem.Kind == "Job" ||
 			manifestItem.Kind == "CronJob" {
 			if registry != "" {
+				log.WithValues("manifest", manifestItem).WithValues("registry", registry).V(1).Info("applying image registory to manifest")
 				if err := manifestItem.MutateContainers(applyPrivateRegistryToContainer(registry)); err != nil {
 					return fmt.Errorf("error applying private registry: %v", err)
 				}
 			}
 			if secret != "" {
+				log.WithValues("manifest", manifestItem).WithValues("secret", secret).V(1).Info("applying image pull secret to manifest")
 				if err := manifestItem.MutatePodSpec(applyImagePullSecret(secret)); err != nil {
 					return fmt.Errorf("error applying image pull secret: %v", err)
 				}
