@@ -31,8 +31,10 @@ import (
 // AddLabels returns an ObjectTransform that adds labels to all the objects
 func AddLabels(labels map[string]string) ObjectTransform {
 	return func(ctx context.Context, o DeclarativeObject, manifest *manifest.Objects) error {
+		log := log.Log
 		// TODO: Add to selectors and labels in templates?
 		for _, o := range manifest.Items {
+			log.WithValues("object", o).WithValues("labels", labels).V(1).Info("add labels to object")
 			o.AddLabels(labels)
 		}
 
