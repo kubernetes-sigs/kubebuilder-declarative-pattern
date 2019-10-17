@@ -17,9 +17,12 @@ limitations under the License.
 package loaders
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -122,7 +125,25 @@ func (r *FSRepository) LoadManifest(ctx context.Context, packageName string, id 
 	log := log.Log
 	log.WithValues("package", packageName).Info("loading package")
 
-	p := filepath.Join(r.basedir, "packages", packageName, id, "manifest.yaml")
+	dir_p := filepath.Join(r.basedir, "packages", packageName, id)
+	p := filepath.Join(dir_p, "manifest.yaml")
+
+	_, err := os.Stat(p)
+	if os.IsNotExist(err) {
+		// run kustomize to generate manifest.yaml
+		args := []string{"build"}
+		args = append(args, dir_p)
+		args = append(args, "> ", p)
+		cmd := exec.Command("kustomize", args...)
+		var stdout bytes.Buffer
+		cmd.Stdout = &stdout
+		log.WithValues("command", "kustomize").WithValues("args", args).Info("executing kustomize")
+		err := cmd.Run()
+		if err != nil {
+			return "", fmt.Errorf("error running kustomize build command: %v", err)
+		}
+	}
+
 	b, err := ioutil.ReadFile(p)
 	if err != nil {
 		return "", fmt.Errorf("error reading package %s: %v", p, err)
