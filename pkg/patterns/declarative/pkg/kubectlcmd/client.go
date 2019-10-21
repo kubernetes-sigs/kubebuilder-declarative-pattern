@@ -23,7 +23,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // New creates a Client that runs kubectl avaliable on the path with default authentication
