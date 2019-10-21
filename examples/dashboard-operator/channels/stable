@@ -1,2 +1,3 @@
 manifests:
-- version: 1.8.3
+- name: dashboard
+  version: 1.8.3

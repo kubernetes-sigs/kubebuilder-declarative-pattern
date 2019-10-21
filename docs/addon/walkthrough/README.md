@@ -83,7 +83,8 @@ We need to define the default stable channel, so create `channels/stable`:
 ```bash
 cat > channels/stable <<EOF
 manifests:
-- version: 1.8.3
+- name: dashboard
+  version: 1.8.3
 EOF
 ```
 
