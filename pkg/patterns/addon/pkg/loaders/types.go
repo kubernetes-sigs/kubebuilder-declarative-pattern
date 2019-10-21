@@ -103,7 +103,7 @@ func (r *FSRepository) LoadChannel(ctx context.Context, name string) (*Channel, 
 	}
 
 	channel := &Channel{}
-	if err := yaml.Unmarshal(b, &channel); err != nil {
+	if err := yaml.Unmarshal(b, channel); err != nil {
 		return nil, fmt.Errorf("error parsing channel %s: %v", p, err)
 	}
 

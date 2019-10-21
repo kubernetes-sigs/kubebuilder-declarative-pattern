@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
-type ManifestLoaderFunc func() ManifestController
+type ManifestLoaderFunc func() (ManifestController, error)
 
 // DefaultManifestLoader is the manifest loader we use when a manifest loader is not otherwise configured
 var DefaultManifestLoader ManifestLoaderFunc
