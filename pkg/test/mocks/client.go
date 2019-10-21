@@ -54,11 +54,11 @@ func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out runtime.O
 	return err
 }
 
-func (FakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOptionFunc) error {
+func (FakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
 	panic("not implemented")
 }
 
-func (f FakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOptionFunc) error {
+func (f FakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
 	createOptions := &client.CreateOptions{}
 	createOptions.ApplyOptions(opts)
 
@@ -79,15 +79,19 @@ func (f FakeClient) Create(ctx context.Context, obj runtime.Object, opts ...clie
 	return f.tracker.Create(gvr, obj, accessor.GetNamespace())
 }
 
-func (FakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
+func (FakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 	return nil
 }
 
-func (FakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOptionFunc) error {
+func (FakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
 	return nil
 }
 
-func (FakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOptionFunc) error {
+func (FakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return nil
+}
+
+func (FakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
 	return nil
 }
 

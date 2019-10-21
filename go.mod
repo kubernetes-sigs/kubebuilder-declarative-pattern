@@ -5,7 +5,7 @@ go 1.12
 require (
 	cloud.google.com/go v0.34.0 // indirect
 	github.com/emicklei/go-restful v2.8.0+incompatible // indirect
-	github.com/evanphx/json-patch v4.2.0+incompatible
+	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/gobuffalo/envy v1.6.10 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -36,6 +36,6 @@ require (
 	k8s.io/code-generator v0.0.0-20181206115026-3a2206dd6a78 // indirect
 	k8s.io/gengo v0.0.0-20181113154421-fd15ee9cc2f7 // indirect
 	k8s.io/kube-openapi v0.0.0-20181114233023-0317810137be // indirect
-	sigs.k8s.io/controller-runtime v0.2.0-beta.2
+	sigs.k8s.io/controller-runtime v0.2.2
 	sigs.k8s.io/controller-tools v0.1.6 // indirect
 )

@@ -17,7 +17,7 @@ func (FakeCache) Get(ctx context.Context, key client.ObjectKey, obj runtime.Obje
 	return errors.NewNotFound(schema.GroupResource{}, "")
 }
 
-func (FakeCache) List(ctx context.Context, list runtime.Object, opts ...client.ListOptionFunc) error {
+func (FakeCache) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
 	panic("implement me")
 }
 
