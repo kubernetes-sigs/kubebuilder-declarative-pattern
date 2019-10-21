@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	yaml "gopkg.in/yaml.v2"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type Repository interface {
