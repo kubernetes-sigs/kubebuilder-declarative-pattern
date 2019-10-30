@@ -27,6 +27,7 @@ import (
 type DashboardSpec struct {
 	addonv1alpha1.CommonSpec `json:",inline"`
 	addonv1alpha1.PatchSpec  `json:",inline"`
+	addonv1alpha1.ConfigSpec `json:",inline"`
 }
 
 // DashboardStatus defines the observed state of Dashboard
@@ -36,6 +37,7 @@ type DashboardStatus struct {
 
 var _ addonv1alpha1.CommonObject = &Dashboard{}
 var _ addonv1alpha1.Patchable = &Dashboard{}
+var _ addonv1alpha1.ConfigMapGeneratorAble = &Dashboard{}
 
 // +kubebuilder:object:root=true
 
@@ -79,4 +81,8 @@ func (c *Dashboard) SetCommonStatus(s addonv1alpha1.CommonStatus) {
 
 func (c *Dashboard) PatchSpec() addonv1alpha1.PatchSpec {
 	return c.Spec.PatchSpec
+}
+
+func (c *Dashboard) ConfigSpec() addonv1alpha1.ConfigSpec {
+	return c.Spec.ConfigSpec
 }

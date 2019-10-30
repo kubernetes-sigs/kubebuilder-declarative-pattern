@@ -60,6 +60,7 @@ func (r *DashboardReconciler) setupReconciler(mgr ctrl.Manager) error {
 		declarative.WithObjectTransform(addon.TransformApplicationFromStatus),
 		declarative.WithManagedApplication(r.watchLabels),
 		declarative.WithObjectTransform(addon.ApplyPatches),
+		declarative.WithObjectTransform(addon.ApplyConfigMapGenerator),
 	)
 }
 
