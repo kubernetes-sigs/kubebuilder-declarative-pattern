@@ -31,7 +31,7 @@ import (
 
 type Repository interface {
 	LoadChannel(ctx context.Context, name string) (*Channel, error)
-	LoadManifest(ctx context.Context, packageName string, id string) (string, error)
+	LoadManifest(ctx context.Context, packageName string, id string) (map[string]string, error)
 }
 
 // FSRepository is a Repository backed by a filesystem
@@ -112,25 +112,33 @@ func (r *FSRepository) LoadChannel(ctx context.Context, name string) (*Channel, 
 	return channel, nil
 }
 
-func (r *FSRepository) LoadManifest(ctx context.Context, packageName string, id string) (string, error) {
+func (r *FSRepository) LoadManifest(ctx context.Context, packageName string, id string) (map[string]string, error) {
 	if !allowedManifestId(packageName) {
-		return "", fmt.Errorf("invalid package name: %q", id)
+		return nil, fmt.Errorf("invalid package name: %q", id)
 	}
 
 	if !allowedManifestId(id) {
-		return "", fmt.Errorf("invalid manifest id: %q", id)
+		return nil, fmt.Errorf("invalid manifest id: %q", id)
 	}
 
 	log := log.Log
 	log.WithValues("package", packageName).Info("loading package")
 
-	p := filepath.Join(r.basedir, "packages", packageName, id, "manifest.yaml")
-	b, err := ioutil.ReadFile(p)
+	dir_p := filepath.Join(r.basedir, "packages", packageName, id)
+	files_p, err:= ioutil.ReadDir(dir_p)
 	if err != nil {
-		return "", fmt.Errorf("error reading package %s: %v", p, err)
+		return nil, fmt.Errorf("error reading directory %s", dir_p)
+	}
+	result := make(map[string]string)
+	for _, p := range files_p {
+		b, err := ioutil.ReadFile(p.Name())
+		if err != nil {
+			return nil, fmt.Errorf("error reading package %s: %v", p, err)
+		}
+		result[p.Name()] = string(b)
 	}
 
-	return string(b), nil
+	return result, nil
 }
 
 type Channel struct {
