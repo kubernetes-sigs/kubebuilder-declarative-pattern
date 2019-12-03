@@ -54,7 +54,7 @@ type reconcilerParams struct {
 
 type ManifestController interface {
 	// ResolveManifest returns a raw manifest as a string for a given CR object
-	ResolveManifest(ctx context.Context, object runtime.Object) (string, error)
+	ResolveManifest(ctx context.Context, object runtime.Object) (map[string]string, error)
 }
 
 type Sink interface {

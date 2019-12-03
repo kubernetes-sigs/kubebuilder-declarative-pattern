@@ -168,53 +168,55 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 	log := log.Log
 
 	// 1. Load the manifest
-	manifestStr, err := r.loadRawManifest(ctx, instance)
+	manifestfiles, err := r.loadRawManifest(ctx, instance)
 	if err != nil {
 		log.Error(err, "error loading raw manifest")
 		return nil, err
 	}
-
+	mainfestObjects := &manifest.Objects{}
 	// 2. Perform raw string operations
-	for _, t := range r.options.rawManifestOperations {
-		transformed, err := t(ctx, instance, manifestStr)
+	for _, manifestStr := range manifestfiles {
+		for _, t := range r.options.rawManifestOperations {
+			transformed, err := t(ctx, instance, manifestStr)
+			if err != nil {
+				log.Error(err, "error performing raw manifest operations")
+				return nil, err
+			}
+			manifestStr = transformed
+		}
+
+		// 3. Parse manifest into objects
+		objects, err := manifest.ParseObjects(ctx, manifestStr)
 		if err != nil {
-			log.Error(err, "error performing raw manifest operations")
+			log.Error(err, "error parsing manifest")
 			return nil, err
 		}
-		manifestStr = transformed
-	}
 
-	// 3. Parse manifest into objects
-	objects, err := manifest.ParseObjects(ctx, manifestStr)
-	if err != nil {
-		log.Error(err, "error parsing manifest")
-		return nil, err
-	}
-
-	// 4. Perform object transformations
-	transforms := r.options.objectTransformations
-	if r.options.labelMaker != nil {
-		transforms = append(transforms, AddLabels(r.options.labelMaker(ctx, instance)))
-	}
-	// TODO(jrjohnson): apply namespace here
-	for _, t := range transforms {
-		err := t(ctx, instance, objects)
-		if err != nil {
-			return nil, err
+		// 4. Perform object transformations
+		transforms := r.options.objectTransformations
+		if r.options.labelMaker != nil {
+			transforms = append(transforms, AddLabels(r.options.labelMaker(ctx, instance)))
 		}
+		// TODO(jrjohnson): apply namespace here
+		for _, t := range transforms {
+			err := t(ctx, instance, objects)
+			if err != nil {
+				return nil, err
+			}
+		}
+		mainfestObjects.Items = append(mainfestObjects.Items, objects.Items...)
 	}
-
 	// 5. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
-	objects.Sort(DefaultObjectOrder(ctx))
+	mainfestObjects.Sort(DefaultObjectOrder(ctx))
 
-	return objects, nil
+	return mainfestObjects, nil
 }
 
 // loadRawManifest loads the raw manifest YAML from the repository
-func (r *Reconciler) loadRawManifest(ctx context.Context, o DeclarativeObject) (string, error) {
+func (r *Reconciler) loadRawManifest(ctx context.Context, o DeclarativeObject) (map[string]string, error) {
 	s, err := r.options.manifestController.ResolveManifest(ctx, o)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	return s, nil
