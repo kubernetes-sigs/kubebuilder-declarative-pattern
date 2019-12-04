@@ -19,6 +19,7 @@ package declarative
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -33,9 +34,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/kubectlcmd"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/api/krusty"
 )
 
 var _ reconcile.Reconciler = &Reconciler{}
+
+var _fSys = filesys.MakeFsInMemory()
 
 type Reconciler struct {
 	prototype DeclarativeObject
@@ -126,8 +131,16 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	// run kustomize to create final manifest
+	opts := krusty.MakeDefaultOptions()
+	opts.DoPrune = true
+	k := krusty.MakeKustomizer(_fSys, opts)
+	m, err := k.Run(string(filepath.Separator))
+	if err != nil {
+		log.Error(err, "running kustomize to create final manifest")
+	}
+	manifestStr, err := m.AsYaml()
 
-	m, err := objects.JSONManifest()
 	if err != nil {
 		log.Error(err, "creating final manifest")
 	}
@@ -148,7 +161,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		ns = name.Namespace
 	}
 
-	if err := r.kubectl.Apply(ctx, ns, m, extraArgs...); err != nil {
+	if err := r.kubectl.Apply(ctx, ns, string(manifestStr), extraArgs...); err != nil {
 		log.Error(err, "applying manifest")
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
 	}
@@ -168,14 +181,14 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 	log := log.Log
 
 	// 1. Load the manifest
-	manifestfiles, err := r.loadRawManifest(ctx, instance)
+	manifestFiles, err := r.loadRawManifest(ctx, instance)
 	if err != nil {
 		log.Error(err, "error loading raw manifest")
 		return nil, err
 	}
 	mainfestObjects := &manifest.Objects{}
 	// 2. Perform raw string operations
-	for _, manifestStr := range manifestfiles {
+	for filepath, manifestStr := range manifestFiles {
 		for _, t := range r.options.rawManifestOperations {
 			transformed, err := t(ctx, instance, manifestStr)
 			if err != nil {
@@ -184,7 +197,6 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 			}
 			manifestStr = transformed
 		}
-
 		// 3. Parse manifest into objects
 		objects, err := manifest.ParseObjects(ctx, manifestStr)
 		if err != nil {
@@ -204,9 +216,19 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 				return nil, err
 			}
 		}
+
+		// 5. Write objects to filesystem for kustomizing
+		for _, item := range objects.Items {
+			json, err := item.JSON()
+			if err != nil {
+				log.Error(err, "error convert object to json")
+				return nil, err
+			}
+			_fSys.WriteFile(string(filepath), json)
+		}
 		mainfestObjects.Items = append(mainfestObjects.Items, objects.Items...)
 	}
-	// 5. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
+	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
 	mainfestObjects.Sort(DefaultObjectOrder(ctx))
 
 	return mainfestObjects, nil
