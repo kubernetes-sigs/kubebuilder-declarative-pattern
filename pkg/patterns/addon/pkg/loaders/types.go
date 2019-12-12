@@ -131,11 +131,12 @@ func (r *FSRepository) LoadManifest(ctx context.Context, packageName string, id 
 	}
 	result := make(map[string]string)
 	for _, p := range files_p {
-		b, err := ioutil.ReadFile(p.Name())
+		filePath := filepath.Join(dir_p, p.Name())
+		b, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			return nil, fmt.Errorf("error reading package %s: %v", p, err)
+			return nil, fmt.Errorf("error reading file %s: %v", filePath, err)
 		}
-		result[p.Name()] = string(b)
+		result[filePath] = string(b)
 	}
 
 	return result, nil

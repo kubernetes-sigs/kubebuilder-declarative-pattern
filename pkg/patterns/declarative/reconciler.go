@@ -131,19 +131,30 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	// run kustomize to create final manifest
-	opts := krusty.MakeDefaultOptions()
-	opts.DoPrune = true
-	k := krusty.MakeKustomizer(_fSys, opts)
-	m, err := k.Run(string(filepath.Separator))
-	if err != nil {
-		log.Error(err, "running kustomize to create final manifest")
-	}
-	manifestStr, err := m.AsYaml()
+	var manifestStr string
 
-	if err != nil {
-		log.Error(err, "creating final manifest")
+	if r.options.kustomize {
+		// run kustomize to create final manifest
+		opts := krusty.MakeDefaultOptions()
+		k := krusty.MakeKustomizer(_fSys, opts)
+		m, err := k.Run(string(filepath.Separator))
+		if err != nil {
+			log.Error(err, "running kustomize to create final manifest")
+		}
+		manifestYaml, err := m.AsYaml()
+		if err != nil {
+			log.Error(err, "creating final manifest yaml")
+		}
+		manifestStr = string(manifestYaml)
+
+	} else {
+		m, err := objects.JSONManifest()
+		if err != nil {
+			log.Error(err, "creating final manifest")
+		}
+		manifestStr = m
 	}
+
 
 	extraArgs := []string{"--force"}
 
@@ -161,7 +172,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		ns = name.Namespace
 	}
 
-	if err := r.kubectl.Apply(ctx, ns, string(manifestStr), extraArgs...); err != nil {
+	if err := r.kubectl.Apply(ctx, ns, manifestStr, extraArgs...); err != nil {
 		log.Error(err, "applying manifest")
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
 	}
@@ -188,7 +199,7 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 	}
 	mainfestObjects := &manifest.Objects{}
 	// 2. Perform raw string operations
-	for filepath, manifestStr := range manifestFiles {
+	for manifestPath, manifestStr := range manifestFiles {
 		for _, t := range r.options.rawManifestOperations {
 			transformed, err := t(ctx, instance, manifestStr)
 			if err != nil {
@@ -197,6 +208,7 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 			}
 			manifestStr = transformed
 		}
+
 		// 3. Parse manifest into objects
 		objects, err := manifest.ParseObjects(ctx, manifestStr)
 		if err != nil {
@@ -224,10 +236,13 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 				log.Error(err, "error convert object to json")
 				return nil, err
 			}
-			_fSys.WriteFile(string(filepath), json)
+			_fSys.WriteFile(string(manifestPath), json)
 		}
 		mainfestObjects.Items = append(mainfestObjects.Items, objects.Items...)
 	}
+	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
+	mainfestObjects.Sort(DefaultObjectOrder(ctx))
+
 	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
 	mainfestObjects.Sort(DefaultObjectOrder(ctx))
 

@@ -45,6 +45,7 @@ type reconcilerParams struct {
 
 	prune             bool
 	preserveNamespace bool
+	kustomize    	  bool
 
 	sink       Sink
 	ownerFn    OwnerSelector
@@ -149,6 +150,14 @@ func WithStatus(status Status) reconcilerOption {
 func WithPreserveNamespace() reconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.preserveNamespace = true
+		return p
+	}
+}
+
+// WithApplyKustomize run kustomize build to create final manifest
+func WithApplyKustomize() reconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.kustomize = true
 		return p
 	}
 }
