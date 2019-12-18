@@ -124,14 +124,14 @@ func (r *FSRepository) LoadManifest(ctx context.Context, packageName string, id 
 	log := log.Log
 	log.WithValues("package", packageName).Info("loading package")
 
-	dir_p := filepath.Join(r.basedir, "packages", packageName, id)
-	files_p, err:= ioutil.ReadDir(dir_p)
+	dirPath := filepath.Join(r.basedir, "packages", packageName, id)
+	filesPath, err := ioutil.ReadDir(dirPath)
 	if err != nil {
-		return nil, fmt.Errorf("error reading directory %s", dir_p)
+		return nil, fmt.Errorf("error reading directory %s", dirPath)
 	}
 	result := make(map[string]string)
-	for _, p := range files_p {
-		filePath := filepath.Join(dir_p, p.Name())
+	for _, p := range filesPath {
+		filePath := filepath.Join(dirPath, p.Name())
 		b, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading file %s: %v", filePath, err)

@@ -243,9 +243,6 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
 	mainfestObjects.Sort(DefaultObjectOrder(ctx))
 
-	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
-	mainfestObjects.Sort(DefaultObjectOrder(ctx))
-
 	return mainfestObjects, nil
 }
 
