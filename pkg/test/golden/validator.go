@@ -21,13 +21,12 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"os/exec"
-
-	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
@@ -291,7 +290,7 @@ func diffFiles(t *testing.T, expectedPath, actual string) error {
 
 	actualTmp, err := writeTmp(actual)
 	if err != nil {
-		return errors.Wrapf(err, "write actual yaml to temp file failed")
+		return xerrors.Errorf("write actual yaml to temp file failed: %w", err)
 	}
 	t.Logf("Wrote actual to %s", actualTmp)
 
@@ -299,22 +298,22 @@ func diffFiles(t *testing.T, expectedPath, actual string) error {
 	cmd := exec.Command("diff", "-u", expectedPath, actualTmp)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errors.Wrapf(err, "set up stdout pipe from diff failed")
+		return xerrors.Errorf("set up stdout pipe from diff failed: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return errors.Wrapf(err, "start command failed")
+		return xerrors.Errorf("start command failed: %w", err)
 	}
 
 	diff, err := ioutil.ReadAll(stdout)
 	if err != nil {
-		return errors.Wrapf(err, "read from diff stdout failed")
+		return xerrors.Errorf("read from diff stdout failed: %w", err)
 	}
 
 	if err := cmd.Wait(); err != nil {
 		exitErr, ok := err.(*exec.ExitError)
 		if !ok {
-			return errors.Wrapf(err, "wait for command to finish failed")
+			return xerrors.Errorf("wait for command to finish failed: %w", err)
 		}
 		t.Logf("Diff exited %s", exitErr)
 	}
