@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -101,5 +102,13 @@ func (Manager) GetEventRecorderFor(name string) record.EventRecorder {
 }
 
 func (Manager) GetWebhookServer() *webhook.Server {
+	panic("implement me")
+}
+
+func (Manager) AddHealthzCheck(name string, check healthz.Checker) error {
+	panic("implement me")
+}
+
+func (Manager) AddReadyzCheck(name string, check healthz.Checker) error {
 	panic("implement me")
 }
