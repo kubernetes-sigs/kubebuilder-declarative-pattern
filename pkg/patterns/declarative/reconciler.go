@@ -52,7 +52,7 @@ type Reconciler struct {
 	prototype DeclarativeObject
 	client    client.Client
 	config    *rest.Config
-	kubectl   kubectlClient
+	kubectl   Applyer
 
 	rm  reconcileMetrics
 	mgr manager.Manager
@@ -65,8 +65,8 @@ type Reconciler struct {
 	options    reconcilerParams
 }
 
-type kubectlClient interface {
-	Apply(ctx context.Context, namespace string, manifest string, validate bool, args ...string) error
+type Applyer interface {
+	Apply(ctx context.Context, namespace string, objects *manifest.Objects, validate bool, args ...string) error
 }
 
 type DeclarativeObject interface {
@@ -126,7 +126,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	log := log.Log
 	defer r.collectMetrics(request, result, err)
 
-	// Fetch the object
+	// Fetch our CRD instance
 	instance := r.prototype.DeepCopyObject().(DeclarativeObject)
 	if err = r.client.Get(ctx, request.NamespacedName, instance); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -221,15 +221,6 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 	objects.Items = newItems
 
-	var manifestStr string
-
-	m, err := objects.JSONManifest()
-	if err != nil {
-		log.Error(err, "creating final manifest")
-		return reconcile.Result{}, fmt.Errorf("error creating manifest: %v", err)
-	}
-	manifestStr = m
-
 	extraArgs := []string{"--force"}
 
 	if r.options.prune {
@@ -261,7 +252,17 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}
 
-	if err := r.kubectl.Apply(ctx, ns, manifestStr, r.options.validate, extraArgs...); err != nil {
+	kubectl := r.kubectl
+	if r.options.overrideTargetCluster != nil {
+		if k, err := r.options.overrideTargetCluster(ctx, instance); err != nil {
+			log.Error(err, "error while overriding target cluster")
+			return reconcile.Result{}, err
+		} else if k != nil {
+			kubectl = k
+		}
+	}
+
+	if err := kubectl.Apply(ctx, ns, objects, r.options.validate, extraArgs...); err != nil {
 		log.Error(err, "applying manifest")
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
 	}

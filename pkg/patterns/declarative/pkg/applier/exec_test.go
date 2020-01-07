@@ -19,12 +19,12 @@ package applier
 import (
 	"context"
 	"errors"
+	"io/ioutil"
+	"os/exec"
+	"reflect"
 	"testing"
 
-	"io/ioutil"
-	"reflect"
-
-	"os/exec"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 // collector is a commandSite implementation that stubs cmd.Run() calls for tests
@@ -42,7 +42,7 @@ func TestKubectlApply(t *testing.T) {
 	tests := []struct {
 		name       string
 		namespace  string
-		manifest   string
+		manifest   manifest.Objects
 		validate   bool
 		args       []string
 		err        error
@@ -51,19 +51,16 @@ func TestKubectlApply(t *testing.T) {
 		{
 			name:       "manifest",
 			namespace:  "",
-			manifest:   "foo",
 			expectArgs: []string{"kubectl", "apply", "--validate=false", "-f", "-"},
 		},
 		{
 			name:       "manifest with apply",
 			namespace:  "kube-system",
-			manifest:   "heynow",
 			expectArgs: []string{"kubectl", "apply", "-n", "kube-system", "--validate=false", "-f", "-"},
 		},
 		{
 			name:       "manifest with validate",
 			namespace:  "",
-			manifest:   "foo",
 			validate:   true,
 			expectArgs: []string{"kubectl", "apply", "--validate=true", "-f", "-"},
 		},
@@ -75,7 +72,6 @@ func TestKubectlApply(t *testing.T) {
 		{
 			name:       "manifest with prune",
 			namespace:  "kube-system",
-			manifest:   "heynow",
 			args:       []string{"--prune=true", "--prune-whitelist=hello-world"},
 			expectArgs: []string{"kubectl", "apply", "-n", "kube-system", "--validate=false", "--prune=true", "--prune-whitelist=hello-world", "-f", "-"},
 		},
@@ -85,7 +81,7 @@ func TestKubectlApply(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			cs := collector{Error: test.err}
 			kubectl := &ExecKubectl{cmdSite: &cs}
-			err := kubectl.Apply(context.Background(), test.namespace, test.manifest, test.validate, test.args...)
+			err := kubectl.Apply(context.Background(), test.namespace, &test.manifest, test.validate, test.args...)
 
 			if test.err != nil && err == nil {
 				t.Error("expected error to occur")
@@ -99,12 +95,17 @@ func TestKubectlApply(t *testing.T) {
 
 			cmd := cs.Cmds[0]
 			if !reflect.DeepEqual(cmd.Args, test.expectArgs) {
-				t.Errorf("argument mistmatch, expected: %v, got: %v", test.expectArgs, cmd.Args)
+				t.Errorf("argument mismatch, expected: %v, got: %v", test.expectArgs, cmd.Args)
+			}
+
+			manifestJSON, err := test.manifest.JSONManifest()
+			if err != nil {
+				t.Errorf("unable to convert manifest to JSON: %v", err)
 			}
 
 			stdinBytes, err := ioutil.ReadAll(cmd.Stdin)
-			if stdin := string(stdinBytes); stdin != test.manifest {
-				t.Errorf("manifest mismatch, expected: %v, got: %v", test.manifest, stdin)
+			if stdin := string(stdinBytes); stdin != manifestJSON {
+				t.Errorf("manifest mismatch, expected: %v, got: %v", manifestJSON, stdin)
 			}
 		})
 	}
