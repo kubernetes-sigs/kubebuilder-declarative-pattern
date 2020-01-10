@@ -29,7 +29,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	api "dashboard-operator/api/v1alpha1"
+	api "sigs.k8s.io/kubebuilder-declarative-pattern/dashboard-operator/api/v1alpha1"
 )
 
 var _ reconcile.Reconciler = &DashboardReconciler{}
