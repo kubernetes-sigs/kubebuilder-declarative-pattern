@@ -19,7 +19,7 @@ package controllers
 import (
 	"testing"
 
-	api "dashboard-operator/api/v1alpha1"
+	api "sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator/api/v1alpha1"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/golden"
 )
