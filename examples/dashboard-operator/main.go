@@ -19,9 +19,9 @@ import (
 	"flag"
 	"os"
 
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/dashboard-operator/api/v1alpha1"
+	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator/api/v1alpha1"
 
-	"sigs.k8s.io/kubebuilder-declarative-pattern/dashboard-operator/controllers"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/examples/dashboard-operator/controllers"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
