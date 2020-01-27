@@ -78,7 +78,7 @@ func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Obj
 			return "", err
 		}
 
-		version, err := channel.Latest()
+		version, err := channel.Latest(componentName)
 		if err != nil {
 			return "", err
 		}

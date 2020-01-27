@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/blang/semver"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
@@ -136,19 +138,54 @@ type Channel struct {
 }
 
 type Version struct {
-	Version string
+	Package string `json:"name"`
+	Version string `json:"version"`
 }
 
-func (c *Channel) Latest() (*Version, error) {
+func (c *Channel) Latest(packageName string) (*Version, error) {
 	var latest *Version
 	for i := range c.Manifests {
 		v := &c.Manifests[i]
+		if v.Package != "" && v.Package != packageName {
+			continue
+		}
 		if latest == nil {
 			latest = v
-		} else {
-			return nil, fmt.Errorf("version selection not implemented")
+		} else if latest.Compare(v) < 0 {
+			// Tie-break by taking the later version
+			latest = v
 		}
 	}
 
 	return latest, nil
+}
+
+// Compare compares two Versions, returning >0 for l>r, =0 if l=r, <0 if l<r
+func (l *Version) Compare(r *Version) int {
+	// If the package name is specified, it "wins"
+	if l.Package != r.Package {
+		if l.Package == "" {
+			return -1
+		}
+		if r.Package == "" {
+			return 1
+		}
+	}
+
+	lSemver, lErr := semver.ParseTolerant(l.Version)
+	rSemver, rErr := semver.ParseTolerant(r.Version)
+	if lErr != nil {
+		klog.Warningf("invalid semver in version %+v", l)
+		if rErr != nil {
+			klog.Warningf("invalid semver in version %+v", r)
+			return 0
+		}
+		return -1
+	}
+	if rErr != nil {
+		klog.Warningf("invalid semver in version %+v", r)
+		return 1
+	}
+
+	return lSemver.Compare(rSemver)
 }
