@@ -90,7 +90,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 }
 
 func (a *aggregator) deployment(ctx context.Context, src addonv1alpha1.CommonObject, name string) (bool, error) {
-	key := client.ObjectKey{src.GetNamespace(), name}
+	key := client.ObjectKey{Namespace: src.GetNamespace(), Name: name}
 	dep := &appsv1.Deployment{}
 
 	if err := a.client.Get(ctx, key, dep); err != nil {
@@ -107,7 +107,7 @@ func (a *aggregator) deployment(ctx context.Context, src addonv1alpha1.CommonObj
 }
 
 func (a *aggregator) service(ctx context.Context, src addonv1alpha1.CommonObject, name string) (bool, error) {
-	key := client.ObjectKey{src.GetNamespace(), name}
+	key := client.ObjectKey{Namespace: src.GetNamespace(), Name: name}
 	svc := &corev1.Service{}
 	err := a.client.Get(ctx, key, svc)
 	if err != nil {

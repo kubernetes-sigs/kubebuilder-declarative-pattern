@@ -40,8 +40,8 @@ var initOnce sync.Once
 func Init() {
 	initOnce.Do(func() {
 		if declarative.DefaultManifestLoader == nil {
-			declarative.DefaultManifestLoader = func() declarative.ManifestController {
-				return loaders.NewManifestLoader()
+			declarative.DefaultManifestLoader = func() (declarative.ManifestController, error) {
+				return loaders.NewManifestLoader(loaders.FlagChannel)
 			}
 		}
 

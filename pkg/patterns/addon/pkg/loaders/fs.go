@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -39,11 +40,14 @@ type ManifestLoader struct {
 
 // NewManifestLoader provides a Repository that resolves versions based on an Addon object
 // and loads manifests from the filesystem.
-func NewManifestLoader() *ManifestLoader {
-	// TODO: Accept as a parameter - but it's hard to have a flag per controller
-	repo := NewFSRepository(FlagChannel)
+func NewManifestLoader(channel string) (*ManifestLoader, error) {
+	if strings.HasPrefix(channel, "http://") || strings.HasPrefix(channel, "https://") {
+		repo := NewHTTPRepository(channel)
+		return &ManifestLoader{repo: repo}, nil
+	}
 
-	return &ManifestLoader{repo: repo}
+	repo := NewFSRepository(channel)
+	return &ManifestLoader{repo: repo}, nil
 }
 
 func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Object) (string, error) {
