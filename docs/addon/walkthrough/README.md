@@ -7,7 +7,7 @@ This walkthrough is for creating an operator to run the kubernetes dashboard.
 Install the following depenencies:
 
 - [kubebuilder](https://book.kubebuilder.io/quick-start.html#installation) (tested with 2.0.0-alpha.4)
-- [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md)
+- [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md) (tested with v2.0.3)
 - docker
 - kubectl
 - golang (>=1.11 for go modules)
@@ -522,7 +522,7 @@ status that can be surfaced in various user interfaces.
 1. Add an instance of the Application CR in your manifest:
 
 	```bash
-	echo <<EOF >> channels/packages/dashboard/1.8.3/manifest.yaml
+	cat <<EOF >> channels/packages/dashboard/1.8.3/manifest.yaml
 	# ------------------- Application ------------------- #
 	apiVersion: app.k8s.io/v1beta1
 	kind: Application
