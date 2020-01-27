@@ -18,7 +18,7 @@ Create a new directory and use kubebuilder to scafold the operator:
 export GO111MODULE=on
 mkdir -p dashboard-operator/
 cd dashboard-operator/
-kubebuilder init --domain example.org --license apache2 --owner "TODO($USER): assign copyright" 
+kubebuilder init --domain example.org --license apache2 --owner "TODO($USER): assign copyright"
 ```
 
 Add the patterns to your project:
@@ -49,8 +49,8 @@ controller under `controllers/`
 
 The addon operator pattern is based on declarative manifests; the framework is
 able to load the manifests and apply them. Today we exec `kubectl apply`, but
-when [server-side-apply](https://github.com/kubernetes/enhancements/issues/555) 
-is available we'll use that.  
+when [server-side-apply](https://github.com/kubernetes/enhancements/issues/555)
+is available we'll use that.
 
 We suggest that even advanced operators use a manifest for their core objects.
 It's always possible to manipulate the manifest before applying them (eg, adding labels,
@@ -320,12 +320,12 @@ e.g. `kubectl get pods -l k8s-app=kubernetes-dashboard -n kube-system` or
 ## Running on-cluster
 
 Previously we were running on your machine using your kubernetes credentials.
-We want to run as a Pod on the cluster for real world operator. For that, 
+We want to run as a Pod on the cluster for real world operator. For that,
 we'll need a Docker image and some manifests.
 
 ### Building the operator image
 
-1. Modify the IMG value in the `Makefile` to reflect a docker registry that you 
+1. Modify the IMG value in the `Makefile` to reflect a docker registry that you
    can write to:
 
 ```make
@@ -336,7 +336,7 @@ IMG ?= gcr.io/<my-cool-project>/dashboard-operator:latest
 1. Create a patch to modify the memory limit for the operator:
 
 ```bash
-echo << EOF > config/default/manager_resource_patch.yaml
+cat << EOF > config/default/manager_resource_patch.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -502,15 +502,15 @@ namespaces from the manifest.
 NOTE: We don't currently apply the namespace within objects.  For example, we
 don't set the namespace on a RoleBinding subjects.namespace.  However, it seems
 that most objects default to the same namespace - but presumably
-ClusterRoleBinding will not. 
+ClusterRoleBinding will not.
 
 NOTE: For non-namespaces objects (ClusterRole and ClusterRoleBinding), we often
 need to name them with the namespace to support multiple instances.
 
 ### Manage an Application
 
-The framework can manage an [application](https://github.com/kubernetes-sigs/application) 
-instance. The application contains human readable information in addition to deployment 
+The framework can manage an [application](https://github.com/kubernetes-sigs/application)
+instance. The application contains human readable information in addition to deployment
 status that can be surfaced in various user interfaces.
 
 1. Fetch the Application CRD and place it with your operators CRD:
