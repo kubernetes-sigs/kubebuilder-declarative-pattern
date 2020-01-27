@@ -28,9 +28,9 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/kubectlcmd"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
@@ -68,7 +68,9 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 	r.config = mgr.GetConfig()
 	r.mgr = mgr
 
-	r.applyOptions(opts...)
+	if err := r.applyOptions(opts...); err != nil {
+		return err
+	}
 
 	return r.validateOptions()
 }
@@ -218,7 +220,7 @@ func (r *Reconciler) loadRawManifest(ctx context.Context, o DeclarativeObject) (
 	return s, nil
 }
 
-func (r *Reconciler) applyOptions(opts ...reconcilerOption) {
+func (r *Reconciler) applyOptions(opts ...reconcilerOption) error {
 	params := reconcilerParams{}
 
 	opts = append(Options.Begin, opts...)
@@ -230,10 +232,15 @@ func (r *Reconciler) applyOptions(opts ...reconcilerOption) {
 
 	// Default the manifest controller if not set
 	if params.manifestController == nil && DefaultManifestLoader != nil {
-		params.manifestController = DefaultManifestLoader()
+		loader, err := DefaultManifestLoader()
+		if err != nil {
+			return err
+		}
+		params.manifestController = loader
 	}
 
 	r.options = params
+	return nil
 }
 
 // Validate compatibility of selected options
