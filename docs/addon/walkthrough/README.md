@@ -516,7 +516,7 @@ status that can be surfaced in various user interfaces.
 1. Fetch the Application CRD and place it with your operators CRD:
 
 	```bash
-	curl https://raw.githubusercontent.com/kubernetes-sigs/application/master/config/crds/app_v1beta1_application.yaml -o config/crds/app_v1beta1_application.yaml
+	curl https://raw.githubusercontent.com/kubernetes-sigs/application/master/config/crds/app_v1beta1_application.yaml -o config/crd/app_v1beta1_application.yaml
 	```
 
 1. Add an instance of the Application CR in your manifest:
