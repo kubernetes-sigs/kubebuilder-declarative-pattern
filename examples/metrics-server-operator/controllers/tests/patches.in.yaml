@@ -14,7 +14,7 @@ spec:
         spec:
           containers:
           - name: metrics-server
-            args: 
+            args:
             - "--kubelet-insecure-tls"
             - "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname"
             # Patching args is reasonable for developing.
