@@ -1,0 +1,7 @@
+domain: example.org
+repo: sigs.k8s.io/kubebuilder-declarative-pattern
+resources:
+- group: addons
+  kind: MetricsServer
+  version: v1alpha1
+version: "2"

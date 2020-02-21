@@ -1,0 +1,22 @@
+apiVersion: addons.example.org/v1alpha1
+kind: MetricsServer
+metadata:
+  name: metricsserver-sample
+spec:
+  patches:
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: metrics-server
+      namespace: kube-system
+    spec:
+      template:
+        spec:
+          containers:
+          - name: metrics-server
+            args: 
+            - "--kubelet-insecure-tls"
+            - "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname"
+            # Patching args is reasonable for developing.
+            # see https://github.com/kubernetes-sigs/metrics-server#deployment
+
