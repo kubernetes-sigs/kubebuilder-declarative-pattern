@@ -45,6 +45,7 @@ type reconcilerParams struct {
 
 	prune             bool
 	preserveNamespace bool
+	kustomize    	  bool
 
 	sink       Sink
 	ownerFn    OwnerSelector
@@ -53,8 +54,8 @@ type reconcilerParams struct {
 }
 
 type ManifestController interface {
-	// ResolveManifest returns a raw manifest as a string for a given CR object
-	ResolveManifest(ctx context.Context, object runtime.Object) (string, error)
+	// ResolveManifest returns a raw manifest as a map[string]string for a given CR object
+	ResolveManifest(ctx context.Context, object runtime.Object) (map[string]string, error)
 }
 
 type Sink interface {
@@ -149,6 +150,14 @@ func WithStatus(status Status) reconcilerOption {
 func WithPreserveNamespace() reconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.preserveNamespace = true
+		return p
+	}
+}
+
+// WithApplyKustomize run kustomize build to create final manifest
+func WithApplyKustomize() reconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.kustomize = true
 		return p
 	}
 }

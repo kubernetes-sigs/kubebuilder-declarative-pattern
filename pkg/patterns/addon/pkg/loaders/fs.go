@@ -50,12 +50,12 @@ func NewManifestLoader(channel string) (*ManifestLoader, error) {
 	return &ManifestLoader{repo: repo}, nil
 }
 
-func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Object) (string, error) {
+func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Object) (map[string]string, error) {
 	log := log.Log
 
 	addonObject, ok := object.(addonsv1alpha1.CommonObject)
 	if !ok {
-		return "", fmt.Errorf("object %T was not an addonsv1alpha1.CommonObject", object)
+		return nil, fmt.Errorf("object %T was not an addonsv1alpha1.CommonObject", object)
 	}
 
 	componentName := addonObject.ComponentName()
@@ -75,18 +75,18 @@ func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Obj
 
 		channel, err := c.repo.LoadChannel(ctx, channelName)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		version, err := channel.Latest(componentName)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		// TODO: We should probably copy the kubelet componentconfig
 
 		if version == nil {
-			return "", fmt.Errorf("could not find latest version in channel %q", channelName)
+			return nil, fmt.Errorf("could not find latest version in channel %q", channelName)
 		}
 		id = version.Version
 
@@ -94,10 +94,10 @@ func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Obj
 	} else {
 		log.WithValues("version", version).Info("using specified version")
 	}
-
+	s := make(map[string]string)
 	s, err := c.repo.LoadManifest(ctx, componentName, id)
 	if err != nil {
-		return "", fmt.Errorf("error loading manifest: %v", err)
+		return nil, fmt.Errorf("error loading manifest: %v", err)
 	}
 
 	return s, nil

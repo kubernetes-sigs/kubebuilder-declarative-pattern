@@ -64,13 +64,13 @@ func (r *HTTPRepository) LoadChannel(ctx context.Context, name string) (*Channel
 	return channel, nil
 }
 
-func (r *HTTPRepository) LoadManifest(ctx context.Context, packageName string, id string) (string, error) {
+func (r *HTTPRepository) LoadManifest(ctx context.Context, packageName string, id string) (map[string] string, error) {
 	if !allowedManifestId(packageName) {
-		return "", fmt.Errorf("invalid package name: %q", id)
+		return nil, fmt.Errorf("invalid package name: %q", id)
 	}
 
 	if !allowedManifestId(id) {
-		return "", fmt.Errorf("invalid manifest id: %q", id)
+		return nil, fmt.Errorf("invalid manifest id: %q", id)
 	}
 
 	log := log.Log
@@ -79,10 +79,12 @@ func (r *HTTPRepository) LoadManifest(ctx context.Context, packageName string, i
 	p := r.makeURL("packages", packageName, id, "manifest.yaml")
 	b, err := r.readURL(p)
 	if err != nil {
-		return "", fmt.Errorf("error reading package %s: %v", p, err)
+		return nil, fmt.Errorf("error reading package %s: %v", p, err)
 	}
-
-	return string(b), nil
+	result := map[string]string {
+		p: string(b),
+	}
+	return result, nil
 }
 
 // makeURL joins the paths to the baseURL

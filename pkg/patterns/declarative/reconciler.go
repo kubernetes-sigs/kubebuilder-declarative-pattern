@@ -19,6 +19,7 @@ package declarative
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -33,9 +34,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/kubectlcmd"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/api/krusty"
 )
 
 var _ reconcile.Reconciler = &Reconciler{}
+
+var _fSys = filesys.MakeFsInMemory()
 
 type Reconciler struct {
 	prototype DeclarativeObject
@@ -126,11 +131,30 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	var manifestStr string
 
-	m, err := objects.JSONManifest()
-	if err != nil {
-		log.Error(err, "creating final manifest")
+	if r.options.kustomize {
+		// run kustomize to create final manifest
+		opts := krusty.MakeDefaultOptions()
+		k := krusty.MakeKustomizer(_fSys, opts)
+		m, err := k.Run(string(filepath.Separator))
+		if err != nil {
+			log.Error(err, "running kustomize to create final manifest")
+		}
+		manifestYaml, err := m.AsYaml()
+		if err != nil {
+			log.Error(err, "creating final manifest yaml")
+		}
+		manifestStr = string(manifestYaml)
+
+	} else {
+		m, err := objects.JSONManifest()
+		if err != nil {
+			log.Error(err, "creating final manifest")
+		}
+		manifestStr = m
 	}
+
 
 	extraArgs := []string{"--force"}
 
@@ -148,7 +172,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		ns = name.Namespace
 	}
 
-	if err := r.kubectl.Apply(ctx, ns, m, extraArgs...); err != nil {
+	if err := r.kubectl.Apply(ctx, ns, manifestStr, extraArgs...); err != nil {
 		log.Error(err, "applying manifest")
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
 	}
@@ -168,53 +192,65 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 	log := log.Log
 
 	// 1. Load the manifest
-	manifestStr, err := r.loadRawManifest(ctx, instance)
+	manifestFiles, err := r.loadRawManifest(ctx, instance)
 	if err != nil {
 		log.Error(err, "error loading raw manifest")
 		return nil, err
 	}
-
+	mainfestObjects := &manifest.Objects{}
 	// 2. Perform raw string operations
-	for _, t := range r.options.rawManifestOperations {
-		transformed, err := t(ctx, instance, manifestStr)
+	for manifestPath, manifestStr := range manifestFiles {
+		for _, t := range r.options.rawManifestOperations {
+			transformed, err := t(ctx, instance, manifestStr)
+			if err != nil {
+				log.Error(err, "error performing raw manifest operations")
+				return nil, err
+			}
+			manifestStr = transformed
+		}
+
+		// 3. Parse manifest into objects
+		objects, err := manifest.ParseObjects(ctx, manifestStr)
 		if err != nil {
-			log.Error(err, "error performing raw manifest operations")
+			log.Error(err, "error parsing manifest")
 			return nil, err
 		}
-		manifestStr = transformed
-	}
 
-	// 3. Parse manifest into objects
-	objects, err := manifest.ParseObjects(ctx, manifestStr)
-	if err != nil {
-		log.Error(err, "error parsing manifest")
-		return nil, err
-	}
-
-	// 4. Perform object transformations
-	transforms := r.options.objectTransformations
-	if r.options.labelMaker != nil {
-		transforms = append(transforms, AddLabels(r.options.labelMaker(ctx, instance)))
-	}
-	// TODO(jrjohnson): apply namespace here
-	for _, t := range transforms {
-		err := t(ctx, instance, objects)
-		if err != nil {
-			return nil, err
+		// 4. Perform object transformations
+		transforms := r.options.objectTransformations
+		if r.options.labelMaker != nil {
+			transforms = append(transforms, AddLabels(r.options.labelMaker(ctx, instance)))
 		}
+		// TODO(jrjohnson): apply namespace here
+		for _, t := range transforms {
+			err := t(ctx, instance, objects)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// 5. Write objects to filesystem for kustomizing
+		for _, item := range objects.Items {
+			json, err := item.JSON()
+			if err != nil {
+				log.Error(err, "error convert object to json")
+				return nil, err
+			}
+			_fSys.WriteFile(string(manifestPath), json)
+		}
+		mainfestObjects.Items = append(mainfestObjects.Items, objects.Items...)
 	}
+	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
+	mainfestObjects.Sort(DefaultObjectOrder(ctx))
 
-	// 5. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
-	objects.Sort(DefaultObjectOrder(ctx))
-
-	return objects, nil
+	return mainfestObjects, nil
 }
 
 // loadRawManifest loads the raw manifest YAML from the repository
-func (r *Reconciler) loadRawManifest(ctx context.Context, o DeclarativeObject) (string, error) {
+func (r *Reconciler) loadRawManifest(ctx context.Context, o DeclarativeObject) (map[string]string, error) {
 	s, err := r.options.manifestController.ResolveManifest(ctx, o)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	return s, nil
