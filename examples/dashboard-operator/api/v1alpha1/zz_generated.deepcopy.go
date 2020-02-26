@@ -54,7 +54,7 @@ func (in *Dashboard) DeepCopyObject() runtime.Object {
 func (in *DashboardList) DeepCopyInto(out *DashboardList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Dashboard, len(*in))

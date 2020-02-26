@@ -1,0 +1,3 @@
+manifests:
+- name: dashboard
+  version: 2.0.0
