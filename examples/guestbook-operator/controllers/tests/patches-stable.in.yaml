@@ -1,0 +1,13 @@
+apiVersion: addons.example.org/v1alpha1
+kind: Guestbook
+metadata:
+  name: guestbook-sample
+spec:
+  channel: stable
+  patches:
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: frontend
+    spec:
+      replicas: 5

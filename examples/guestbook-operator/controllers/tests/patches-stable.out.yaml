@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    addons.example.org/guestbook: guestbook-sample
+    example-app: guestbook
+  name: frontend
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: guestbook
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers:
+      - env:
+        - name: GET_HOSTS_FROM
+          value: dns
+        image: gcr.io/google-samples/gb-frontend:v4
+        name: php-redis
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    addons.example.org/guestbook: guestbook-sample
+    example-app: guestbook
+  name: redis-master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      role: master
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: master
+        tier: backend
+    spec:
+      containers:
+      - image: k8s.gcr.io/redis:e2e
+        name: master
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    addons.example.org/guestbook: guestbook-sample
+    example-app: guestbook
+  name: redis-slave
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: redis
+      role: slave
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: slave
+        tier: backend
+    spec:
+      containers:
+      - env:
+        - name: GET_HOSTS_FROM
+          value: dns
+        image: gcr.io/google_samples/gb-redisslave:v1
+        name: slave
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    addons.example.org/guestbook: guestbook-sample
+    app: guestbook
+    example-app: guestbook
+    tier: frontend
+  name: frontend
+spec:
+  ports:
+  - port: 80
+  selector:
+    app: guestbook
+    tier: frontend
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    addons.example.org/guestbook: guestbook-sample
+    app: redis
+    example-app: guestbook
+    role: master
+    tier: backend
+  name: redis-master
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+    role: master
+    tier: backend
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    addons.example.org/guestbook: guestbook-sample
+    app: redis
+    example-app: guestbook
+    role: slave
+    tier: backend
+  name: redis-slave
+spec:
+  ports:
+  - port: 6379
+  selector:
+    app: redis
+    role: slave
+    tier: backend
