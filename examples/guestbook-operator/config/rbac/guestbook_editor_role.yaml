@@ -1,0 +1,26 @@
+# permissions to do edit guestbooks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: guestbook-editor-role
+rules:
+- apiGroups:
+  - addons.example.org
+  resources:
+  - guestbooks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - addons.example.org
+  resources:
+  - guestbooks/status
+  verbs:
+  - get
+  - patch
+  - update
