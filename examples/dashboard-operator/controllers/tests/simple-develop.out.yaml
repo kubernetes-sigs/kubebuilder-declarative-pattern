@@ -207,7 +207,7 @@ spec:
         - mountPath: /tmp
           name: tmp-volume
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       serviceAccountName: kubernetes-dashboard
       tolerations:
       - effect: NoSchedule
@@ -265,7 +265,7 @@ spec:
         - mountPath: /tmp
           name: tmp-volume
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       serviceAccountName: kubernetes-dashboard
       tolerations:
       - effect: NoSchedule
