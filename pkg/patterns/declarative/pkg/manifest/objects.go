@@ -32,6 +32,7 @@ import (
 // Objects holds a collection of objects, so that we can filter / sequence them
 type Objects struct {
 	Items []*Object
+	Blobs [][] byte
 }
 
 type Object struct {
@@ -331,8 +332,8 @@ func ParseObjects(ctx context.Context, manifest string) (*Objects, error) {
 		out := &unstructured.Unstructured{}
 		err := decoder.Decode(out)
 		if err != nil {
-			log.WithValues("yaml", yaml).Error(err, "error decoding object")
-			return nil, fmt.Errorf("error decoding object: %v", err)
+			log.WithValues("yaml", yaml).Info("Unable to parse into Unstructured, Storing as blob")
+			objects.Blobs = append(objects.Blobs, []byte(yaml))
 		}
 
 		// We don't reuse the manifest because it's probably yaml, and we want to use json
