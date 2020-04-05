@@ -1,3 +1,0 @@
-manifests:
-- name: metrics-server
-  version: 0.3.6
