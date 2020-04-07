@@ -1,6 +1,0 @@
-apiVersion: addons.example.org/v1alpha1
-kind: Dashboard
-metadata:
-  name: dashboard-sample
-  namespace: kube-system
-spec: {}

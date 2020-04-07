@@ -1,7 +1,0 @@
-version: "2"
-domain: example.org
-repo: dashboard-operator
-resources:
-- group: addons
-  version: v1alpha1
-  kind: Dashboard
