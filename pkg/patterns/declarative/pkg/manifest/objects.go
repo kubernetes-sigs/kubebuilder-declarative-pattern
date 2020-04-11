@@ -332,17 +332,18 @@ func ParseObjects(ctx context.Context, manifest string) (*Objects, error) {
 		out := &unstructured.Unstructured{}
 		err := decoder.Decode(out)
 		if err != nil {
-			log.WithValues("yaml", yaml).Info("Unable to parse into Unstructured, Storing as blob")
+			log.V(5).Info("Unable to parse into Unstructured, Storing as blob")
 			objects.Blobs = append(objects.Blobs, []byte(yaml))
+		} else {
+			// We don't reuse the manifest because it's probably yaml, and we want to use json
+			// json = yaml
+			o, err := NewObject(out)
+			if err != nil {
+				return nil, err
+			}
+			objects.Items = append(objects.Items, o)
 		}
 
-		// We don't reuse the manifest because it's probably yaml, and we want to use json
-		// json = yaml
-		o, err := NewObject(out)
-		if err != nil {
-			return nil, err
-		}
-		objects.Items = append(objects.Items, o)
 	}
 
 	return objects, nil
