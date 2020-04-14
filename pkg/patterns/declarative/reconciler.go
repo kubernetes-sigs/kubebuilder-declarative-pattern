@@ -54,7 +54,7 @@ type Reconciler struct {
 }
 
 type kubectlClient interface {
-	Apply(ctx context.Context, namespace string, manifest string, args ...string) error
+	Apply(ctx context.Context, namespace string, manifest string, validate bool, args ...string) error
 }
 
 type DeclarativeObject interface {
@@ -155,7 +155,6 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		manifestStr = m
 	}
 
-
 	extraArgs := []string{"--force"}
 
 	if r.options.prune {
@@ -172,7 +171,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		ns = name.Namespace
 	}
 
-	if err := r.kubectl.Apply(ctx, ns, manifestStr, extraArgs...); err != nil {
+	if err := r.kubectl.Apply(ctx, ns, manifestStr, r.options.validate, extraArgs...); err != nil {
 		log.Error(err, "applying manifest")
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
 	}
