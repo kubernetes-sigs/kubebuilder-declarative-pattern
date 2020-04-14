@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
@@ -184,15 +183,15 @@ func (l *Version) Compare(r *Version) int {
 	lSemver, lErr := semver.ParseTolerant(l.Version)
 	rSemver, rErr := semver.ParseTolerant(r.Version)
 	if lErr != nil {
-		klog.Warningf("invalid semver in version %+v", l)
+		log.Log.Info("invalid semver in version", "version", l)
 		if rErr != nil {
-			klog.Warningf("invalid semver in version %+v", r)
+			log.Log.Info("invalid semver in version", "version", r)
 			return 0
 		}
 		return -1
 	}
 	if rErr != nil {
-		klog.Warningf("invalid semver in version %+v", r)
+		log.Log.Info("invalid semver in version", "version", r)
 		return 1
 	}
 
