@@ -103,6 +103,9 @@ func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigg
 
 	log.WithValues("kind", trigger.String()).WithValues("namespace", target.Namespace).WithValues("labels", options.LabelSelector).Info("watch began")
 
+	// Always clean up watchers
+	defer events.Stop()
+
 	for clientEvent := range events.ResultChan() {
 		log.WithValues("type", clientEvent.Type).WithValues("kind", trigger.String()).Info("broadcasting event")
 		dw.events <- event.GenericEvent{Object: clientEvent.Object, Meta: &target}
