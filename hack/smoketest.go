@@ -52,7 +52,8 @@ import (
 )
 
 const (
-	defaultSystemNamespace = "kube-system"
+	// Set default namespace for your operator.
+	defaultSystemNamespace = "guestbook-operator-system"
 )
 
 type (
@@ -125,7 +126,7 @@ func main() {
 
 	var operators []AddonTest
 	for _, test := range []AddonTest{
-		NewDashboardTest(c),
+		NewGuestbookTest(c),
 	} {
 		if _, ignored := ignore[test.Name()]; ignored {
 			log.Printf("ignoring test: %s", test.Name())
@@ -568,20 +569,20 @@ func (c *CommonAddonTest) VerifyDown() error {
 	return fmt.Errorf("VerifyDown not implemented for operator: %s", c.Name())
 }
 
-type DashboardTest struct {
+type GuestbookTest struct {
 	CommonAddonTest
 }
 
-func NewDashboardTest(c CommonAddonTest) *DashboardTest {
-	t := &DashboardTest{CommonAddonTest: c}
-	t.Base = "../examples/dashboard-operator"
+func NewGuestbookTest(c CommonAddonTest) *GuestbookTest {
+	t := &GuestbookTest{CommonAddonTest: c}
+	t.Base = "../examples/guestbook-operator"
 	return t
 }
 
-func (k *DashboardTest) VerifyUp() error {
+func (k *GuestbookTest) VerifyUp() error {
 	h := k.Harness
 
-	err := verifyReadyPods(h, defaultSystemNamespace, "kubernetes-dashboard")
+	err := verifyReadyPods(h, defaultSystemNamespace, "guestbook-operator")
 	if err != nil {
 		return err
 	}
@@ -589,13 +590,13 @@ func (k *DashboardTest) VerifyUp() error {
 	return nil
 }
 
-func (t *DashboardTest) Disrupt() {
-	_, err := executeCommand("kubectl", "delete", "all", "-l", "k8s-app=kubernetes-dashboard", "-n", defaultSystemNamespace)
+func (t *GuestbookTest) Disrupt() {
+	_, err := executeCommand("kubectl", "delete", "all", "-l", "example-app=guestbook", "-n", defaultSystemNamespace)
 	if err != nil {
 		glog.Warningf("kubectl delete finished with error: %v", err)
 	}
 }
 
-func (k *DashboardTest) VerifyDown() error {
-	return verifyNoWorkloadsWithLabel("k8s-app=kubernetes-dashboard", defaultSystemNamespace)
+func (k *GuestbookTest) VerifyDown() error {
+	return verifyNoWorkloadsWithLabel("example-app=guestbook", defaultSystemNamespace)
 }
