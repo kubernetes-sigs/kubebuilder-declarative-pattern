@@ -40,8 +40,6 @@ import (
 
 var _ reconcile.Reconciler = &Reconciler{}
 
-var _fSys = filesys.MakeFsInMemory()
-
 type Reconciler struct {
 	prototype DeclarativeObject
 	client    client.Client
@@ -112,7 +110,12 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	log := log.Log
 	log.WithValues("object", name.String()).Info("reconciling")
 
-	objects, err := r.BuildDeploymentObjects(ctx, name, instance)
+	var fs filesys.FileSystem
+	if r.options.kustomize {
+		fs = filesys.MakeFsInMemory()
+	}
+
+	objects, err := r.buildDeploymentObjects(ctx, name, instance, fs)
 	if err != nil {
 		log.Error(err, "building deployment objects")
 		return reconcile.Result{}, fmt.Errorf("error building deployment objects: %v", err)
@@ -136,14 +139,16 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if r.options.kustomize {
 		// run kustomize to create final manifest
 		opts := krusty.MakeDefaultOptions()
-		k := krusty.MakeKustomizer(_fSys, opts)
+		k := krusty.MakeKustomizer(fs, opts)
 		m, err := k.Run(string(filepath.Separator))
 		if err != nil {
 			log.Error(err, "running kustomize to create final manifest")
+			return reconcile.Result{}, fmt.Errorf("error running kustomize: %v", err)
 		}
 		manifestYaml, err := m.AsYaml()
 		if err != nil {
 			log.Error(err, "creating final manifest yaml")
+			return reconcile.Result{}, fmt.Errorf("error converting kustomize output to yaml: %v", err)
 		}
 		manifestStr = string(manifestYaml)
 
@@ -151,6 +156,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		m, err := objects.JSONManifest()
 		if err != nil {
 			log.Error(err, "creating final manifest")
+			return reconcile.Result{}, fmt.Errorf("error creating manifest: %v", err)
 		}
 		manifestStr = m
 	}
@@ -188,6 +194,12 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 
 // BuildDeploymentObjects performs all manifest operations to build a final set of objects for deployment
 func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (*manifest.Objects, error) {
+	return r.buildDeploymentObjects(ctx, name, instance, nil)
+}
+
+// buildDeploymentObjects is the implementation of BuildDeploymentObjects, supporting saving to a filesystem for kustomize
+// If fs is provided, the transformed manifests will be saved to that filesystem
+func (r *Reconciler) buildDeploymentObjects(ctx context.Context, name types.NamespacedName, instance DeclarativeObject, fs filesys.FileSystem) (*manifest.Objects, error) {
 	log := log.Log
 
 	// 1. Load the manifest
@@ -196,7 +208,7 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 		log.Error(err, "error loading raw manifest")
 		return nil, err
 	}
-	mainfestObjects := &manifest.Objects{}
+	manifestObjects := &manifest.Objects{}
 	// 2. Perform raw string operations
 	for manifestPath, manifestStr := range manifestFiles {
 		for _, t := range r.options.rawManifestOperations {
@@ -228,21 +240,24 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 			}
 		}
 
-		// 5. Write objects to filesystem for kustomizing
-		for _, item := range objects.Items {
-			json, err := item.JSON()
-			if err != nil {
-				log.Error(err, "error convert object to json")
-				return nil, err
+		if fs != nil {
+			// 5. Write objects to filesystem for kustomizing
+			for _, item := range objects.Items {
+				json, err := item.JSON()
+				if err != nil {
+					log.Error(err, "error converting object to json")
+					return nil, err
+				}
+				fs.WriteFile(string(manifestPath), json)
 			}
-			_fSys.WriteFile(string(manifestPath), json)
 		}
-		mainfestObjects.Items = append(mainfestObjects.Items, objects.Items...)
+
+		manifestObjects.Items = append(manifestObjects.Items, objects.Items...)
 	}
 	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
-	mainfestObjects.Sort(DefaultObjectOrder(ctx))
+	manifestObjects.Sort(DefaultObjectOrder(ctx))
 
-	return mainfestObjects, nil
+	return manifestObjects, nil
 }
 
 // loadRawManifest loads the raw manifest YAML from the repository
