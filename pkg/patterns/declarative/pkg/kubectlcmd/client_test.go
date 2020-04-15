@@ -43,6 +43,7 @@ func TestKubectlApply(t *testing.T) {
 		name       string
 		namespace  string
 		manifest   string
+		validate   bool
 		args       []string
 		err        error
 		expectArgs []string
@@ -51,17 +52,24 @@ func TestKubectlApply(t *testing.T) {
 			name:       "manifest",
 			namespace:  "",
 			manifest:   "foo",
-			expectArgs: []string{"kubectl", "apply", "-f", "-"},
+			expectArgs: []string{"kubectl", "apply", "--validate=false", "-f", "-"},
 		},
 		{
 			name:       "manifest with apply",
 			namespace:  "kube-system",
 			manifest:   "heynow",
-			expectArgs: []string{"kubectl", "apply", "-n", "kube-system", "-f", "-"},
+			expectArgs: []string{"kubectl", "apply", "-n", "kube-system", "--validate=false", "-f", "-"},
+		},
+		{
+			name:       "manifest with validate",
+			namespace:  "",
+			manifest:   "foo",
+			validate:   true,
+			expectArgs: []string{"kubectl", "apply", "--validate=true", "-f", "-"},
 		},
 		{
 			name:       "error propagation",
-			expectArgs: []string{"kubectl", "apply", "-f", "-"},
+			expectArgs: []string{"kubectl", "apply", "--validate=false", "-f", "-"},
 			err:        errors.New("error"),
 		},
 		{
@@ -69,7 +77,7 @@ func TestKubectlApply(t *testing.T) {
 			namespace:  "kube-system",
 			manifest:   "heynow",
 			args:       []string{"--prune=true", "--prune-whitelist=hello-world"},
-			expectArgs: []string{"kubectl", "apply", "-n", "kube-system", "--prune=true", "--prune-whitelist=hello-world", "-f", "-"},
+			expectArgs: []string{"kubectl", "apply", "-n", "kube-system", "--validate=false", "--prune=true", "--prune-whitelist=hello-world", "-f", "-"},
 		},
 	}
 
@@ -77,7 +85,7 @@ func TestKubectlApply(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			cs := collector{Error: test.err}
 			kubectl := &Client{cmdSite: &cs}
-			err := kubectl.Apply(context.Background(), test.namespace, test.manifest, test.args...)
+			err := kubectl.Apply(context.Background(), test.namespace, test.manifest, test.validate, test.args...)
 
 			if test.err != nil && err == nil {
 				t.Error("expected error to occur")

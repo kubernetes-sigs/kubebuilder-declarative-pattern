@@ -45,7 +45,8 @@ type reconcilerParams struct {
 
 	prune             bool
 	preserveNamespace bool
-	kustomize    	  bool
+	kustomize         bool
+	validate          bool
 
 	sink       Sink
 	ownerFn    OwnerSelector
@@ -169,6 +170,14 @@ func WithManagedApplication(labelMaker LabelMaker) reconcilerOption {
 		p.objectTransformations = append(p.objectTransformations, func(ctx context.Context, instance DeclarativeObject, objects *manifest.Objects) error {
 			return transformApplication(ctx, instance, objects, labelMaker)
 		})
+		return p
+	}
+}
+
+// WithApplyValidation enables validation with kubectl apply
+func WithApplyValidation() reconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.validate = true
 		return p
 	}
 }

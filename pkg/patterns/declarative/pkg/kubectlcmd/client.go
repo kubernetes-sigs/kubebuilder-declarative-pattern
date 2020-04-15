@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -48,7 +49,7 @@ func (console) Run(c *exec.Cmd) error {
 }
 
 // Apply runs the kubectl apply with the provided manifest argument
-func (c *Client) Apply(ctx context.Context, namespace string, manifest string, extraArgs ...string) error {
+func (c *Client) Apply(ctx context.Context, namespace string, manifest string, validate bool, extraArgs ...string) error {
 	log := log.Log
 
 	log.Info("applying manifest")
@@ -57,6 +58,11 @@ func (c *Client) Apply(ctx context.Context, namespace string, manifest string, e
 	if namespace != "" {
 		args = append(args, "-n", namespace)
 	}
+
+	// Not doing --validate avoids downloading the OpenAPI
+	// which can save a lot work & memory
+	args = append(args, "--validate="+strconv.FormatBool(validate))
+
 	args = append(args, extraArgs...)
 	args = append(args, "-f", "-")
 
