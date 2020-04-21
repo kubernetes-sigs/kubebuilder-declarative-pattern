@@ -1,7 +1,14 @@
+FROM ubuntu:latest as kubectl
+RUN apt-get update
+RUN apt-get install -y curl
+RUN curl -fsSL https://dl.k8s.io/release/v1.13.4/bin/linux/amd64/kubectl > /usr/bin/kubectl
+RUN chmod a+rx /usr/bin/kubectl
+
 # Build the manager binary
 FROM golang:1.13 as builder
 
-WORKDIR /workspace
+# Copy in the go src
+WORKDIR /go/src/guestbook-operator
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -9,20 +16,18 @@ COPY go.sum go.sum
 # and so that source changes don't invalidate our downloaded layer
 RUN go mod download
 
-# Copy the go source
+COPY vendor/   vendor/
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
-COPY vendor/ vendor/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+# Copy the operator and dependencies into a thin image
+FROM gcr.io/distroless/static:latest
 WORKDIR /
-COPY --from=builder /workspace/manager .
-USER nonroot:nonroot
-
-ENTRYPOINT ["/manager"]
+COPY --from=builder /go/src/guestbook-operator/manager .
+COPY --from=kubectl /usr/bin/kubectl /usr/bin/kubectl
+COPY channels/ channels/
+ENTRYPOINT ["./manager"]

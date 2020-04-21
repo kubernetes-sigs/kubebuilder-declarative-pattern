@@ -55,6 +55,7 @@ fmt:
 vet:
 	go vet ./...
 
+# Run go mod vendor
 vendor:
 	go mod vendor
 

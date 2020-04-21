@@ -163,6 +163,11 @@ limitations under the License.
 */
 
 import (
+	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -170,11 +175,7 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 
-	"github.com/go-logr/logr"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	api "guestbook-operator/api/v1alpha1"
+	api "example.org/guestbook-operator/api/v1alpha1"
 )
 
 var _ reconcile.Reconciler = &GuestbookReconciler{}
@@ -184,6 +185,7 @@ type GuestbookReconciler struct {
 	declarative.Reconciler
 	client.Client
 	Log logr.Logger
+	Scheme *runtime.Scheme
 
 	watchLabels declarative.LabelMaker
 }
@@ -205,8 +207,6 @@ func (r *GuestbookReconciler) setupReconciler(mgr ctrl.Manager) error {
 	)
 }
 
-// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks/status,verbs=get;update;patch
 func (r *GuestbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := r.setupReconciler(mgr); err != nil {
 		return err
@@ -235,26 +235,16 @@ func (r *GuestbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // for WithApplyPrune
 // +kubebuilder:rbac:groups=*,resources=*,verbs=list
 
-// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks,verbs=get;list;watch;create;update;delete;patch
-// +kubebuilder:rbac:groups="",resources=services;serviceaccounts;secrets,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups=apps;extensions,resources=deployments,verbs=get;list;watch;create;update;delete;patch
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;delete;patch
-// RBAC roles that need to be granted:
-// +kubebuilder:rbac:groups="",resources=secrets;configmaps,verbs=create
-// TODO: can be scoped to resourceNames: ["kubernetes-guestbook-key-holder", "kubernetes-guestbook-certs"]
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;update;delete
-// TODO: can be scoped to resourceNames: ["kubernetes-guestbook-settings"]
-// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;delete
-// TODO: can be scoped to resourceNames: ["heapster"]
-// +kubebuilder:rbac:groups="",resources=services,verbs=proxy
-// TODO: can be scoped to resourceNames: ["heapster", "http:heapster:", "https:heapster:"], verbs: ["get"]
-// +kubebuilder:rbac:groups="",resources=services/proxy,verbs=get
 ```
 
 The important things to note here:
 
 ```go
-	r.Reconciler.Init(mgr, &api.Guestbook{}, "guestbook", ...)
+	r.Reconciler.Init(mgr, &api.Guestbook{}, ...)
 ```
 
 We bind the `api.Guestbook` type to the `guestbook` package in our `channels`
@@ -315,8 +305,8 @@ kubectl get Guestbooks -n kube-system
 You should see your operator apply the manifest.  You can then control-C and you
 should see the deployment etc that the operator has created.
 
-e.g. `kubectl get pods -l k8s-app=kubernetes-guestbook -n kube-system` or
-`kubectl get deploy kubernetes-guestbook -n kube-system`.
+e.g. `kubectl get pods -n default` or
+`kubectl get deploy -n default`.
 
 ## Running on-cluster
 
@@ -334,7 +324,7 @@ we'll need a Docker image and some manifests.
 IMG ?= gcr.io/<my-cool-project>/guestbook-operator:latest
 ```
 
-1. Create a patch to modify the memory limit for the operator:
+2. Create a patch to modify the memory limit for the operator:
 
 ```bash
 cat << EOF > config/default/manager_resource_patch.yaml
@@ -358,7 +348,7 @@ spec:
 EOF
 ```
 
-1. Reference the patch by adding `manager_resource_patch.yaml` to the `patches` section of `config/default/kustomization.yaml`:
+3. Reference the patch by adding `manager_resource_patch.yaml` to the `patches` section of `config/default/kustomization.yaml`:
 
 ```yaml
 patches:
@@ -368,7 +358,7 @@ patches:
 
 This is requried to run kubectl in the container.
 
-1. Modify the `Dockerfile` to pull in kubectl, the manifests (in `channels/`),
+4. Modify the `Dockerfile` to pull in kubectl, the manifests (in `channels/`),
    and run in a slim container:
 
 ```Dockerfile
@@ -379,10 +369,17 @@ RUN curl -fsSL https://dl.k8s.io/release/v1.13.4/bin/linux/amd64/kubectl > /usr/
 RUN chmod a+rx /usr/bin/kubectl
 
 # Build the manager binary
-FROM golang:1.10.3 as builder
+FROM golang:1.13 as builder
 
 # Copy in the go src
 WORKDIR /go/src/guestbook-operator
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
+
 COPY vendor/   vendor/
 COPY main.go main.go
 COPY api/ api/
@@ -400,7 +397,21 @@ COPY channels/ channels/
 ENTRYPOINT ["./manager"]
 ```
 
-1. Verify everything worked by building and pushing the image:
+5. Modify the `Makefile` to run `go mod vendor` for building container image.
+
+```make
+...
+# Add vendor prerequisites before test.
+docker-build: vendor test 
+	docker build . -t ${IMG}
+
+# Add vendor target.
+vendor:
+	go mod vendor
+...
+```
+
+6. Verify everything worked by building and pushing the image:
 
 ```bash
 make docker-build docker-push
@@ -467,8 +478,8 @@ kubectl get Guestbooks -n kube-system
 You can verify that the operator has created the `kubernetes-guestbook`
 deployment:
 
-e.g. `kubectl get pods -l k8s-app=kubernetes-guestbook -n kube-system` or
-`kubectl get deploy kubernetes-guestbook -n kube-system`.
+e.g. `kubectl get pods -n guestbook-operator-system` or
+`kubectl get deploy -n guestbook-operator-system`.
 
 ## Manifest simplification: Automatic labels
 
@@ -520,7 +531,7 @@ status that can be surfaced in various user interfaces.
 	curl https://raw.githubusercontent.com/kubernetes-sigs/application/master/config/crds/app_v1beta1_application.yaml -o config/crd/app_v1beta1_application.yaml
 	```
 
-1. Add an instance of the Application CR in your manifest:
+2. Add an instance of the Application CR in your manifest:
 
 	```bash
 	cat <<EOF >> channels/packages/guestbook/0.1.0/manifest.yaml
@@ -543,17 +554,17 @@ status that can be surfaced in various user interfaces.
 	    - "addon"
 	    - "guestbook"
 	    links:
-		- description: Guide Document
-		  url: "https://kubernetes.io/docs/tutorials/stateless-application/guestbook/"
+	    - description: Guide Document
+	      url: "https://kubernetes.io/docs/tutorials/stateless-application/guestbook/"
 	    - description: Source Code
 	      url: "https://github.com/kubernetes/examples/tree/master/guestbook"
 	EOF
 	```
 
-2. Add the two options for managing the Application to your controller:
+3. Add the two options for managing the Application to your controller:
 
 	```go
-		r.Reconciler.Init(mgr, &api.Guestbook{}, "guestbook",
+		r.Reconciler.Init(mgr, &api.Guestbook{},
 			...
 			declarative.WithManagedApplication(r.watchLabels),
 			declarative.WithObjectTransform(addon.TransformApplicationFromStatus),
@@ -561,7 +572,7 @@ status that can be surfaced in various user interfaces.
 		)
 	```
 
-1. Rebuild the operator, reinstall the CRDs, and start the new operator. You can now see the Application:
+4. Rebuild the operator, reinstall the CRDs, and start the new operator. You can now see the Application:
 
 	```bash
 	kubectl -n kube-system get applications -oyaml
