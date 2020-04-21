@@ -1,6 +1,6 @@
 ## Walkthrough: Creating a new Operator
 
-This walkthrough is for creating an operator to run the kubernetes dashboard.
+This walkthrough is for creating an operator to run the [guestbook](https://github.com/kubernetes/examples/tree/master/guestbook) which is an example application for kubernetes.
 
 ### Basics
 
@@ -16,8 +16,8 @@ Create a new directory and use kubebuilder to scafold the operator:
 
 ```
 export GO111MODULE=on
-mkdir -p dashboard-operator/
-cd dashboard-operator/
+mkdir -p guestbook-operator/
+cd guestbook-operator/
 kubebuilder init --domain example.org --license apache2 --owner "TODO($USER): assign copyright"
 ```
 
@@ -31,7 +31,7 @@ go get sigs.k8s.io/kubebuilder-declarative-pattern
 
 ```
 # generate the API/controllers
-kubebuilder create api --controller=true --example=false --group=addons --kind=Dashboard --make=false --namespaced=true --resource=true --version=v1alpha1
+kubebuilder create api --controller=true --example=false --group=addons --kind=Guestbook --make=false --namespaced=true --resource=true --version=v1alpha1
 # remove the  test suites that are more checking that kubebuilder is working
 find . -name "*_test.go" -delete
 ```
@@ -43,7 +43,7 @@ controller under `controllers/`
 * Generate code: `make generate`
 
 * You should now be able to `go run main.go` (or `make run`),
-  though it will exit with an error from being unable to find the dashboard CRD.
+  though it will exit with an error from being unable to find the guestbook CRD.
 
 ### Adding a manifest
 
@@ -58,7 +58,7 @@ changing namespaces, and tweaking flags)
 
 Some other advantages:
 
-* Working with manifests lets us release a new dashboard version without needing
+* Working with manifests lets us release a new guestbook version without needing
   a new operator version
 * The declarative manifest makes it easier for users to understand what is
   changing in each version
@@ -69,8 +69,8 @@ For now, we embed the manifests into the image, but we'll be evolving this, for 
 Create a manifest under `channels/packages/<packagename>/<version>/manifest.yaml`
 
 ```bash
-mkdir -p channels/packages/dashboard/1.8.3/
-wget -O channels/packages/dashboard/1.8.3/manifest.yaml https://raw.githubusercontent.com/kubernetes/dashboard/v1.8.3/src/deploy/recommended/kubernetes-dashboard.yaml
+mkdir -p channels/packages/guestbook/0.1.0/
+wget -O channels/packages/guestbook/0.1.0/manifest.yaml https://raw.githubusercontent.com/kubernetes/examples/master/guestbook/all-in-one/guestbook-all-in-one.yaml
 ```
 
 We have a notion of "channels", which is a stream of updates.  We'll have
@@ -83,8 +83,8 @@ We need to define the default stable channel, so create `channels/stable`:
 ```bash
 cat > channels/stable <<EOF
 manifests:
-- name: dashboard
-  version: 1.8.3
+- name: guestbook
+  version: 0.1.0
 EOF
 ```
 
@@ -97,41 +97,41 @@ We begin by editing the api type, we add some common fields.  The idea is that
 CommonSpec and CommonStatus form a common contract that we expect all addons to
 support (and we can hopefully evolve the contract with just a recompile!)
 
-Modify `api/v1alpha1/dashboard_types.go` to:
+Modify `api/v1alpha1/guestbook_types.go` to:
 
 * add an import for `addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"`
 * add a field `addonv1alpha1.CommonSpec` to the Spec object
 * add a field `addonv1alpha1.CommonStatus` to the Status object
 * add the accessor functions (ComponentName, CommonSpec, ..)
 
-Your `dashboard_types.go` file should now additionally contain:
+Your `guestbook_types.go` file should now additionally contain:
 
 ```go
 import addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 
-type DashboardSpec struct {
+type GuestbookSpec struct {
 	addonv1alpha1.CommonSpec `json:",inline"`
 }
 
-type DashboardStatus struct {
+type GuestbookStatus struct {
 	addonv1alpha1.CommonStatus `json:",inline"`
 }
 
-var _ addonv1alpha1.CommonObject = &Dashboard{}
+var _ addonv1alpha1.CommonObject = &Guestbook{}
 
-func (c *Dashboard) ComponentName() string {
-	return "dashboard"
+func (c *Guestbook) ComponentName() string {
+	return "guestbook"
 }
 
-func (c *Dashboard) CommonSpec() addonv1alpha1.CommonSpec {
+func (c *Guestbook) CommonSpec() addonv1alpha1.CommonSpec {
 	return c.Spec.CommonSpec
 }
 
-func (c *Dashboard) GetCommonStatus() addonv1alpha1.CommonStatus {
+func (c *Guestbook) GetCommonStatus() addonv1alpha1.CommonStatus {
 	return c.Status.CommonStatus
 }
 
-func (c *Dashboard) SetCommonStatus(s addonv1alpha1.CommonStatus) {
+func (c *Guestbook) SetCommonStatus(s addonv1alpha1.CommonStatus) {
 	c.Status.CommonStatus = s
 }
 
@@ -139,7 +139,7 @@ func (c *Dashboard) SetCommonStatus(s addonv1alpha1.CommonStatus) {
 
 ### Using the framework in the controller
 
-We replace the controller code `controllers/dashboard_controller.go`:
+We replace the controller code `controllers/guestbook_controller.go`:
 
 We are delegating most of the logic to `declarative.Reconciler`
 
@@ -174,13 +174,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	api "dashboard-operator/api/v1alpha1"
+	api "guestbook-operator/api/v1alpha1"
 )
 
-var _ reconcile.Reconciler = &DashboardReconciler{}
+var _ reconcile.Reconciler = &GuestbookReconciler{}
 
-// DashboardReconciler reconciles a Dashboard object
-type DashboardReconciler struct {
+// GuestbookReconciler reconciles a Guestbook object
+type GuestbookReconciler struct {
 	declarative.Reconciler
 	client.Client
 	Log logr.Logger
@@ -188,14 +188,14 @@ type DashboardReconciler struct {
 	watchLabels declarative.LabelMaker
 }
 
-func (r *DashboardReconciler) setupReconciler(mgr ctrl.Manager) error {
+func (r *GuestbookReconciler) setupReconciler(mgr ctrl.Manager) error {
 	labels := map[string]string{
-		"k8s-app": "kubernetes-dashboard",
+		"example-app": "guestbook",
 	}
 
 	r.watchLabels = declarative.SourceLabel(mgr.GetScheme())
 
-	return r.Reconciler.Init(mgr, &api.Dashboard{},
+	return r.Reconciler.Init(mgr, &api.Guestbook{},
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(r.watchLabels),
@@ -205,20 +205,20 @@ func (r *DashboardReconciler) setupReconciler(mgr ctrl.Manager) error {
 	)
 }
 
-// +kubebuilder:rbac:groups=addons.example.org,resources=dashboards,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=addons.example.org,resources=dashboards/status,verbs=get;update;patch
-func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
+// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks/status,verbs=get;update;patch
+func (r *GuestbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := r.setupReconciler(mgr); err != nil {
 		return err
 	}
 
-	c, err := controller.New("dashboard-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("guestbook-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to Dashboard
-	err = c.Watch(&source.Kind{Type: &api.Dashboard{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to Guestbook
+	err = c.Watch(&source.Kind{Type: &api.Guestbook{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -235,15 +235,15 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // for WithApplyPrune
 // +kubebuilder:rbac:groups=*,resources=*,verbs=list
 
-// +kubebuilder:rbac:groups=addons.example.org,resources=dashboards,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups="",resources=services;serviceaccounts;secrets,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups=apps;extensions,resources=deployments,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;delete;patch
 // RBAC roles that need to be granted:
 // +kubebuilder:rbac:groups="",resources=secrets;configmaps,verbs=create
-// TODO: can be scoped to resourceNames: ["kubernetes-dashboard-key-holder", "kubernetes-dashboard-certs"]
+// TODO: can be scoped to resourceNames: ["kubernetes-guestbook-key-holder", "kubernetes-guestbook-certs"]
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;update;delete
-// TODO: can be scoped to resourceNames: ["kubernetes-dashboard-settings"]
+// TODO: can be scoped to resourceNames: ["kubernetes-guestbook-settings"]
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;delete
 // TODO: can be scoped to resourceNames: ["heapster"]
 // +kubebuilder:rbac:groups="",resources=services,verbs=proxy
@@ -254,13 +254,13 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 The important things to note here:
 
 ```go
-	r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard", ...)
+	r.Reconciler.Init(mgr, &api.Guestbook{}, "guestbook", ...)
 ```
 
-We bind the `api.Dashboard` type to the `dashboard` package in our `channels`
+We bind the `api.Guestbook` type to the `guestbook` package in our `channels`
 directory and pull in optional features of the declarative library.
 
-Because api.Dashboard implements `addon.CommonObject` the
+Because api.Guestbook implements `addon.CommonObject` the
 framework is then able to access CommonSpec and CommonStatus above, which
 includes the version specifier.
 
@@ -281,7 +281,7 @@ includes the version specifier.
 
 ### Testing it locally
 
-We can register the Dashboard CRD and a Dashboard object, and then try running
+We can register the Guestbook CRD and a Guestbook object, and then try running
 the controller locally.
 
 1) We need to generate and register the CRDs:
@@ -293,19 +293,19 @@ make install
 You can verify that the CRD is regesterd successfully:
 
 ```
-kubectl get crds dashboards.addons.example.org
+kubectl get crds guestbooks.addons.example.org
 ```
 
-2) Create a dashboard CR:
+2) Create a guestbook CR:
 
 ```bash
-kubectl apply -n kube-system -f config/samples/addons_v1alpha1_dashboard.yaml
+kubectl apply -n kube-system -f config/samples/addons_v1alpha1_guestbook.yaml
 ```
 
 You can verify the CR is created successfully:
 
 ```
-kubectl get DashBoards -n kube-system
+kubectl get Guestbooks -n kube-system
 ```
 
 3) You should now be able to run the controller using:
@@ -315,8 +315,8 @@ kubectl get DashBoards -n kube-system
 You should see your operator apply the manifest.  You can then control-C and you
 should see the deployment etc that the operator has created.
 
-e.g. `kubectl get pods -l k8s-app=kubernetes-dashboard -n kube-system` or
-`kubectl get deploy kubernetes-dashboard -n kube-system`.
+e.g. `kubectl get pods -l k8s-app=kubernetes-guestbook -n kube-system` or
+`kubectl get deploy kubernetes-guestbook -n kube-system`.
 
 ## Running on-cluster
 
@@ -331,7 +331,7 @@ we'll need a Docker image and some manifests.
 
 ```make
 # Image URL to use all building/pushing image targets
-IMG ?= gcr.io/<my-cool-project>/dashboard-operator:latest
+IMG ?= gcr.io/<my-cool-project>/guestbook-operator:latest
 ```
 
 1. Create a patch to modify the memory limit for the operator:
@@ -382,7 +382,7 @@ RUN chmod a+rx /usr/bin/kubectl
 FROM golang:1.10.3 as builder
 
 # Copy in the go src
-WORKDIR /go/src/dashboard-operator
+WORKDIR /go/src/guestbook-operator
 COPY vendor/   vendor/
 COPY main.go main.go
 COPY api/ api/
@@ -394,7 +394,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 # Copy the operator and dependencies into a thin image
 FROM gcr.io/distroless/static:latest
 WORKDIR /
-COPY --from=builder /go/src/dashboard-operator/manager .
+COPY --from=builder /go/src/guestbook-operator/manager .
 COPY --from=kubectl /usr/bin/kubectl /usr/bin/kubectl
 COPY channels/ channels/
 ENTRYPOINT ["./manager"]
@@ -413,20 +413,20 @@ tightly-scoped RBAC role. To do that we use kubebuilder's RBAC role generation
 based off of source annotations. In the future we may be able to generate RBAC
 rules from the manfiest.
 
-The RBAC rules are included in the `dashboard_controller.go` snippet you pasted above.
+The RBAC rules are included in the `guestbook_controller.go` snippet you pasted above.
 
 RBAC is the real pain-point here - we end up with a lot of permissions:
 * The operator needs RBAC rules to see the CRDs.
 * It needs permission to get / create / update the Deployments and other types
   that it is managing
-* It needs permission to create the ClusterRoles / Roles that the dashboard
+* It needs permission to create the ClusterRoles / Roles that the guestbook
   needs
 * Because of that, we also need permissions for all the permissions we are going
   to create.
 
 The last one in particular can result in a non-trivial RBAC policy.  My approach:
 
-* Start with minimal permissions (just watching addons.k8s.io dashboards), and
+* Start with minimal permissions (just watching addons.k8s.io guestbooks), and
   then add permissions iteratively
 * If you're going to allow list, I tend to just allow get, list and watch -
   there's not a huge security reason to treat them separately as far as I can
@@ -436,7 +436,7 @@ The last one in particular can result in a non-trivial RBAC policy.  My approach
   tend to grant that one begrudgingly
 * The RBAC policy in the manifest may scope down the permissions even more (for
   example scoping to resourceNames), in which case we can - and should - copy
-  it.  That's what we did here for dashboard.
+  it.  That's what we did here for guestbook.
 
 ### Installing the operator in the cluster
 
@@ -448,27 +448,27 @@ make deploy
 You can troubleshoot the operator by inspecting the controller:
 
 ```bash
-kubectl -n dashboard-operator-system get deploy
-kubectl -n dashboard-operator-system logs <dashboard-operator-controller-manager-pod-name> manager
+kubectl -n guestbook-operator-system get deploy
+kubectl -n guestbook-operator-system logs <guestbook-operator-controller-manager-pod-name> manager
 ```
 
-### Create a dashboard CR
+### Create a guestbook CR
 
 ```bash
-kubectl apply -n kube-system -f config/samples/addons_v1alpha1_dashboard.yaml
+kubectl apply -n kube-system -f config/samples/addons_v1alpha1_guestbook.yaml
 ```
 
 You can verify the CR is created successfully:
 
 ```
-kubectl get DashBoards -n kube-system
+kubectl get Guestbooks -n kube-system
 ```
 
-You can verify that the operator has created the `kubernetes-dashboard`
+You can verify that the operator has created the `kubernetes-guestbook`
 deployment:
 
-e.g. `kubectl get pods -l k8s-app=kubernetes-dashboard -n kube-system` or
-`kubectl get deploy kubernetes-dashboard -n kube-system`.
+e.g. `kubectl get pods -l k8s-app=kubernetes-guestbook -n kube-system` or
+`kubectl get deploy kubernetes-guestbook -n kube-system`.
 
 ## Manifest simplification: Automatic labels
 
@@ -481,11 +481,11 @@ Instead, the Reconciler can add labels to every object in the manifest:
 
 ```go
        labels := map[string]string{
-               "k8s-app": "kubernetes-dashboard",
+               "example-app": "guestbook",
        }
 
-       r := &ReconcileDashboard{}
-       r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
+       r := &ReconcileGuestbook{}
+       r.Reconciler.Init(mgr, &api.Guestbook{}, "guestbook",
                declarative.WithObjectTransform(declarative.AddLabels(labels)),
 			   ...
 	   )
@@ -523,16 +523,16 @@ status that can be surfaced in various user interfaces.
 1. Add an instance of the Application CR in your manifest:
 
 	```bash
-	cat <<EOF >> channels/packages/dashboard/1.8.3/manifest.yaml
+	cat <<EOF >> channels/packages/guestbook/0.1.0/manifest.yaml
 	# ------------------- Application ------------------- #
 	apiVersion: app.k8s.io/v1beta1
 	kind: Application
 	metadata:
-	  name: kubernetes-dashboard
+	  name: guestbook
 	spec:
 	  descriptor:
-	    type: "kubernetes-dashboard"
-	    description: "Kubernetes Dashboard is a general purpose, web-based UI for Kubernetes clusters. It allows users to manage applications running in the cluster and troubleshoot them, as well as manage the cluster itself."
+	    type: "guestbook"
+	    description: "Guestbook is a simple, multi-tier web application using Kubernetes. This application consists of the following components: A single-instance Redis master to store guestbook entries, Multiple replicated Redis instances to serve reads, Multiple web frontend instances."
 	    icons:
 	    - src: "https://github.com/kubernetes/kubernetes/raw/master/logo/logo.png"
 	      type: "image/png"
@@ -541,17 +541,19 @@ status that can be surfaced in various user interfaces.
 	      email: maintainer@example.org
 	    keywords:
 	    - "addon"
-	    - "dashboard"
+	    - "guestbook"
 	    links:
-	    - description: Project Homepage
-	      url: "https://github.com/kubernetes/dashboard"
+		- description: Guide Document
+		  url: "https://kubernetes.io/docs/tutorials/stateless-application/guestbook/"
+	    - description: Source Code
+	      url: "https://github.com/kubernetes/examples/tree/master/guestbook"
 	EOF
 	```
 
-1. Add the two options for managing the Application to your controller:
+2. Add the two options for managing the Application to your controller:
 
 	```go
-		r.Reconciler.Init(mgr, &api.Dashboard{}, "dashboard",
+		r.Reconciler.Init(mgr, &api.Guestbook{}, "guestbook",
 			...
 			declarative.WithManagedApplication(r.watchLabels),
 			declarative.WithObjectTransform(addon.TransformApplicationFromStatus),
