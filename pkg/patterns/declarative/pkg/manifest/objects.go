@@ -33,6 +33,7 @@ import (
 type Objects struct {
 	Items []*Object
 	Blobs [][]byte
+	Path  string
 }
 
 type Object struct {

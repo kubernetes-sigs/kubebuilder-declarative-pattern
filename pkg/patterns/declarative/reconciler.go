@@ -111,11 +111,11 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	log.WithValues("object", name.String()).Info("reconciling")
 
 	var fs filesys.FileSystem
-	if r.options.kustomize {
+	if r.IsKustomizeOptionUsed() {
 		fs = filesys.MakeFsInMemory()
 	}
 
-	objects, err := r.buildDeploymentObjects(ctx, name, instance, fs)
+	objects, err := r.BuildDeploymentObjectsWithFs(ctx, name, instance, fs)
 	if err != nil {
 		log.Error(err, "building deployment objects")
 		return reconcile.Result{}, fmt.Errorf("error building deployment objects: %v", err)
@@ -136,20 +136,23 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 	var manifestStr string
 
-	if r.options.kustomize {
+	if r.IsKustomizeOptionUsed() {
 		// run kustomize to create final manifest
 		opts := krusty.MakeDefaultOptions()
 		k := krusty.MakeKustomizer(fs, opts)
-		m, err := k.Run(string(filepath.Separator))
+		m, err := k.Run(objects.Path)
 		if err != nil {
 			log.Error(err, "running kustomize to create final manifest")
 			return reconcile.Result{}, fmt.Errorf("error running kustomize: %v", err)
 		}
+		log.Info("running kustomize to create final manifest")
 		manifestYaml, err := m.AsYaml()
 		if err != nil {
 			log.Error(err, "creating final manifest yaml")
 			return reconcile.Result{}, fmt.Errorf("error converting kustomize output to yaml: %v", err)
 		}
+
+		log.Info("creating final manifest yaml")
 		manifestStr = string(manifestYaml)
 
 	} else {
@@ -194,12 +197,12 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 
 // BuildDeploymentObjects performs all manifest operations to build a final set of objects for deployment
 func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (*manifest.Objects, error) {
-	return r.buildDeploymentObjects(ctx, name, instance, nil)
+	return r.BuildDeploymentObjectsWithFs(ctx, name, instance, nil)
 }
 
-// buildDeploymentObjects is the implementation of BuildDeploymentObjects, supporting saving to a filesystem for kustomize
+// BuildDeploymentObjectsWithFs is the implementation of BuildDeploymentObjects, supporting saving to a filesystem for kustomize
 // If fs is provided, the transformed manifests will be saved to that filesystem
-func (r *Reconciler) buildDeploymentObjects(ctx context.Context, name types.NamespacedName, instance DeclarativeObject, fs filesys.FileSystem) (*manifest.Objects, error) {
+func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name types.NamespacedName, instance DeclarativeObject, fs filesys.FileSystem) (*manifest.Objects, error) {
 	log := log.Log
 
 	// 1. Load the manifest
@@ -250,9 +253,13 @@ func (r *Reconciler) buildDeploymentObjects(ctx context.Context, name types.Name
 				}
 				fs.WriteFile(string(manifestPath), json)
 			}
+			for _, blob := range objects.Blobs {
+				fs.WriteFile(string(manifestPath), blob)
+			}
 		}
-
+		manifestObjects.Path = filepath.Dir(manifestPath)
 		manifestObjects.Items = append(manifestObjects.Items, objects.Items...)
+		manifestObjects.Blobs = append(manifestObjects.Blobs, objects.Blobs...)
 	}
 	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
 	manifestObjects.Sort(DefaultObjectOrder(ctx))
@@ -364,6 +371,14 @@ func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObj
 		}
 	}
 	return nil
+}
+
+// IsKustomizeOptionUsed checks if the option for Kustomize build is used for creating manifests
+func (r *Reconciler) IsKustomizeOptionUsed() bool {
+	if r.options.kustomize {
+		return true
+	}
+	return false
 }
 
 // SetSink provides a Sink that will be notified for all deployments
