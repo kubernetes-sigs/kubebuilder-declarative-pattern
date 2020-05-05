@@ -58,9 +58,6 @@ func (r *GuestbookReconciler) setupReconciler(mgr ctrl.Manager) error {
 	)
 }
 
-// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks/status,verbs=get;update;patch
-
 func (r *GuestbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := r.setupReconciler(mgr); err != nil {
 		return err
@@ -89,5 +86,7 @@ func (r *GuestbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // for WithApplyPrune
 // +kubebuilder:rbac:groups=*,resources=*,verbs=list
 
+// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=addons.example.org,resources=guestbooks/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups=apps;extensions,resources=deployments,verbs=get;list;watch;create;update;delete;patch
