@@ -126,10 +126,15 @@ func (r *FSRepository) LoadManifest(ctx context.Context, packageName string, id 
 	dirPath := filepath.Join(r.basedir, "packages", packageName, id)
 	filesPath, err := ioutil.ReadDir(dirPath)
 	if err != nil {
-		return nil, fmt.Errorf("error reading directory %s", dirPath)
+		return nil, fmt.Errorf("error reading directory %s: %v", dirPath, err)
 	}
 	result := make(map[string]string)
 	for _, p := range filesPath {
+		if p.IsDir() {
+			log.V(2).Info("skipping directory", "directory", p.Name())
+			continue
+		}
+
 		filePath := filepath.Join(dirPath, p.Name())
 		b, err := ioutil.ReadFile(filePath)
 		if err != nil {
