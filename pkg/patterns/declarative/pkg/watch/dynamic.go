@@ -17,6 +17,7 @@ limitations under the License.
 package watch
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -94,7 +95,7 @@ func (dw *dynamicWatch) Add(trigger schema.GroupVersionKind, options metav1.List
 func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigger schema.GroupVersionKind, options metav1.ListOptions, target metav1.ObjectMeta) {
 	log := log.Log
 
-	events, err := client.Watch(options)
+	events, err := client.Watch(context.TODO(), options)
 
 	if err != nil {
 		log.WithValues("kind", trigger.String()).WithValues("namespace", target.Namespace).WithValues("labels", options.LabelSelector).Error(err, "adding watch to dynamic client")

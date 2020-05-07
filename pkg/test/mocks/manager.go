@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -110,5 +111,13 @@ func (Manager) AddHealthzCheck(name string, check healthz.Checker) error {
 }
 
 func (Manager) AddReadyzCheck(name string, check healthz.Checker) error {
+	panic("implement me")
+}
+
+func (Manager) AddMetricsExtraHandler(path string, handler http.Handler) error {
+	panic("implement me")
+}
+
+func (Manager) Elected() <-chan struct{} {
 	panic("implement me")
 }
