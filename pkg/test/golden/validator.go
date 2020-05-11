@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/mocks"
 	"sigs.k8s.io/kustomize/api/filesys"
-	"sigs.k8s.io/kustomize/api/krusty"
 )
 
 func NewValidator(t *testing.T, b *scheme.Builder) *validator {
@@ -233,30 +232,16 @@ func (v *validator) Validate(r declarative.Reconciler) {
 		{
 			var b bytes.Buffer
 
-			if r.IsKustomizeOptionUsed() {
-				opts := krusty.MakeDefaultOptions()
-				k := krusty.MakeKustomizer(fs, opts)
-				m, err := k.Run(objects.Path)
-				if err != nil {
-					t.Fatalf("running kustomize to create final manifest: %v", err)
+			for i, o := range objects.Items {
+				if i != 0 {
+					b.WriteString("\n---\n\n")
 				}
-				manifestYaml, err := m.AsYaml()
-				if err != nil {
-					t.Fatalf("creating final manifest yaml: %v", err)
+				u := o.UnstructuredObject()
+				if err := yamlizer.Encode(u, &b); err != nil {
+					t.Fatalf("error encoding to yaml: %v", err)
 				}
-				actualYAML = string(manifestYaml)
-			} else {
-				for i, o := range objects.Items {
-					if i != 0 {
-						b.WriteString("\n---\n\n")
-					}
-					u := o.UnstructuredObject()
-					if err := yamlizer.Encode(u, &b); err != nil {
-						t.Fatalf("error encoding to yaml: %v", err)
-					}
-				}
-				actualYAML = b.String()
 			}
+			actualYAML = b.String()
 		}
 
 		expectedPath := strings.Replace(p, ".in.yaml", ".out.yaml", -1)
