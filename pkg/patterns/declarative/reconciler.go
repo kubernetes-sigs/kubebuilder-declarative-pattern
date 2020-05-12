@@ -136,33 +136,12 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 	var manifestStr string
 
-	if r.IsKustomizeOptionUsed() {
-		// run kustomize to create final manifest
-		opts := krusty.MakeDefaultOptions()
-		k := krusty.MakeKustomizer(fs, opts)
-		m, err := k.Run(objects.Path)
-		if err != nil {
-			log.Error(err, "running kustomize to create final manifest")
-			return reconcile.Result{}, fmt.Errorf("error running kustomize: %v", err)
-		}
-		log.Info("running kustomize to create final manifest")
-		manifestYaml, err := m.AsYaml()
-		if err != nil {
-			log.Error(err, "creating final manifest yaml")
-			return reconcile.Result{}, fmt.Errorf("error converting kustomize output to yaml: %v", err)
-		}
-
-		log.Info("creating final manifest yaml")
-		manifestStr = string(manifestYaml)
-
-	} else {
-		m, err := objects.JSONManifest()
-		if err != nil {
-			log.Error(err, "creating final manifest")
-			return reconcile.Result{}, fmt.Errorf("error creating manifest: %v", err)
-		}
-		manifestStr = m
+	m, err := objects.JSONManifest()
+	if err != nil {
+		log.Error(err, "creating final manifest")
+		return reconcile.Result{}, fmt.Errorf("error creating manifest: %v", err)
 	}
+	manifestStr = m
 
 	extraArgs := []string{"--force"}
 
@@ -224,23 +203,11 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 		}
 
 		// 3. Parse manifest into objects
-		objects, err := manifest.ParseObjects(ctx, manifestStr)
-		if err != nil {
-			log.Error(err, "error parsing manifest")
-			return nil, err
-		}
-
 		// 4. Perform object transformations
-		transforms := r.options.objectTransformations
-		if r.options.labelMaker != nil {
-			transforms = append(transforms, AddLabels(r.options.labelMaker(ctx, instance)))
-		}
-		// TODO(jrjohnson): apply namespace here
-		for _, t := range transforms {
-			err := t(ctx, instance, objects)
-			if err != nil {
-				return nil, err
-			}
+		objects, err := r.parseAndTransformManifest(ctx, instance, manifestStr)
+		if err != nil {
+			log.Error(err, "error parsing and transforming manifest")
+			return nil, err
 		}
 
 		if fs != nil {
@@ -261,10 +228,61 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 		manifestObjects.Items = append(manifestObjects.Items, objects.Items...)
 		manifestObjects.Blobs = append(manifestObjects.Blobs, objects.Blobs...)
 	}
+
+	// If Kustomize option is on, it's assumed that the entire addon manifest is created using Kustomize
+	// Here, the manifest is built using Kustomize and then replaces the Object items with the created manifest
+	if r.IsKustomizeOptionUsed() {
+		// run kustomize to create final manifest
+		opts := krusty.MakeDefaultOptions()
+		k := krusty.MakeKustomizer(fs, opts)
+		m, err := k.Run(manifestObjects.Path)
+		if err != nil {
+			log.Error(err, "running kustomize to create final manifest")
+			return nil, fmt.Errorf("error running kustomize: %v", err)
+		}
+
+		manifestYaml, err := m.AsYaml()
+		if err != nil {
+			log.Error(err, "creating final manifest yaml")
+			return nil, fmt.Errorf("error converting kustomize output to yaml: %v", err)
+		}
+
+		objects, err := r.parseAndTransformManifest(ctx, instance, string(manifestYaml))
+		if err != nil {
+			log.Error(err, "creating final manifest yaml")
+			return nil, err
+		}
+		manifestObjects.Items = objects.Items
+	}
+
 	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
 	manifestObjects.Sort(DefaultObjectOrder(ctx))
 
 	return manifestObjects, nil
+}
+
+// parseAndTransformManifest parses the manifest into objects and adds any transformations as required
+func (r *Reconciler) parseAndTransformManifest(ctx context.Context, instance DeclarativeObject, manifestStr string) (*manifest.Objects, error) {
+	log := log.Log
+
+	objects, err := manifest.ParseObjects(ctx, manifestStr)
+	if err != nil {
+		log.Error(err, "error parsing manifest")
+		return nil, err
+	}
+
+	transforms := r.options.objectTransformations
+	if r.options.labelMaker != nil {
+		transforms = append(transforms, AddLabels(r.options.labelMaker(ctx, instance)))
+	}
+	// TODO(jrjohnson): apply namespace here
+	for _, t := range transforms {
+		err := t(ctx, instance, objects)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return objects, nil
 }
 
 // loadRawManifest loads the raw manifest YAML from the repository
