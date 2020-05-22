@@ -88,55 +88,6 @@ manifests:
 EOF
 ```
 
-### Adding the framework into our types
-
-We now want to plug the framework into our types, so that our CRs will look like
-other addon operators.
-
-We begin by editing the api type, we add some common fields.  The idea is that
-CommonSpec and CommonStatus form a common contract that we expect all addons to
-support (and we can hopefully evolve the contract with just a recompile!)
-
-Modify `api/v1alpha1/guestbook_types.go` to:
-
-* add an import for `addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"`
-* add a field `addonv1alpha1.CommonSpec` to the Spec object
-* add a field `addonv1alpha1.CommonStatus` to the Status object
-* add the accessor functions (ComponentName, CommonSpec, ..)
-
-Your `guestbook_types.go` file should now additionally contain:
-
-```go
-import addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
-
-type GuestbookSpec struct {
-	addonv1alpha1.CommonSpec `json:",inline"`
-}
-
-type GuestbookStatus struct {
-	addonv1alpha1.CommonStatus `json:",inline"`
-}
-
-var _ addonv1alpha1.CommonObject = &Guestbook{}
-
-func (c *Guestbook) ComponentName() string {
-	return "guestbook"
-}
-
-func (c *Guestbook) CommonSpec() addonv1alpha1.CommonSpec {
-	return c.Spec.CommonSpec
-}
-
-func (c *Guestbook) GetCommonStatus() addonv1alpha1.CommonStatus {
-	return c.Status.CommonStatus
-}
-
-func (c *Guestbook) SetCommonStatus(s addonv1alpha1.CommonStatus) {
-	c.Status.CommonStatus = s
-}
-
-```
-
 ### Using the framework in the controller
 
 We replace the controller code `controllers/guestbook_controller.go`:
