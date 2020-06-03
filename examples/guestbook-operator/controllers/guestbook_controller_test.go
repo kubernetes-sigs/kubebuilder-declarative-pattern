@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/golden"
 )
 
-func TestDashboard(t *testing.T) {
+func TestGuestbook(t *testing.T) {
 	v := golden.NewValidator(t, api.SchemeBuilder)
 	dr := &GuestbookReconciler{
 		Client: v.Manager().GetClient(),
