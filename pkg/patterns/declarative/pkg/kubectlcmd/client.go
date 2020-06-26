@@ -20,11 +20,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"k8s.io/cli-runtime/pkg/printers"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/kubectl/pkg/cmd/apply"
+	"k8s.io/kubectl/pkg/cmd/delete"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 // New creates a Client that runs kubectl avaliable on the path with default authentication
@@ -49,7 +56,8 @@ func (console) Run(c *exec.Cmd) error {
 }
 
 // Apply runs the kubectl apply with the provided manifest argument
-func (c *Client) Apply(ctx context.Context, namespace string, manifest string, validate bool, extraArgs ...string) error {
+func (c *Client) ApplyAlt(ctx context.Context, namespace string, manifest string, validate bool,
+	extraArgs ...string) error {
 	log := log.Log
 
 	log.Info("applying manifest")
@@ -80,10 +88,48 @@ func (c *Client) Apply(ctx context.Context, namespace string, manifest string, v
 	if err != nil {
 		log.WithValues("stdout", stdout.String()).WithValues("stderr", stderr.String()).Error(err, "error from running kubectl apply")
 		log.Info(fmt.Sprintf("manifest:\n%v", manifest))
-		return fmt.Errorf("error from running kubectl apply: %v", err)
+		return fmt.Errorf("error from running  apply: %v", err)
 	}
 
 	log.WithValues("stdout", stdout.String()).WithValues("stderr", stderr.String()).V(2).Info("ran kubectl apply")
 
 	return nil
+}
+
+func(c *Client) Apply(ctx context.Context, namespace string, manifest string, validate bool,
+	extraArgs ...string) error{
+	ioStreams := genericclioptions.IOStreams{
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
+	}
+	restClient := genericclioptions.NewConfigFlags(true).WithDeprecatedPasswordFlag()
+	//f := util.NewFactory(restClient)
+	ioReader := strings.NewReader(manifest)
+
+	b := resource.NewBuilder(restClient)
+	res := b.Unstructured().Stream(ioReader, "cm").Do()
+	//infos = append(infos, namespaceObj)
+	infos, err := res.Infos()
+	if err != nil {
+		return err
+	}
+	applyOpts := apply.NewApplyOptions(ioStreams)
+	applyOpts.Namespace = namespace
+	buildApplyOpts(applyOpts, infos, ioStreams)
+	err = applyOpts.Run()
+	return err
+}
+
+func buildApplyOpts (a *apply.ApplyOptions, infos []*resource.Info,
+	ioStreams genericclioptions.IOStreams) {
+	a.SetObjects(infos)
+	a.ToPrinter = func(operation string) (printers.ResourcePrinter, error) {
+		a.PrintFlags.NamePrintFlags.Operation = operation
+		cmdutil.PrintFlagsWithDryRunStrategy(a.PrintFlags, a.DryRunStrategy)
+		return a.PrintFlags.ToPrinter()
+	}
+	a.DeleteOptions = &delete.DeleteOptions{
+		IOStreams:           ioStreams,
+	}
 }
