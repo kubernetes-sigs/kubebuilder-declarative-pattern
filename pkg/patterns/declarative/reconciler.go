@@ -108,7 +108,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 
 func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (reconcile.Result, error) {
 	log := log.Log
-	log.WithValues("object", name.String()).Info("reconciling objects in apply")
+	log.WithValues("object", name.String()).Info("reconciling")
 
 	var fs filesys.FileSystem
 	if r.IsKustomizeOptionUsed() {

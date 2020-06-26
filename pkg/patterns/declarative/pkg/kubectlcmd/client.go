@@ -88,7 +88,7 @@ func (c *Client) ApplyAlt(ctx context.Context, namespace string, manifest string
 	if err != nil {
 		log.WithValues("stdout", stdout.String()).WithValues("stderr", stderr.String()).Error(err, "error from running kubectl apply")
 		log.Info(fmt.Sprintf("manifest:\n%v", manifest))
-		return fmt.Errorf("error from running  apply: %v", err)
+		return fmt.Errorf("error from running kubectl apply: %v", err)
 	}
 
 	log.WithValues("stdout", stdout.String()).WithValues("stderr", stderr.String()).V(2).Info("ran kubectl apply")
