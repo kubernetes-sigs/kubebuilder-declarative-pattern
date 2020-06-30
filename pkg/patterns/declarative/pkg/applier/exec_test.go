@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubectlcmd
+package applier
 
 import (
 	"context"
@@ -84,7 +84,7 @@ func TestKubectlApply(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			cs := collector{Error: test.err}
-			kubectl := &Client{cmdSite: &cs}
+			kubectl := &ExecKubectl{cmdSite: &cs}
 			err := kubectl.Apply(context.Background(), test.namespace, test.manifest, test.validate, test.args...)
 
 			if test.err != nil && err == nil {
