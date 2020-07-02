@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubectlcmd
+package applier
 
 import (
 	"bytes"
@@ -28,12 +28,12 @@ import (
 )
 
 // New creates a Client that runs kubectl avaliable on the path with default authentication
-func New() *Client {
-	return &Client{cmdSite: &console{}}
+func NewExec() *ExecKubectl {
+	return &ExecKubectl{cmdSite: &console{}}
 }
 
-// Client provides an interface to kubectl
-type Client struct {
+// ExecKubectl provides an interface to kubectl
+type ExecKubectl struct {
 	cmdSite commandSite
 }
 
@@ -49,7 +49,8 @@ func (console) Run(c *exec.Cmd) error {
 }
 
 // Apply runs the kubectl apply with the provided manifest argument
-func (c *Client) Apply(ctx context.Context, namespace string, manifest string, validate bool, extraArgs ...string) error {
+func (c *ExecKubectl) Apply(ctx context.Context, namespace string, manifest string, validate bool,
+	extraArgs ...string) error {
 	log := log.Log
 
 	log.Info("applying manifest")
@@ -87,3 +88,4 @@ func (c *Client) Apply(ctx context.Context, namespace string, manifest string, v
 
 	return nil
 }
+
