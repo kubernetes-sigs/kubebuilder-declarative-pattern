@@ -115,7 +115,11 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (result reconcile.Resu
 	}
 
 	if r.options.status != nil {
+<<<<<<< HEAD
 		if err = r.options.status.Preflight(ctx, instance); err != nil {
+=======
+		if err := r.options.status.Preflight(ctx, instance); err != nil {
+>>>>>>> 3128f67... Changes preflight to version checks
 			log.Error(err, "preflight check failed, not reconciling")
 			return reconcile.Result{}, err
 		}
@@ -139,6 +143,22 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		return reconcile.Result{}, fmt.Errorf("error building deployment objects: %v", err)
 	}
 	log.WithValues("objects", fmt.Sprintf("%d", len(objects.Items))).Info("built deployment objects")
+
+	if r.options.status != nil {
+		bool, err := r.options.status.VersionCheck(ctx, instance, objects)
+		if  err != nil {
+			if !bool {
+				// r.client isn't exported so can't be updated in version check function
+				r.client.Status().Update(ctx, instance)
+				recorder := r.mgr.GetEventRecorderFor(fmt.Sprintf("%v", instance.GetName()))
+				recorder.Event(instance, "Warning", "Failed version check", err.Error())
+				log.Error(err, "Version check failed, not reconciling")
+				return reconcile.Result{}, nil
+			}
+			log.Error(err, "Version check failed, trying to reconcile")
+			return reconcile.Result{}, err
+		}
+	}
 
 	defer func() {
 		if r.options.status != nil {

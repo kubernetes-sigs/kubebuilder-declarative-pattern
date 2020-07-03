@@ -26,6 +26,7 @@ import (
 type Status interface {
 	Reconciled
 	Preflight
+	VersionCheck
 }
 
 type Reconciled interface {
@@ -42,10 +43,18 @@ type Preflight interface {
 	Preflight(context.Context, DeclarativeObject) error
 }
 
+type VersionCheck interface {
+	// VersionCheck checks if the version of the operator is greater than or equal to the
+	//version requested by objects in the manifest, if it isn't it updates the status and
+	// events and stops reconciling
+	VersionCheck(context.Context, DeclarativeObject, *manifest.Objects) (bool, error)
+}
+
 // StatusBuilder provides a pluggable implementation of Status
 type StatusBuilder struct {
 	ReconciledImpl Reconciled
 	PreflightImpl  Preflight
+	VersionCheckImpl VersionCheck
 }
 
 func (s *StatusBuilder) Reconciled(ctx context.Context, src DeclarativeObject, objs *manifest.Objects) error {
@@ -60,6 +69,13 @@ func (s *StatusBuilder) Preflight(ctx context.Context, src DeclarativeObject) er
 		return s.PreflightImpl.Preflight(ctx, src)
 	}
 	return nil
+}
+
+func (s *StatusBuilder) VersionCheck(ctx context.Context, src DeclarativeObject,objs *manifest.Objects) (bool, error) {
+	if s.VersionCheckImpl != nil {
+		return s.VersionCheckImpl.VersionCheck(ctx, src, objs)
+	}
+	return true, nil
 }
 
 var _ Status = &StatusBuilder{}
