@@ -19,6 +19,7 @@ package declarative
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"path/filepath"
 	"strings"
 
@@ -129,6 +130,13 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 			}
 		}
 	}()
+
+	err = parseListKind(objects)
+
+	if err != nil{
+		log.Error(err, "Parsing list kind")
+		return reconcile.Result{}, fmt.Errorf("error parsing list kind: %v", err)
+	}
 
 	err = r.injectOwnerRef(ctx, instance, objects)
 	if err != nil {
@@ -402,4 +410,31 @@ func (r *Reconciler) IsKustomizeOptionUsed() bool {
 // SetSink provides a Sink that will be notified for all deployments
 func (r *Reconciler) SetSink(sink Sink) {
 	r.options.sink = sink
+}
+
+func parseListKind(infos *manifest.Objects) error{
+		for i, item := range infos.Items{
+			if item.Kind == "List" {
+				fmt.Println("haaa!")
+				obj := item.UnstructuredObject()
+
+				err := obj.EachListItem(func(obj runtime.Object) error{
+					castItem := obj.(*unstructured.Unstructured)
+					newObj, err := manifest.NewObject(castItem)
+					if err != nil {
+						return err
+					}
+					infos.Items = append(infos.Items, newObj)
+					return nil
+				})
+
+				if err != nil {
+					return err
+				}
+
+				infos.Items = append(infos.Items[:i], infos.Items[i+1:]...)
+			}
+		}
+
+	return nil
 }
