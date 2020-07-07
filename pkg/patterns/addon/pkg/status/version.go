@@ -3,12 +3,11 @@ package status
 import (
 	"context"
 	"fmt"
+
 	"github.com/blang/semver"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
-
-	//"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
@@ -16,13 +15,17 @@ import (
 
 // NewVersionCheck provides an implementation of declarative.Reconciled that
 // checks the version of the operator if it is up to the version required by the manifest
-func NewVersionCheck(client client.Client, version string) *versionCheck {
-	return &versionCheck{client, version}
+func NewVersionCheck(client client.Client, operatorVersionString string) (*versionCheck, error) {
+	operatorVersion, err := semver.Parse(operatorVersionString)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse operator version %q: %v", operatorVersionString, err)
+	}
+	return &versionCheck{client: client, operatorVersion: operatorVersion}, nil
 }
 
 type versionCheck struct {
-	client  client.Client
-	version string
+	client          client.Client
+	operatorVersion semver.Version
 }
 
 func (p *versionCheck) VersionCheck(
@@ -31,39 +34,27 @@ func (p *versionCheck) VersionCheck(
 	objs *manifest.Objects,
 ) (bool, error) {
 	log := log.Log
-	zeroVersion := semver.Version{}
-	var versionNeededStr string
-	maxVersion := zeroVersion
+	var minOperatorVersion semver.Version
 
 	// Look for annotation from any resource with the max version
 	for _, obj := range objs.Items {
-		unstruct := obj.UnstructuredObject().Object
-		metadata := unstruct["metadata"].(map[string]interface{})
-		annotations, ok := metadata["annotations"].(map[string]interface{})
-		if ok {
-			versionNeededStr, _ = annotations["addons.k8s.io/operator-version"].(string)
-			log.WithValues("version", versionNeededStr).Info("Got version, %v")
+		annotations := obj.UnstructuredObject().GetAnnotations()
+		if versionNeededStr, ok := annotations["addons.k8s.io/min-operator-version"]; ok {
+			log.WithValues("min-operator-version", versionNeededStr).Info("Got version requirement addons.k8s.io/operator-version")
 
-			versionActual, err := semver.Make(versionNeededStr)
+			versionNeeded, err := semver.Parse(versionNeededStr)
 			if err != nil {
-				log.WithValues("version", versionNeededStr).Info("Unable to convert string to version, skipping this object")
-				continue
+				log.WithValues("version", versionNeededStr).Error(err, "Unable to parse version restriction")
+				return false, err
 			}
 
-			if versionActual.GT(maxVersion) {
-				maxVersion = versionActual
+			if versionNeeded.GT(minOperatorVersion) {
+				minOperatorVersion = versionNeeded
 			}
 		}
 	}
 
-	// TODO(somtochi): Do we want to return an error when the version is invalid or just skip and use the operator?
-	operatorVersion, err := semver.Make(p.version)
-	if err != nil {
-		log.WithValues("version", p.version).Info("Unable to convert string to version, skipping check")
-		return true, nil
-	}
-
-	if maxVersion.Equals(zeroVersion) || !maxVersion.GT(operatorVersion) {
+	if p.operatorVersion.GTE(minOperatorVersion) {
 		return true, nil
 	}
 
@@ -75,11 +66,11 @@ func (p *versionCheck) VersionCheck(
 	status := addonsv1alpha1.CommonStatus{
 		Healthy: false,
 		Errors: []string{
-			fmt.Sprintf("Addons needs version %v, this operator is version %v", maxVersion.String(), operatorVersion.String()),
+			fmt.Sprintf("manifest needs operator version >= %v, this operator is version %v", minOperatorVersion.String(), p.operatorVersion.String()),
 		},
 	}
 	log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
 	addonObject.SetCommonStatus(status)
 
-	return false, fmt.Errorf("operator not qualified, manifest needs operator >= %v", maxVersion.String())
+	return false, fmt.Errorf("operator not qualified, manifest needs operator version >= %v", minOperatorVersion.String())
 }

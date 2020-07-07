@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -52,6 +53,9 @@ type Reconciler struct {
 
 	mgr manager.Manager
 
+	// recorder is the EventRecorder for creating k8s events
+	recorder record.EventRecorder
+
 	options reconcilerParams
 }
 
@@ -70,6 +74,10 @@ var kubectl = applier.NewDirectApplier()
 func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts ...reconcilerOption) error {
 	r.prototype = prototype
 	r.kubectl = kubectl
+
+	// TODO: Can we derive the name from prototype?
+	controllerName := "addon-controller"
+	r.recorder = mgr.GetEventRecorderFor(controllerName)
 
 	r.client = mgr.GetClient()
 	r.config = mgr.GetConfig()
@@ -115,11 +123,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (result reconcile.Resu
 	}
 
 	if r.options.status != nil {
-<<<<<<< HEAD
-		if err = r.options.status.Preflight(ctx, instance); err != nil {
-=======
 		if err := r.options.status.Preflight(ctx, instance); err != nil {
->>>>>>> 3128f67... Changes preflight to version checks
 			log.Error(err, "preflight check failed, not reconciling")
 			return reconcile.Result{}, err
 		}
@@ -145,13 +149,14 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	log.WithValues("objects", fmt.Sprintf("%d", len(objects.Items))).Info("built deployment objects")
 
 	if r.options.status != nil {
-		bool, err := r.options.status.VersionCheck(ctx, instance, objects)
-		if  err != nil {
-			if !bool {
+		isValidVersion, err := r.options.status.VersionCheck(ctx, instance, objects)
+		if err != nil {
+			if !isValidVersion {
 				// r.client isn't exported so can't be updated in version check function
-				r.client.Status().Update(ctx, instance)
-				recorder := r.mgr.GetEventRecorderFor(fmt.Sprintf("%v", instance.GetName()))
-				recorder.Event(instance, "Warning", "Failed version check", err.Error())
+				if err := r.client.Status().Update(ctx, instance); err != nil {
+					return reconcile.Result{}, err
+				}
+				r.recorder.Event(instance, "Warning", "Failed version check", err.Error())
 				log.Error(err, "Version check failed, not reconciling")
 				return reconcile.Result{}, nil
 			}
