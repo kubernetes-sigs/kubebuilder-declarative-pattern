@@ -28,7 +28,7 @@ import (
 	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 )
 
-var FlagChannel = "./channels"
+var FlagChannel = "https://github.com/SomtochiAma/channels.git"
 
 func init() {
 	// TODO: Yuk - global flags are ugly
@@ -42,6 +42,11 @@ type ManifestLoader struct {
 // NewManifestLoader provides a Repository that resolves versions based on an Addon object
 // and loads manifests from the filesystem.
 func NewManifestLoader(channel string) (*ManifestLoader, error) {
+	if strings.HasPrefix(channel, "git@") || strings.HasSuffix(channel, ".git") {
+		repo := NewGitRepository(channel)
+		return &ManifestLoader{repo: repo}, nil
+	}
+
 	if strings.HasPrefix(channel, "http://") || strings.HasPrefix(channel, "https://") {
 		repo := NewHTTPRepository(channel)
 		return &ManifestLoader{repo: repo}, nil
