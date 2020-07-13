@@ -103,6 +103,14 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		}
 	}
 
+	annotations := instance.GetAnnotations()
+	if ignoreAnnotation, ok := annotations["addons.operators.ignore"]; ok {
+		if ignoreAnnotation == "true" {
+			log.Info("Found ignore annotation on custom resource, exiting reconcilation")
+			return reconcile.Result{}, nil
+		}
+	}
+
 	return r.reconcileExists(ctx, request.NamespacedName, instance)
 }
 
