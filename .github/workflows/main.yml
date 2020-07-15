@@ -33,6 +33,30 @@ jobs:
             exit 1
           fi
 
+  verify-gomod:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.14
+          stable: true
+
+      - run: |
+          echo "::set-env name=GOPATH::${HOME}/go"
+
+      - uses: actions/checkout@v2
+
+      - run: go mod tidy
+
+      - run: |
+          changes=$(git status --porcelain)
+          if [[ -n "${changes}" ]]; then
+            echo "::error Changes detected from go mod tidy:"
+            echo "${changes}"
+            exit 1
+          fi
+
   kind-e2e:
     name: Test with a Kind cluster
     runs-on: [ubuntu-latest]
