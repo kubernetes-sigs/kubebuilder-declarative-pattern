@@ -22,7 +22,7 @@ var _ Repository = &GitRepository{}
 
 // NewGitRepository constructs an GitRepository
 func NewGitRepository(baseurl string) *GitRepository{
-	baseurl, subDir := parseGitUrl(baseurl)
+	baseurl, subDir := parseGitURL(baseurl)
 	return &GitRepository{
 		baseURL: baseurl,
 		subDir: subDir,
@@ -119,7 +119,7 @@ func (r *GitRepository) readURL(url string) ([]byte, error) {
 	return b, nil
 }
 
-func parseGitUrl(url string) (string, string){
+func parseGitURL(url string) (string, string){
 	// checks for git:: suffix
 	var subdir string
 	if strings.HasPrefix(url, "git::") {
