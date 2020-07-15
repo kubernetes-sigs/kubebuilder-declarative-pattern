@@ -3,12 +3,13 @@ package loaders
 import (
 	"context"
 	"fmt"
+	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/go-git/go-billy/v5/memfs"
 	"io/ioutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
+	"strings"
 )
 
 type GitRepository struct {
@@ -75,9 +76,16 @@ func (r *GitRepository) LoadManifest(ctx context.Context, packageName string, id
 }
 
 func (r *GitRepository) readURL(url string) ([]byte, error) {
+	// Adds support for sub directory
+	cloneUrl := r.baseURL
+	if strings.Contains(r.baseURL, ".git//") {
+		newURL := strings.Split(r.baseURL, ".git//")
+		cloneUrl = newURL[0] + ".git"
+		url = newURL[1] + "/" + url
+	}
 	fs := memfs.New()
 	_, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
-		URL: r.baseURL,
+		URL: cloneUrl,
 	})
 	if err != nil {
 		return nil, err

@@ -47,7 +47,7 @@ func NewManifestLoader(channel string) (*ManifestLoader, error) {
 		return &ManifestLoader{repo: repo}, nil
 	}
 
-	if strings.Contains(channel, ".git//") || strings.HasSuffix(channel, ".git") {
+	if strings.Contains(channel, "git//") || strings.Contains(channel, ".git") {
 		repo := NewGitRepository(channel)
 		return &ManifestLoader{repo: repo}, nil
 	}
