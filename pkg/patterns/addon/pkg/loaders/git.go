@@ -14,13 +14,19 @@ import (
 
 type GitRepository struct {
 	baseURL string
+	subDir string
+	branch string
 }
 
 var _ Repository = &GitRepository{}
 
 // NewGitRepository constructs an GitRepository
 func NewGitRepository(baseurl string) *GitRepository{
-	return &GitRepository{baseURL: baseurl}
+	baseurl, subDir := parseGitUrl(baseurl)
+	return &GitRepository{
+		baseURL: baseurl,
+		subDir: subDir,
+	}
 }
 
 func (r *GitRepository) LoadChannel(ctx context.Context,  name string) (*Channel, error){
@@ -32,6 +38,9 @@ func (r *GitRepository) LoadChannel(ctx context.Context,  name string) (*Channel
 	log.WithValues("baseURL", r.baseURL).Info("loading channel")
 	log.WithValues("baseURL", r.baseURL).Info("cloning git repository")
 
+	if r.subDir != "" {
+		name = r.subDir + "/" + name
+	}
 	b, err := r.readURL(name)
 	if err != nil{
 		log.WithValues("path", name).Error(err, "error reading channel")
@@ -60,7 +69,13 @@ func (r *GitRepository) LoadManifest(ctx context.Context, packageName string, id
 	log := log.Log
 	log.WithValues("package", packageName).Info("loading package")
 
-	filePath := fmt.Sprintf("packages/%v/%v/manifest.yaml", packageName, id)
+	var filePath string
+	if r.subDir == "" {
+		filePath = fmt.Sprintf("packages/%v/%v/manifest.yaml", packageName, id)
+	} else {
+		filePath = fmt.Sprintf("%v/packages/%v/%v/manifest.yaml", r.subDir, packageName, id)
+	}
+
 	fullPath := fmt.Sprintf("%v/%v", r.baseURL, filePath)
 	fmt.Println(fullPath)
 	b, err := r.readURL(filePath)
@@ -76,16 +91,16 @@ func (r *GitRepository) LoadManifest(ctx context.Context, packageName string, id
 }
 
 func (r *GitRepository) readURL(url string) ([]byte, error) {
-	// Adds support for sub directory
-	cloneUrl := r.baseURL
-	if strings.Contains(r.baseURL, ".git//") {
-		newURL := strings.Split(r.baseURL, ".git//")
-		cloneUrl = newURL[0] + ".git"
-		url = newURL[1] + "/" + url
-	}
+	//// Adds support for sub directory
+	//cloneUrl := r.baseURL
+	//if strings.Contains(r.baseURL, ".git//") {
+	//	newURL := strings.Split(r.baseURL, ".git//")
+	//	cloneUrl = newURL[0] + ".git"
+	//	url = newURL[1] + "/" + url
+	//}
 	fs := memfs.New()
 	_, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
-		URL: cloneUrl,
+		URL: r.baseURL,
 	})
 	if err != nil {
 		return nil, err
@@ -102,4 +117,21 @@ func (r *GitRepository) readURL(url string) ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+func parseGitUrl(url string) (string, string){
+	// checks for git:: suffix
+	var subdir string
+	if strings.HasPrefix(url, "git::") {
+		url = strings.TrimPrefix(url, "git::")
+	}
+
+	// checks for subdirectories
+	if strings.Contains(url, ".git//") {
+		newURL := strings.Split(url, ".git//")
+		url = newURL[0] + ".git"
+		subdir = newURL[1]
+	}
+
+	return url, subdir
 }
