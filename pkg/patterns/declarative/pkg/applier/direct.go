@@ -2,14 +2,15 @@ package applier
 
 import (
 	"context"
+	"os"
+	"strings"
+
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdDelete "k8s.io/kubectl/pkg/cmd/delete"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"os"
-	"strings"
 )
 
 type DirectApplier struct {
@@ -55,4 +56,3 @@ func (d *DirectApplier) Apply(ctx context.Context,
 
 	return applyOpts.Run()
 }
-

@@ -2,15 +2,17 @@ package utils
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"strings"
+
+	"github.com/pkg/errors"
+
+	"net"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"k8s.io/klog"
-	"net"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -28,7 +30,6 @@ func getCoreDNSService(ctx context.Context, c client.Client) (*corev1.Service, e
 
 	return kubernetesService, err
 }
-
 
 // FindDNSClusterIP tries to find the Cluster IP to be used by the DNS service
 // It is usually the 10th address to the Kubernetes Service Cluster IP
