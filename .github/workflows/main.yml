@@ -1,0 +1,34 @@
+name: CI
+
+'on':
+  - push
+  - pull_request
+
+env:
+  GOPROXY: https://proxy.golang.org
+  GOPATH: ${{ github.workspace }}/go
+
+jobs:
+  verify-goimports:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.14
+          stable: true
+
+      - run: |
+          echo "::set-env name=GOPATH::${HOME}/go"
+
+      - uses: actions/checkout@v2
+
+      - name: verify goimports
+        run: |
+          files=$(go run golang.org/x/tools/cmd/goimports -format-only -l .)
+          # Sadly goimports doesn't use exit codes
+          if [[ -n "${files}" ]]; then
+            echo "::error ::goimports should be run on these files:"
+            echo "${files}"
+            exit 1
+          fi
