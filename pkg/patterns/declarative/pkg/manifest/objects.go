@@ -339,6 +339,14 @@ func ParseObjects(ctx context.Context, manifest string) (*Objects, error) {
 			// We don't reuse the manifest because it's probably yaml, and we want to use json
 			// json = yaml
 			o, err := NewObject(out)
+			annotations := o.object.GetAnnotations()
+			if ignoreAnnotation, ok := annotations["addons.operators.ignore"]; ok {
+				if ignoreAnnotation == "true" {
+					log.WithValues("object", o.Kind).WithValues("name", o.Name).Info("Found ignore annotation on object, " +
+						"skipping object")
+					continue
+				}
+			}
 			if err != nil {
 				return nil, err
 			}
