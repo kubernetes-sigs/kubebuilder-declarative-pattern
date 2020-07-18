@@ -3,10 +3,9 @@ package loaders
 import (
 	"context"
 	"fmt"
-	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/storage/memory"
 	"io/ioutil"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 	"strings"
@@ -22,11 +21,8 @@ var _ Repository = &GitRepository{}
 
 // NewGitRepository constructs an GitRepository
 func NewGitRepository(baseurl string) *GitRepository{
-	baseurl, subDir := parseGitURL(baseurl)
-	return &GitRepository{
-		baseURL: baseurl,
-		subDir: subDir,
-	}
+	repo := parseGitURL(baseurl)
+	return &repo
 }
 
 func (r *GitRepository) LoadChannel(ctx context.Context,  name string) (*Channel, error){
@@ -91,22 +87,20 @@ func (r *GitRepository) LoadManifest(ctx context.Context, packageName string, id
 }
 
 func (r *GitRepository) readURL(url string) ([]byte, error) {
-	//// Adds support for sub directory
-	//cloneUrl := r.baseURL
-	//if strings.Contains(r.baseURL, ".git//") {
-	//	newURL := strings.Split(r.baseURL, ".git//")
-	//	cloneUrl = newURL[0] + ".git"
-	//	url = newURL[1] + "/" + url
-	//}
-	fs := memfs.New()
-	_, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
-		URL: r.baseURL,
+	//fs := memfs.New()
+	//_, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
+	//	//	URL: r.baseURL,
+	//	//})
+	repoDir := "/tmp/repo"
+	fmt.Println(r.baseURL)
+	_, err := git.PlainClone(repoDir, false, &git.CloneOptions{
+		URL:               r.baseURL,
 	})
-	if err != nil {
+	if err != nil && err != git.ErrRepositoryAlreadyExists {
 		return nil, err
 	}
 
-	file, err := fs.Open(url)
+	file, err := os.Open(repoDir + "/" + url)
 	if err != nil{
 		return nil, err
 	}
@@ -119,7 +113,7 @@ func (r *GitRepository) readURL(url string) ([]byte, error) {
 	return b, nil
 }
 
-func parseGitURL(url string) (string, string){
+func parseGitURL(url string) GitRepository{
 	// checks for git:: suffix
 	var subdir string
 	if strings.HasPrefix(url, "git::") {
@@ -133,5 +127,8 @@ func parseGitURL(url string) (string, string){
 		subdir = newURL[1]
 	}
 
-	return url, subdir
+	return GitRepository{
+		baseURL: url,
+		subDir:  subdir,
+	}
 }
