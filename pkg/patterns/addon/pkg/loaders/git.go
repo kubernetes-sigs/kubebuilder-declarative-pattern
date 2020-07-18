@@ -87,10 +87,6 @@ func (r *GitRepository) LoadManifest(ctx context.Context, packageName string, id
 }
 
 func (r *GitRepository) readURL(url string) ([]byte, error) {
-	//fs := memfs.New()
-	//_, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
-	//	//	URL: r.baseURL,
-	//	//})
 	repoDir := "/tmp/repo"
 	fmt.Println(r.baseURL)
 	_, err := git.PlainClone(repoDir, false, &git.CloneOptions{
