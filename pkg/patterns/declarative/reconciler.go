@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/dynamic"
 	"path/filepath"
 	"strings"
 
@@ -184,6 +186,40 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+
+	// dynamic config
+	dynamicClientset, err := dynamic.NewForConfig(r.config)
+	if err != nil {
+		log.Error(err,"Unable to create dynamic client")
+		return reconcile.Result{}, err
+	}
+
+	newItems := []*manifest.Object{}
+	for _, obj := range objects.Items {
+
+		// Uses unsafe method?? Is it safe?
+		getOptions := metav1.GetOptions{}
+		gvk, _ := meta.UnsafeGuessKindToResource(obj.GroupVersionKind())
+		ns := obj.UnstructuredObject().GetNamespace()
+		unstruct, err := dynamicClientset.Resource(gvk).Namespace(ns).Get(context.Background(),
+			obj.Name, getOptions)
+		if err != nil{
+			log.WithValues("name", obj.Name).Error(err, "Unable to get resource")
+		}
+		if unstruct != nil {
+			annotations := unstruct.GetAnnotations()
+			if ignoreAnnotation, ok := annotations["addons.operators.ignore"]; ok {
+				if ignoreAnnotation == "true" {
+					log.WithValues("kind", obj.Kind).WithValues("name", obj.Name).Info("Found ignore annotation on object, " +
+						"skipping object")
+					continue
+				}
+			}
+		}
+		newItems = append(newItems, obj)
+	}
+	objects.Items = newItems
+
 	var manifestStr string
 
 	m, err := objects.JSONManifest()
