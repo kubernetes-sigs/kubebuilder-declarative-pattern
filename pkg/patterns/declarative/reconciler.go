@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -34,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	recorder "k8s.io/client-go/tools/record"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -265,6 +267,26 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if err := r.kubectl.Apply(ctx, ns, manifestStr, r.options.validate, extraArgs...); err != nil {
 		log.Error(err, "applying manifest")
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
+	}
+
+	statusMap := make(map[string]bool)
+	for _, object := range objects.Items {
+		res, err := status.Compute(object.UnstructuredObject())
+		if err != nil {
+			// Do we return errors or just skipp
+		}
+		if res != nil {
+			log.Info("%v %v has status %v, message: %v\n", object.Kind, object.Name, res.Status, res.Message)
+			statusMap[res.Status.String()] = true
+		}
+	}
+
+	_, ok := instance.(addonsv1alpha1.CommonObject)
+	if ok {
+		// Status just has a Healthy bool field
+		//status := addonsv1alpha1.CommonStatus{}
+		// Just printing aggregated status for now
+		fmt.Println(aggregateStatus(statusMap))
 	}
 
 	if r.options.sink != nil {
@@ -553,8 +575,7 @@ func (r *Reconciler) CollectMetrics() bool {
 	return r.options.metrics
 }
 
-func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
-	Unstructured, error) {
+func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Unstructured, error) {
 	getOptions := metav1.GetOptions{}
 	gvk := obj.GroupVersionKind()
 
@@ -569,4 +590,20 @@ func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
 		return nil, fmt.Errorf("unable to get mapping for resource: %v", err)
 	}
 	return unstruct, nil
+}
+
+func aggregateStatus(m map[string]bool) string {
+	inProgress := m["InProgress"]
+	terminating := m["Terminating"]
+
+	failed := m["Failed"]
+
+	if inProgress || terminating {
+		return "InProgress"
+	}
+
+	if failed {
+		return "Failed"
+	}
+	return "Current"
 }
