@@ -88,4 +88,3 @@ func (c *ExecKubectl) Apply(ctx context.Context, namespace string, manifest stri
 
 	return nil
 }
-

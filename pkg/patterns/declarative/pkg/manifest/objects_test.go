@@ -2,16 +2,17 @@ package manifest
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func Test_Object(t *testing.T) {
-	tests := []struct{
-		name string
-		inputManifest string
+	tests := []struct {
+		name           string
+		inputManifest  string
 		expectedObject []*Object
-		expectedBlobs []string
+		expectedBlobs  []string
 	}{
 		{
 			name: "simple applied manifest",
@@ -21,14 +22,14 @@ kind: ServiceAccount
 metadata:
   name: foo-operator
   namespace: kube-system`,
-  			expectedObject: []*Object{
+			expectedObject: []*Object{
 				{
 					object: &unstructured.Unstructured{
 						Object: map[string]interface{}{
 							"apiVersion": "v1",
-							"kind": "ServiceAccount",
+							"kind":       "ServiceAccount",
 							"metadata": map[string]interface{}{
-								"name": "foo-operator",
+								"name":      "foo-operator",
 								"namespace": "kube-system",
 							},
 						},
@@ -49,8 +50,8 @@ configMapGenerator:
 	files:
 	- Corefile`,
 			expectedObject: []*Object{},
-			expectedBlobs:[]string{
-`resources:
+			expectedBlobs: []string{
+				`resources:
 	- services.yaml
 	- deployment.yaml
 configMapGenerator:
@@ -83,17 +84,17 @@ configMapGenerator:
 					object: &unstructured.Unstructured{
 						Object: map[string]interface{}{
 							"apiVersion": "v1",
-							"kind": "ServiceAccount",
+							"kind":       "ServiceAccount",
 							"metadata": map[string]interface{}{
-								"name": "foo-operator",
+								"name":      "foo-operator",
 								"namespace": "kube-system",
 							},
 						},
 					},
 				},
 			},
-			expectedBlobs:[]string{
-`resources:
+			expectedBlobs: []string{
+				`resources:
 	- services.yaml
 	- deployment.yaml
 configMapGenerator:
@@ -150,6 +151,3 @@ configMapGenerator:
 		})
 	}
 }
-
-
-

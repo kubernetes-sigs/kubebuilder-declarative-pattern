@@ -18,7 +18,11 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+CI_ROOT=$(dirname "${BASH_SOURCE}")
 REPO_ROOT=$(dirname "${BASH_SOURCE}")/../..
+
+source "${CI_ROOT}/fetch_kubebuilder_release_bin.sh"
+
 cd "${REPO_ROOT}"
 
 export GO111MODULE=on

@@ -283,14 +283,14 @@ func verifyOrTimeout(operators []AddonTest, duration time.Duration, desc string,
 }
 
 func verifyExistRole(clientset kubernetes.Interface, namespace string, role string) error {
-	if _, err := clientset.RbacV1().Roles(namespace).Get(context.TODO(),role, metav1.GetOptions{}); err != nil {
+	if _, err := clientset.RbacV1().Roles(namespace).Get(context.TODO(), role, metav1.GetOptions{}); err != nil {
 		return err
 	}
 	return nil
 }
 
 func verifyExistClusterRole(clientset kubernetes.Interface, name string) error {
-	if _, err := clientset.RbacV1().ClusterRoles().Get(context.TODO(),name, metav1.GetOptions{}); err != nil {
+	if _, err := clientset.RbacV1().ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
 		return err
 	}
 
@@ -298,7 +298,7 @@ func verifyExistClusterRole(clientset kubernetes.Interface, name string) error {
 }
 
 func verifyExistClusterRoleBinding(clientset kubernetes.Interface, name string) error {
-	if _, err := clientset.RbacV1().ClusterRoleBindings().Get(context.TODO(),name, metav1.GetOptions{}); err != nil {
+	if _, err := clientset.RbacV1().ClusterRoleBindings().Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
 		return err
 	}
 
@@ -317,7 +317,7 @@ func verifySteps(clientset kubernetes.Interface, steps []verifyStep) error {
 type PodSet []corev1.Pod
 
 func Pods(h TestHarness, namespace string) PodSet {
-	pods, err := h.Clientset().CoreV1().Pods(namespace).List(context.TODO(),metav1.ListOptions{})
+	pods, err := h.Clientset().CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		h.Fatalf("error listing pods: %v", err)
 	}

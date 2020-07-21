@@ -21,11 +21,11 @@ func (FakeCache) List(ctx context.Context, list runtime.Object, opts ...client.L
 	panic("implement me")
 }
 
-func (FakeCache) GetInformer(ctx context.Context,obj runtime.Object) (toolscache.Informer, error) {
+func (FakeCache) GetInformer(ctx context.Context, obj runtime.Object) (toolscache.Informer, error) {
 	panic("implement me")
 }
 
-func (FakeCache) GetInformerForKind(gctx context.Context,vk schema.GroupVersionKind) (toolscache.Informer, error) {
+func (FakeCache) GetInformerForKind(gctx context.Context, vk schema.GroupVersionKind) (toolscache.Informer, error) {
 	panic("implement me")
 }
 
@@ -37,6 +37,6 @@ func (FakeCache) WaitForCacheSync(stop <-chan struct{}) bool {
 	panic("implement me")
 }
 
-func (FakeCache) IndexField(ctx context.Context,obj runtime.Object, field string, extractValue client.IndexerFunc) error {
+func (FakeCache) IndexField(ctx context.Context, obj runtime.Object, field string, extractValue client.IndexerFunc) error {
 	panic("implement me")
 }

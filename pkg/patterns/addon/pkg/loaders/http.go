@@ -64,7 +64,7 @@ func (r *HTTPRepository) LoadChannel(ctx context.Context, name string) (*Channel
 	return channel, nil
 }
 
-func (r *HTTPRepository) LoadManifest(ctx context.Context, packageName string, id string) (map[string] string, error) {
+func (r *HTTPRepository) LoadManifest(ctx context.Context, packageName string, id string) (map[string]string, error) {
 	if !allowedManifestId(packageName) {
 		return nil, fmt.Errorf("invalid package name: %q", id)
 	}
@@ -81,7 +81,7 @@ func (r *HTTPRepository) LoadManifest(ctx context.Context, packageName string, i
 	if err != nil {
 		return nil, fmt.Errorf("error reading package %s: %v", p, err)
 	}
-	result := map[string]string {
+	result := map[string]string{
 		p: string(b),
 	}
 	return result, nil
