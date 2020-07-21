@@ -20,7 +20,7 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
@@ -39,7 +39,6 @@ var Options struct {
 
 type reconcilerParams struct {
 	rawManifestOperations []ManifestOperation
-	groupVersionKind      *schema.GroupVersionKind
 	objectTransformations []ObjectTransform
 	manifestController    ManifestController
 
@@ -47,6 +46,7 @@ type reconcilerParams struct {
 	preserveNamespace bool
 	kustomize         bool
 	validate          bool
+	metrics           bool
 
 	sink       Sink
 	ownerFn    OwnerSelector
@@ -88,15 +88,6 @@ func WithRawManifestOperation(operations ...ManifestOperation) reconcilerOption 
 func WithObjectTransform(operations ...ObjectTransform) reconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.objectTransformations = append(p.objectTransformations, operations...)
-		return p
-	}
-}
-
-// WithGroupVersionKind specifies the GroupVersionKind of the managed custom resource
-// This option is required.
-func WithGroupVersionKind(gvk schema.GroupVersionKind) reconcilerOption {
-	return func(p reconcilerParams) reconcilerParams {
-		p.groupVersionKind = &gvk
 		return p
 	}
 }
@@ -178,6 +169,50 @@ func WithManagedApplication(labelMaker LabelMaker) reconcilerOption {
 func WithApplyValidation() reconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.validate = true
+		return p
+	}
+}
+
+// WithReconcileMetrics enables metrics of declarative reconciler.
+// If metricsDuration is positive, metrics will be removed from
+// Prometheus registry when metricsDuration times reconciliation
+// has happened since k8s object related to that metrics is deleted
+// and that k8s object hasn't been handled in those reconciliations.
+// If metricsDuration is less than or equal to 0, metrics won't be
+// removed.
+//
+// Argument ot specifies which ObjectTracker manages metrics of k8s
+// objects. This enables specifying different metricsDuration for
+// each set of k8s objects managed by different controllers, but
+// all metrics are registered against manager's Prometheus registry.
+// If ot is nil, package-scoped internal variable is used.
+//
+// If WithReconcileMetrics is called multiple times with same ot
+// argument, largest metricsDuration is set against that ot.
+func WithReconcileMetrics(metricsDuration int, ot *ObjectTracker) reconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		var err *error
+
+		p.metrics = true
+		metricsRegisterOnce.Do(func() {
+			for _, m := range metricsList {
+				*err = metrics.Registry.Register(m)
+				if *err != nil {
+					break
+				}
+			}
+		})
+
+		if *err != nil {
+			panic(*err)
+		}
+
+		if ot == nil {
+			globalObjectTracker.setMetricsDurationInternal(metricsDuration)
+		} else {
+			ot.setMetricsDurationInternal(metricsDuration)
+		}
+
 		return p
 	}
 }

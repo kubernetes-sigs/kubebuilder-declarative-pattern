@@ -18,12 +18,14 @@ package declarative
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
@@ -45,6 +47,8 @@ type Reconciler struct {
 	client    client.Client
 	config    *rest.Config
 	kubectl   kubectlClient
+
+	rm reconcileMetrics
 
 	mgr manager.Manager
 
@@ -70,23 +74,37 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 	r.client = mgr.GetClient()
 	r.config = mgr.GetConfig()
 	r.mgr = mgr
+	globalObjectTracker.mgr = mgr
 
 	if err := r.applyOptions(opts...); err != nil {
 		return err
 	}
 
-	return r.validateOptions()
+	if err := r.validateOptions(); err != nil {
+		return err
+	}
+
+	if r.CollectMetrics() {
+		if gvk, err := apiutil.GVKForObject(prototype, r.mgr.GetScheme()); err != nil {
+			return err
+		} else {
+			reconcileMetricsFor(gvk)
+		}
+	}
+
+	return nil
 }
 
 // +rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(request reconcile.Request) (result reconcile.Result, err error) {
 	ctx := context.TODO()
 	log := log.Log
+	defer r.collectMetrics(request, result, err)
 
 	// Fetch the object
 	instance := r.prototype.DeepCopyObject().(DeclarativeObject)
-	if err := r.client.Get(ctx, request.NamespacedName, instance); err != nil {
-		if errors.IsNotFound(err) {
+	if err = r.client.Get(ctx, request.NamespacedName, instance); err != nil {
+		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
@@ -97,7 +115,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	}
 
 	if r.options.status != nil {
-		if err := r.options.status.Preflight(ctx, instance); err != nil {
+		if err = r.options.status.Preflight(ctx, instance); err != nil {
 			log.Error(err, "preflight check failed, not reconciling")
 			return reconcile.Result{}, err
 		}
@@ -130,6 +148,13 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}()
 
+	objects, err = parseListKind(objects)
+
+	if err != nil {
+		log.Error(err, "Parsing list kind")
+		return reconcile.Result{}, fmt.Errorf("error parsing list kind: %v", err)
+	}
+
 	err = r.injectOwnerRef(ctx, instance, objects)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -157,6 +182,21 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	ns := ""
 	if !r.options.preserveNamespace {
 		ns = name.Namespace
+	}
+
+	if r.CollectMetrics() {
+		if errs := globalObjectTracker.addIfNotPresent(objects.Items, ns); errs != nil {
+			for _, err := range errs.Errors() {
+				if errors.Is(err, noRESTMapperErr{}) {
+					log.WithName("declarative_reconciler").Error(err, "failed to get corresponding RESTMapper from API server")
+				} else if errors.Is(err, emptyNamespaceErr{}) {
+					// There should be no route to this path
+					log.WithName("declarative_reconciler").Info("Scoped object, but no namespace specified")
+				} else {
+					log.WithName("declarative_reconciler").Error(err, "Unknown error")
+				}
+			}
+		}
 	}
 
 	if err := r.kubectl.Apply(ctx, ns, manifestStr, r.options.validate, extraArgs...); err != nil {
@@ -391,6 +431,13 @@ func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObj
 	return nil
 }
 
+func (r *Reconciler) collectMetrics(request reconcile.Request, result reconcile.Result, err error) {
+	if r.options.metrics {
+		r.rm.reconcileWith(request)
+		r.rm.reconcileFailedWith(request, result, err)
+	}
+}
+
 // IsKustomizeOptionUsed checks if the option for Kustomize build is used for creating manifests
 func (r *Reconciler) IsKustomizeOptionUsed() bool {
 	if r.options.kustomize {
@@ -402,4 +449,43 @@ func (r *Reconciler) IsKustomizeOptionUsed() bool {
 // SetSink provides a Sink that will be notified for all deployments
 func (r *Reconciler) SetSink(sink Sink) {
 	r.options.sink = sink
+}
+
+func parseListKind(infos *manifest.Objects) (*manifest.Objects, error) {
+	var out []*manifest.Object
+
+	for _, item := range infos.Items {
+		if item.Group == "v1" && item.Kind == "List" {
+			itemObj := item.UnstructuredObject()
+
+			err := itemObj.EachListItem(func(obj runtime.Object) error {
+				itemUnstructured := obj.(*unstructured.Unstructured)
+				newObj, err := manifest.NewObject(itemUnstructured)
+				if err != nil {
+					return err
+				}
+				out = append(out, newObj)
+				return nil
+			})
+
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			out = append(out, item)
+		}
+	}
+
+	ret := manifest.Objects{
+		Items: out,
+		Blobs: infos.Blobs,
+		Path:  infos.Path,
+	}
+
+	return &ret, nil
+}
+
+// CollectMetrics determines whether metrics of declarative reconciler is enabled
+func (r *Reconciler) CollectMetrics() bool {
+	return r.options.metrics
 }
