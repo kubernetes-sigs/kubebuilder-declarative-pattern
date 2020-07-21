@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -129,6 +131,13 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 			}
 		}
 	}()
+
+	objects, err = parseListKind(objects)
+
+	if err != nil {
+		log.Error(err, "Parsing list kind")
+		return reconcile.Result{}, fmt.Errorf("error parsing list kind: %v", err)
+	}
 
 	err = r.injectOwnerRef(ctx, instance, objects)
 	if err != nil {
@@ -402,4 +411,38 @@ func (r *Reconciler) IsKustomizeOptionUsed() bool {
 // SetSink provides a Sink that will be notified for all deployments
 func (r *Reconciler) SetSink(sink Sink) {
 	r.options.sink = sink
+}
+
+func parseListKind(infos *manifest.Objects) (*manifest.Objects, error) {
+	var out []*manifest.Object
+
+	for _, item := range infos.Items {
+		if item.Group == "v1" && item.Kind == "List" {
+			itemObj := item.UnstructuredObject()
+
+			err := itemObj.EachListItem(func(obj runtime.Object) error {
+				itemUnstructured := obj.(*unstructured.Unstructured)
+				newObj, err := manifest.NewObject(itemUnstructured)
+				if err != nil {
+					return err
+				}
+				out = append(out, newObj)
+				return nil
+			})
+
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			out = append(out, item)
+		}
+	}
+
+	ret := manifest.Objects{
+		Items: out,
+		Blobs: infos.Blobs,
+		Path:  infos.Path,
+	}
+
+	return &ret, nil
 }
