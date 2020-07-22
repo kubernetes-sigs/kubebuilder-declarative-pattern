@@ -19,6 +19,7 @@ package status
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -46,12 +47,22 @@ type aggregator struct {
 func (a *aggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject, objs *manifest.Objects) error {
 	log := log.Log
 
-	instance, ok := src.(addonv1alpha1.CommonObject)
-	if !ok {
+	unstruct, ok := src.(*unstructured.Unstructured)
+	instance, commonOkay := src.(addonv1alpha1.CommonObject)
+
+	unstructStatus := make(map[string]interface{})
+	var status addonv1alpha1.CommonStatus
+
+	statusHealthy := true
+	statusErrors := []string{}
+
+	if ok{
+		unstructStatus["Healthy"] = true
+	} else if commonOkay {
+		status = addonv1alpha1.CommonStatus{Healthy: true}
+	} else {
 		return fmt.Errorf("object %T was not an addonv1alpha1.CommonObject", src)
 	}
-
-	status := addonv1alpha1.CommonStatus{Healthy: true}
 
 	for _, o := range objs.Items {
 		gk := o.Group + "/" + o.Kind
@@ -59,37 +70,67 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 		var err error
 		switch gk {
 		case "/Service":
-			healthy, err = a.service(ctx, instance, o.Name)
+			healthy, err = a.service(ctx, src, o.Name)
 		case "extensions/Deployment", "apps/Deployment":
-			healthy, err = a.deployment(ctx, instance, o.Name)
+			healthy, err = a.deployment(ctx, src, o.Name)
 		default:
 			log.WithValues("type", gk).V(2).Info("type not implemented for status aggregation, skipping")
 		}
 
-		status.Healthy = status.Healthy && healthy
+
+		statusHealthy = statusHealthy && healthy
 		if err != nil {
-			status.Errors = append(status.Errors, fmt.Sprintf("%v", err))
+			statusErrors = append(statusErrors, fmt.Sprintf("%v", err))
 		}
 	}
 
 	log.WithValues("object", src).WithValues("status", status).V(2).Info("built status")
 
-	if !reflect.DeepEqual(status, instance.GetCommonStatus()) {
-		instance.SetCommonStatus(status)
+	if commonOkay {
+		status.Errors = statusErrors
+		status.Healthy = statusHealthy
 
-		log.WithValues("name", instance.GetName()).WithValues("status", status).Info("updating status")
+		if !reflect.DeepEqual(status, instance.GetCommonStatus()) {
+			instance.SetCommonStatus(status)
 
-		err := a.client.Update(ctx, instance)
+			log.WithValues("name", instance.GetName()).WithValues("status", status).Info("updating status")
+
+			err := a.client.Update(ctx, instance)
+			if err != nil {
+				log.Error(err, "updating status")
+				return err
+			}
+		}
+	} else {
+		unstructStatus["Healthy"] = true
+		unstructStatus["Errors"] = statusErrors
+		s, _, err := unstructured.NestedMap(unstruct.Object, "status")
 		if err != nil {
-			log.Error(err, "updating status")
-			return err
+			log.Error(err, "getting status")
+			return fmt.Errorf("unable to get status from unstructured: %v", err)
+		}
+		if !reflect.DeepEqual(status, s) {
+			err = unstructured.SetNestedField(unstruct.Object, statusHealthy, "status", "healthy")
+			err = unstructured.SetNestedStringSlice(unstruct.Object, statusErrors, "status", "errors")
+			if err != nil {
+				log.Error(err, "updating status")
+				return fmt.Errorf("unable to set status in unstructured", err)
+			}
+
+			log.WithValues("name", unstruct.GetName()).WithValues("status", status).Info("updating status")
+
+			err = a.client.Update(ctx, unstruct)
+			if err != nil {
+				log.Error(err, "updating status")
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-func (a *aggregator) deployment(ctx context.Context, src addonv1alpha1.CommonObject, name string) (bool, error) {
+func (a *aggregator) deployment(ctx context.Context, src declarative.DeclarativeObject, name string) (bool, error) {
 	key := client.ObjectKey{Namespace: src.GetNamespace(), Name: name}
 	dep := &appsv1.Deployment{}
 
@@ -106,7 +147,7 @@ func (a *aggregator) deployment(ctx context.Context, src addonv1alpha1.CommonObj
 	return false, fmt.Errorf("deployment (%s) does not meet condition: %s", key, successfulDeployment)
 }
 
-func (a *aggregator) service(ctx context.Context, src addonv1alpha1.CommonObject, name string) (bool, error) {
+func (a *aggregator) service(ctx context.Context, src declarative.DeclarativeObject, name string) (bool, error) {
 	key := client.ObjectKey{Namespace: src.GetNamespace(), Name: name}
 	svc := &corev1.Service{}
 	err := a.client.Get(ctx, key, svc)
