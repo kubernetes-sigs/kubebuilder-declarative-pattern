@@ -1,0 +1,40 @@
+options:
+  machineType: 'N1_HIGHCPU_8'
+
+steps:
+
+# Build a docker image that contains kind and kubectl and docker
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build', '-t', 'kind-image', 'ci/cloudbuild/' ]
+
+# Run kind to create a cluster
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - run
+  - --entrypoint=/bin/bash
+  - --net=host
+  - --volume=/var/run/docker.sock:/var/run/docker.sock
+  - --volume=/workspace:/workspace
+  - kind-image
+  - -c
+  - |
+      PATH="$${PATH}:/bin"
+      export KUBECONFIG=/workspace/kubeconfig
+      kind create cluster
+      kind get clusters
+      kubectl get nodes
+
+# We must run with host network, so we can reach the apiserver kind creates
+# (which listens on 127.0.0.1 in the host network)
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - run
+  - --entrypoint=/bin/bash
+  - --net=host
+  - --volume=/workspace:/workspace
+  - kind-image
+  - -c
+  - |
+      PATH="$${PATH}:/bin"
+      export KUBECONFIG=/workspace/kubeconfig
+      kubectl get nodes
