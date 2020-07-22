@@ -298,6 +298,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	addonObject.SetCommonStatus(addonsv1alpha1.CommonStatus{Phase: aggregateStatus(statusMap)})
 	log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
 
+	//r.client.Status().Update(ctx, instance)
 	if r.options.sink != nil {
 		if err := r.options.sink.Notify(ctx, instance, objects); err != nil {
 			log.Error(err, "notifying sink")
