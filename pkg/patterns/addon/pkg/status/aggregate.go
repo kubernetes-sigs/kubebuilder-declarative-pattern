@@ -95,7 +95,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 
 			log.WithValues("name", instance.GetName()).WithValues("status", status).Info("updating status")
 
-			err := a.client.Update(ctx, instance)
+			err := a.client.Status().Update(ctx, instance)
 			if err != nil {
 				log.Error(err, "updating status")
 				return err
@@ -104,7 +104,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 	} else {
 		unstructStatus["Healthy"] = true
 		unstructStatus["Errors"] = statusErrors
-		s, _, err := unstructured.NestedMap(unstruct.Object, "status")
+		s, _, err := unstructured.N
 		if err != nil {
 			log.Error(err, "getting status")
 			return fmt.Errorf("unable to get status from unstructured: %v", err)
@@ -124,7 +124,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 
 			log.WithValues("name", unstruct.GetName()).WithValues("status", status).Info("updating status")
 
-			err = a.client.Update(ctx, unstruct)
+			a.client.Status().Update(ctx, instance)
 			if err != nil {
 				log.Error(err, "updating status")
 				return err

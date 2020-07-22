@@ -21,14 +21,16 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 
-	"k8s.io/client-go/dynamic"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	"k8s.io/client-go/dynamic"
+	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,8 +58,7 @@ type Reconciler struct {
 	kubectl   kubectlClient
 
 	rm reconcileMetrics
-
-	mgr manager.Manager
+	mgr           manager.Manager
 
 	// recorder is the EventRecorder for creating k8s events
 	recorder      recorder.EventRecorder
@@ -269,25 +270,33 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
 	}
 
-	statusMap := make(map[string]bool)
+	statusMap := make(map[status.Status]bool)
 	for _, object := range objects.Items {
-		res, err := status.Compute(object.UnstructuredObject())
+
+		unstruct, err := getObjectFromCluster(object, r)
 		if err != nil {
-			// Do we return errors or just skipp
+			return reconcile.Result{}, err
+		}
+
+		res, err := status.Compute(unstruct)
+		if err != nil {
+			log.WithValues("unstuctured", unstruct).Error(err, "Unable to get status of unstructured")
+			statusMap[status.NotFoundStatus] = true
 		}
 		if res != nil {
-			log.Info("%v %v has status %v, message: %v\n", object.Kind, object.Name, res.Status, res.Message)
-			statusMap[res.Status.String()] = true
+			log.WithValues("kind", object.Kind).WithValues("name", object.Name).WithValues("status", res.Status).WithValues(
+				"message", res.Message).Info("Got status of resource:")
+			statusMap[res.Status] = true
 		}
 	}
 
-	_, ok := instance.(addonsv1alpha1.CommonObject)
-	if ok {
-		// Status just has a Healthy bool field
-		//status := addonsv1alpha1.CommonStatus{}
-		// Just printing aggregated status for now
-		fmt.Println(aggregateStatus(statusMap))
+	addonObject, ok := instance.(addonsv1alpha1.CommonObject)
+	if !ok {
+		return reconcile.Result{}, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject", instance)
 	}
+	status := addonsv1alpha1.CommonStatus{Phase: aggregateStatus(statusMap)}
+	addonObject.SetCommonStatus(addonsv1alpha1.CommonStatus{Phase: aggregateStatus(statusMap)})
+	log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
 
 	if r.options.sink != nil {
 		if err := r.options.sink.Notify(ctx, instance, objects); err != nil {
@@ -592,7 +601,7 @@ func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Un
 	return unstruct, nil
 }
 
-func aggregateStatus(m map[string]bool) string {
+func aggregateStatus(m map[status.Status]bool) string {
 	inProgress := m["InProgress"]
 	terminating := m["Terminating"]
 

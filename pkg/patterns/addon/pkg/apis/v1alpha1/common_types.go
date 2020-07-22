@@ -49,6 +49,7 @@ type CommonSpec struct {
 type CommonStatus struct {
 	Healthy bool     `json:"healthy"`
 	Errors  []string `json:"errors,omitempty"`
+	Phase string `json:"phase,omitempty"`
 }
 
 // Patchable is a trait for addon CRDs that expose a raw set of Patches to be
