@@ -340,12 +340,10 @@ func ParseObjects(ctx context.Context, manifest string) (*Objects, error) {
 			// json = yaml
 			o, err := NewObject(out)
 			annotations := o.object.GetAnnotations()
-			if ignoreAnnotation, ok := annotations["addons.operators.ignore"]; ok {
-				if ignoreAnnotation == "true" {
+			if _, ok := annotations["addons.k8s.io/ignore"]; ok {
 					log.WithValues("object", o.Kind).WithValues("name", o.Name).Info("Found ignore annotation on object, " +
 						"skipping object")
 					continue
-				}
 			}
 			if err != nil {
 				return nil, err
