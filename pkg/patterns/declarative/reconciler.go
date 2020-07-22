@@ -56,8 +56,10 @@ type Reconciler struct {
 	mgr manager.Manager
 
 	// recorder is the EventRecorder for creating k8s events
-	recorder recorder.EventRecorder
+	recorder      recorder.EventRecorder
+	dynamicClient dynamic.Interface
 
+	restMapper meta.RESTMapper
 	options reconcilerParams
 }
 
@@ -86,7 +88,19 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 	r.mgr = mgr
 	globalObjectTracker.mgr = mgr
 
-	if err := r.applyOptions(opts...); err != nil {
+	d, err := dynamic.NewForConfig(r.config)
+	if err != nil {
+		return err
+	}
+	r.dynamicClient = d
+
+	restMapper, err := apiutil.NewDiscoveryRESTMapper(r.config)
+	if err != nil {
+		return err
+	}
+	r.restMapper = restMapper
+
+	if err = r.applyOptions(opts...); err != nil {
 		return err
 	}
 
@@ -187,33 +201,19 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		return reconcile.Result{}, err
 	}
 
-	// dynamic config
-	dynamicClientset, err := dynamic.NewForConfig(r.config)
-	if err != nil {
-		log.Error(err,"Unable to create dynamic client")
-		return reconcile.Result{}, err
-	}
-
-	newItems := []*manifest.Object{}
+	var newItems []*manifest.Object
 	for _, obj := range objects.Items {
 
-		// Uses unsafe method?? Is it safe?
-		getOptions := metav1.GetOptions{}
-		gvk, _ := meta.UnsafeGuessKindToResource(obj.GroupVersionKind())
-		ns := obj.UnstructuredObject().GetNamespace()
-		unstruct, err := dynamicClientset.Resource(gvk).Namespace(ns).Get(context.Background(),
-			obj.Name, getOptions)
-		if err != nil{
+		unstruct, err := getObjectFromCluster(obj, r)
+		if err != nil && !apierrors.IsNotFound(err) {
 			log.WithValues("name", obj.Name).Error(err, "Unable to get resource")
 		}
 		if unstruct != nil {
 			annotations := unstruct.GetAnnotations()
-			if ignoreAnnotation, ok := annotations["addons.operators.ignore"]; ok {
-				if ignoreAnnotation == "true" {
-					log.WithValues("kind", obj.Kind).WithValues("name", obj.Name).Info("Found ignore annotation on object, " +
-						"skipping object")
-					continue
-				}
+			if _, ok := annotations["addons.k8s.io/ignore"]; ok {
+				log.WithValues("kind", obj.Kind).WithValues("name", obj.Name).Info("Found ignore annotation on object, " +
+					"skipping object")
+				continue
 			}
 		}
 		newItems = append(newItems, obj)
@@ -549,4 +549,22 @@ func parseListKind(infos *manifest.Objects) (*manifest.Objects, error) {
 // CollectMetrics determines whether metrics of declarative reconciler is enabled
 func (r *Reconciler) CollectMetrics() bool {
 	return r.options.metrics
+}
+
+func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
+Unstructured, error) {
+	getOptions := metav1.GetOptions{}
+	gvk := obj.GroupVersionKind()
+
+	mapping, err := r.restMapper.RESTMapping(obj.GroupKind(), gvk.Version)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get resource: %v", err)
+	}
+	ns := obj.UnstructuredObject().GetNamespace()
+	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(),
+		obj.Name, getOptions)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get mapping for resource: %v", err)
+	}
+	return unstruct, nil
 }
