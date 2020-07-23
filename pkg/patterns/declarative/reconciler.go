@@ -21,8 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
