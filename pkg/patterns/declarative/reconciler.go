@@ -294,11 +294,19 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if !ok {
 		return reconcile.Result{}, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject", instance)
 	}
-	status := addonsv1alpha1.CommonStatus{Phase: aggregateStatus(statusMap)}
-	addonObject.SetCommonStatus(addonsv1alpha1.CommonStatus{Phase: aggregateStatus(statusMap)})
-	log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
+	status := addonObject.GetCommonStatus()
+	if status.Phase != aggregateStatus(statusMap) {
+		status.Phase = aggregateStatus(statusMap)
+		addonObject.SetCommonStatus(status)
+		log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
 
-	//r.client.Status().Update(ctx, instance)
+		err = r.client.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "error updating status")
+			return reconcile.Result{}, err
+		}
+	}
+
 	if r.options.sink != nil {
 		if err := r.options.sink.Notify(ctx, instance, objects); err != nil {
 			log.Error(err, "notifying sink")

@@ -104,7 +104,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 	} else {
 		unstructStatus["Healthy"] = true
 		unstructStatus["Errors"] = statusErrors
-		s, _, err := unstructured.N
+		s, _, err := unstructured.NestedMap(unstruct.Object, "status")
 		if err != nil {
 			log.Error(err, "getting status")
 			return fmt.Errorf("unable to get status from unstructured: %v", err)
