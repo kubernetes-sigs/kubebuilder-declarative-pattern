@@ -155,6 +155,7 @@ func (r *GuestbookReconciler) setupReconciler(mgr ctrl.Manager) error {
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
 		declarative.WithPreserveNamespace(),
 		declarative.WithApplyPrune(),
+		declarative.WithReconcileMetrics(0, nil),
 	)
 }
 
