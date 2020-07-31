@@ -112,13 +112,13 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 			err = unstructured.SetNestedField(unstruct.Object, statusHealthy, "status", "healthy")
 			if err != nil {
 				log.Error(err, "updating status")
-				return fmt.Errorf("unable to set status in unstructured", err)
+				return fmt.Errorf("unable to set status in unstructured: %v", err)
 			}
 
 			err = unstructured.SetNestedStringSlice(unstruct.Object, statusErrors, "status", "errors")
 			if err != nil {
 				log.Error(err, "updating status")
-				return fmt.Errorf("unable to set status in unstructured", err)
+				return fmt.Errorf("unable to set status in unstructured: %v", err)
 			}
 
 			log.WithValues("name", unstruct.GetName()).WithValues("status", status).Info("updating status")
