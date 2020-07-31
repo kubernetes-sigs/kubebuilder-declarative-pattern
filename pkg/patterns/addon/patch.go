@@ -35,14 +35,13 @@ import (
 func ApplyPatches(ctx context.Context, object declarative.DeclarativeObject, objects *manifest.Objects) error {
 	log := log.Log
 
-	var p addonsv1alpha1.Patchable
 	var patches []*unstructured.Unstructured
 
 	unstruct, ok := object.(*unstructured.Unstructured)
 	if ok {
 		patch, _, err := unstructured.NestedSlice(unstruct.Object, "spec", "patches")
 		if err != nil {
-			return fmt.Errorf("unable to get patches from unstruct: %v", err)
+			return fmt.Errorf("unable to get patches from unstructured: %v", err)
 		}
 
 		for _, p := range patch {
@@ -51,7 +50,7 @@ func ApplyPatches(ctx context.Context, object declarative.DeclarativeObject, obj
 				Object: m,
 			})
 		}
-	} else if p, ok = object.(addonsv1alpha1.Patchable); ok{
+	} else if p, ok := object.(addonsv1alpha1.Patchable); ok{
 		for _, p := range p.PatchSpec().Patches {
 			// Object is nil, Raw  is populated (with json, even when input was yaml)
 			r := bytes.NewReader(p.Raw)

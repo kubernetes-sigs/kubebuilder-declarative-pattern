@@ -47,22 +47,8 @@ type aggregator struct {
 func (a *aggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject, objs *manifest.Objects) error {
 	log := log.Log
 
-	unstruct, ok := src.(*unstructured.Unstructured)
-	instance, commonOkay := src.(addonv1alpha1.CommonObject)
-
-	unstructStatus := make(map[string]interface{})
-	var status addonv1alpha1.CommonStatus
-
 	statusHealthy := true
 	statusErrors := []string{}
-
-	if ok{
-		unstructStatus["Healthy"] = true
-	} else if commonOkay {
-		status = addonv1alpha1.CommonStatus{Healthy: true}
-	} else {
-		return fmt.Errorf("object %T was not an addonv1alpha1.CommonObject", src)
-	}
 
 	for _, o := range objs.Items {
 		gk := o.Group + "/" + o.Kind
@@ -84,7 +70,21 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 		}
 	}
 
-	log.WithValues("object", src).WithValues("status", status).V(2).Info("built status")
+	log.WithValues("object", src).WithValues("status", statusHealthy).V(2).Info("built status")
+
+	unstruct, ok := src.(*unstructured.Unstructured)
+	instance, commonOkay := src.(addonv1alpha1.CommonObject)
+
+	unstructStatus := make(map[string]interface{})
+	var status addonv1alpha1.CommonStatus
+
+	if ok{
+		unstructStatus["Healthy"] = true
+	} else if commonOkay {
+		status = addonv1alpha1.CommonStatus{Healthy: true}
+	} else {
+		return fmt.Errorf("object %T was not an addonv1alpha1.CommonObject", src)
+	}
 
 	if commonOkay {
 		status.Errors = statusErrors
@@ -111,6 +111,11 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 		}
 		if !reflect.DeepEqual(status, s) {
 			err = unstructured.SetNestedField(unstruct.Object, statusHealthy, "status", "healthy")
+			if err != nil {
+				log.Error(err, "updating status")
+				return fmt.Errorf("unable to set status in unstructured", err)
+			}
+
 			err = unstructured.SetNestedStringSlice(unstruct.Object, statusErrors, "status", "errors")
 			if err != nil {
 				log.Error(err, "updating status")
@@ -126,6 +131,8 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 			}
 		}
 	}
+
+
 
 	return nil
 }

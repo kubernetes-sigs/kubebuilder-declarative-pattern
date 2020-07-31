@@ -54,7 +54,10 @@ func TransformApplicationFromStatus(ctx context.Context, instance declarative.De
 		}
 		version = v
 
-		healthy, _, err = unstructured.NestedBool(unstruct.Object, "spec", "healthy")
+		healthy, _, err = unstructured.NestedBool(unstruct.Object, "status", "healthy")
+		if err != nil {
+			return fmt.Errorf("unable to get status from unstuctured: %v", err)
+		}
 	} else if addonObject, ok = instance.(addonsv1alpha1.CommonObject); ok {
 		version = addonObject.CommonSpec().Version
 		healthy = addonObject.GetCommonStatus().Healthy
