@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
+	recorder "k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -54,7 +54,7 @@ type Reconciler struct {
 	mgr manager.Manager
 
 	// recorder is the EventRecorder for creating k8s events
-	recorder record.EventRecorder
+	recorder recorder.EventRecorder
 
 	options reconcilerParams
 }
