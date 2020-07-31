@@ -20,10 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/client-go/dynamic"
 	"path/filepath"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/api/meta"
+
+	"k8s.io/client-go/dynamic"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,7 +62,7 @@ type Reconciler struct {
 	dynamicClient dynamic.Interface
 
 	restMapper meta.RESTMapper
-	options reconcilerParams
+	options    reconcilerParams
 }
 
 type kubectlClient interface {
@@ -552,7 +554,7 @@ func (r *Reconciler) CollectMetrics() bool {
 }
 
 func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
-Unstructured, error) {
+	Unstructured, error) {
 	getOptions := metav1.GetOptions{}
 	gvk := obj.GroupVersionKind()
 
