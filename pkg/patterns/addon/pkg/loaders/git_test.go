@@ -5,35 +5,35 @@ import (
 )
 
 func TestParseGitURL(t *testing.T) {
-	tests := []struct{
-		rawURL string
+	tests := []struct {
+		rawURL  string
 		baseURL string
-		subDir string
+		subDir  string
 	}{
 		{
-			rawURL: "https://github.com/testRepository.git",
+			rawURL:  "https://github.com/testRepository.git",
 			baseURL: "https://github.com/testRepository.git",
-			subDir: "",
+			subDir:  "",
 		},
 		{
-			rawURL: "git::https://github.com/testRepository.git",
+			rawURL:  "git::https://github.com/testRepository.git",
 			baseURL: "https://github.com/testRepository.git",
-			subDir: "",
+			subDir:  "",
 		},
 		{
-			rawURL: "git::https://github.com/testRepository.git//subDir/package",
+			rawURL:  "git::https://github.com/testRepository.git//subDir/package",
 			baseURL: "https://github.com/testRepository.git",
-			subDir: "subDir/package",
+			subDir:  "subDir/package",
 		},
 	}
 
 	for _, tt := range tests {
-		actualBase, actualSubDir := parseGitURL(tt.rawURL)
-		if actualBase != tt.baseURL {
+		gitRepo := parseGitURL(tt.rawURL)
+		if gitRepo.baseURL != tt.baseURL {
 			t.Errorf("Expected base url: %v, got %v", tt.baseURL, actualBase)
 		}
 
-		if actualSubDir != tt.subDir {
+		if gitRepo.subDir != tt.subDir {
 			t.Errorf("Expected base url: %v, got %v", tt.subDir, actualSubDir)
 		}
 	}
