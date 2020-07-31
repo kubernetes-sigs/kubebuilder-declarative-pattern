@@ -295,8 +295,8 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		return reconcile.Result{}, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject", instance)
 	}
 	status := addonObject.GetCommonStatus()
-	if status.Phase != aggregateStatus(statusMap) {
-		status.Phase = aggregateStatus(statusMap)
+	if status.Phase != string(aggregateStatus(statusMap)) {
+		status.Phase = string(aggregateStatus(statusMap))
 		addonObject.SetCommonStatus(status)
 		log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
 
@@ -593,7 +593,24 @@ func (r *Reconciler) CollectMetrics() bool {
 	return r.options.metrics
 }
 
-func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Unstructured, error) {
+func aggregateStatus(m map[status.Status]bool) status.Status {
+	inProgress := m[status.InProgressStatus]
+	terminating := m[status.TerminatingStatus]
+
+	failed := m[status.FailedStatus]
+
+	if inProgress || terminating {
+		return status.TerminatingStatus
+	}
+
+	if failed {
+		return status.FailedStatus
+	}
+	return status.CurrentStatus
+}
+
+func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
+	Unstructured, error) {
 	getOptions := metav1.GetOptions{}
 	gvk := obj.GroupVersionKind()
 
@@ -608,20 +625,4 @@ func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Un
 		return nil, fmt.Errorf("unable to get mapping for resource: %v", err)
 	}
 	return unstruct, nil
-}
-
-func aggregateStatus(m map[status.Status]bool) string {
-	inProgress := m["InProgress"]
-	terminating := m["Terminating"]
-
-	failed := m["Failed"]
-
-	if inProgress || terminating {
-		return "InProgress"
-	}
-
-	if failed {
-		return "Failed"
-	}
-	return "Current"
 }
