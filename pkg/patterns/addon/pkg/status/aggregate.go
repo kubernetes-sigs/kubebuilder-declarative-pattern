@@ -63,7 +63,6 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 			log.WithValues("type", gk).V(2).Info("type not implemented for status aggregation, skipping")
 		}
 
-
 		statusHealthy = statusHealthy && healthy
 		if err != nil {
 			statusErrors = append(statusErrors, fmt.Sprintf("%v", err))
@@ -78,7 +77,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 	unstructStatus := make(map[string]interface{})
 	var status addonv1alpha1.CommonStatus
 
-	if ok{
+	if ok {
 		unstructStatus["Healthy"] = true
 	} else if commonOkay {
 		status = addonv1alpha1.CommonStatus{Healthy: true}
@@ -131,8 +130,6 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 			}
 		}
 	}
-
-
 
 	return nil
 }

@@ -55,20 +55,20 @@ func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Obj
 	log := log.Log
 
 	var (
-		channelName string
-		version string
+		channelName   string
+		version       string
 		componentName string
 	)
 
 	unstruct, ok := object.(*unstructured.Unstructured)
 	if ok {
-		v, _, err  := unstructured.NestedString(unstruct.Object, "spec", "version")
+		v, _, err := unstructured.NestedString(unstruct.Object, "spec", "version")
 		if err != nil {
 			return nil, fmt.Errorf("unable to get spec.version: %v", err)
 		}
 		version = v
 
-		c, _, err  := unstructured.NestedString(unstruct.Object, "spec", "channel")
+		c, _, err := unstructured.NestedString(unstruct.Object, "spec", "channel")
 		if err != nil {
 			return nil, fmt.Errorf("unable to get spec.version: %v", err)
 		}

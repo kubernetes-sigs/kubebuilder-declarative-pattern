@@ -50,7 +50,7 @@ func ApplyPatches(ctx context.Context, object declarative.DeclarativeObject, obj
 				Object: m,
 			})
 		}
-	} else if p, ok := object.(addonsv1alpha1.Patchable); ok{
+	} else if p, ok := object.(addonsv1alpha1.Patchable); ok {
 		for _, p := range p.PatchSpec().Patches {
 			// Object is nil, Raw  is populated (with json, even when input was yaml)
 			r := bytes.NewReader(p.Raw)
