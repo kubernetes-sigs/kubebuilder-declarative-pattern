@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"github.com/go-git/go-git/v5"
 	"io/ioutil"
-	"os"
+	"path"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 	"strings"
@@ -42,11 +43,10 @@ func (r *GitRepository) LoadChannel(ctx context.Context,  name string) (*Channel
 		log.WithValues("path", name).Error(err, "error reading channel")
 		return nil, err
 	}
-	fmt.Println(string(b))
 
 	channel := &Channel{}
 	if err := yaml.Unmarshal(b, channel); err != nil {
-		return nil, fmt.Errorf("error parsing channel %s: %v", name, err)
+		return nil, fmt.Errorf("error parsing channel bytes %s: %v", string(b), err)
 	}
 
 	return channel, nil
@@ -67,13 +67,11 @@ func (r *GitRepository) LoadManifest(ctx context.Context, packageName string, id
 
 	var filePath string
 	if r.subDir == "" {
-		filePath = fmt.Sprintf("packages/%v/%v/manifest.yaml", packageName, id)
+		filePath = path.Join("packages", packageName, id,"manifest.yaml" )
 	} else {
-		filePath = fmt.Sprintf("%v/packages/%v/%v/manifest.yaml", r.subDir, packageName, id)
+		filePath = path.Join(r.subDir,"packages", packageName, id, "manifest.yaml")
 	}
 
-	fullPath := fmt.Sprintf("%v/%v", r.baseURL, filePath)
-	fmt.Println(fullPath)
 	b, err := r.readURL(filePath)
 
 	if err != nil {
@@ -88,6 +86,7 @@ func (r *GitRepository) LoadManifest(ctx context.Context, packageName string, id
 
 func (r *GitRepository) readURL(url string) ([]byte, error) {
 	repoDir := "/tmp/repo"
+	filePath := filepath.Join(repoDir, url)
 	fmt.Println(r.baseURL)
 	_, err := git.PlainClone(repoDir, false, &git.CloneOptions{
 		URL:               r.baseURL,
@@ -96,12 +95,7 @@ func (r *GitRepository) readURL(url string) ([]byte, error) {
 		return nil, err
 	}
 
-	file, err := os.Open(repoDir + "/" + url)
-	if err != nil{
-		return nil, err
-	}
-
-	b, err := ioutil.ReadAll(file)
+	b, err := ioutil.ReadFile(filePath)
 	if err != nil{
 		return nil, err
 	}
@@ -118,9 +112,9 @@ func parseGitURL(url string) GitRepository{
 
 	// checks for subdirectories
 	if strings.Contains(url, ".git//") {
-		newURL := strings.Split(url, ".git//")
-		url = newURL[0] + ".git"
-		subdir = newURL[1]
+		urlComponent := strings.SplitN(url, ".git//", 2)
+		url = urlComponent[0] + ".git"
+		subdir = urlComponent[1]
 	}
 
 	return GitRepository{
