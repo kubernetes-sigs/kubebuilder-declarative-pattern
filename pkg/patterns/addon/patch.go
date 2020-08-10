@@ -35,25 +35,37 @@ import (
 func ApplyPatches(ctx context.Context, object declarative.DeclarativeObject, objects *manifest.Objects) error {
 	log := log.Log
 
-	p, ok := object.(addonsv1alpha1.Patchable)
-	if !ok {
-		return fmt.Errorf("provided object (%T) does not implement Patchable type", object)
-	}
-
 	var patches []*unstructured.Unstructured
 
-	for _, p := range p.PatchSpec().Patches {
-		// Object is nil, Raw  is populated (with json, even when input was yaml)
-		r := bytes.NewReader(p.Raw)
-		decoder := yaml.NewYAMLOrJSONDecoder(r, 1024)
-		patch := &unstructured.Unstructured{}
-
-		if err := decoder.Decode(patch); err != nil {
-			return fmt.Errorf("error parsing json into unstructured object: %v", err)
+	unstruct, ok := object.(*unstructured.Unstructured)
+	if ok {
+		patch, _, err := unstructured.NestedSlice(unstruct.Object, "spec", "patches")
+		if err != nil {
+			return fmt.Errorf("unable to get patches from unstructured: %v", err)
 		}
-		log.WithValues("patch", patch).V(1).Info("parsed patch")
 
-		patches = append(patches, patch)
+		for _, p := range patch {
+			m := p.(map[string]interface{})
+			patches = append(patches, &unstructured.Unstructured{
+				Object: m,
+			})
+		}
+	} else if p, ok := object.(addonsv1alpha1.Patchable); ok {
+		for _, p := range p.PatchSpec().Patches {
+			// Object is nil, Raw  is populated (with json, even when input was yaml)
+			r := bytes.NewReader(p.Raw)
+			decoder := yaml.NewYAMLOrJSONDecoder(r, 1024)
+			patch := &unstructured.Unstructured{}
+
+			if err := decoder.Decode(patch); err != nil {
+				return fmt.Errorf("error parsing json into unstructured object: %v", err)
+			}
+			log.WithValues("patch", patch).V(1).Info("parsed patch")
+
+			patches = append(patches, patch)
+		}
+	} else {
+		return fmt.Errorf("provided object (%T) does not implement Patchable type", object)
 	}
 
 	return objects.Patch(patches)

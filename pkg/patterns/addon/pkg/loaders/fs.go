@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,16 +54,36 @@ func NewManifestLoader(channel string) (*ManifestLoader, error) {
 func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Object) (map[string]string, error) {
 	log := log.Log
 
-	addonObject, ok := object.(addonsv1alpha1.CommonObject)
-	if !ok {
+	var (
+		channelName   string
+		version       string
+		componentName string
+	)
+
+	unstruct, ok := object.(*unstructured.Unstructured)
+	if ok {
+		v, _, err := unstructured.NestedString(unstruct.Object, "spec", "version")
+		if err != nil {
+			return nil, fmt.Errorf("unable to get spec.version: %v", err)
+		}
+		version = v
+
+		c, _, err := unstructured.NestedString(unstruct.Object, "spec", "channel")
+		if err != nil {
+			return nil, fmt.Errorf("unable to get spec.version: %v", err)
+		}
+		channelName = c
+
+		componentName = strings.ToLower(unstruct.GetKind())
+	} else if addonObject, ok := object.(addonsv1alpha1.CommonObject); ok {
+		componentName = addonObject.ComponentName()
+
+		spec := addonObject.CommonSpec()
+		version = spec.Version
+		channelName = spec.Channel
+	} else {
 		return nil, fmt.Errorf("object %T was not an addonsv1alpha1.CommonObject", object)
 	}
-
-	componentName := addonObject.ComponentName()
-
-	spec := addonObject.CommonSpec()
-	version := spec.Version
-	channelName := spec.Channel
 
 	// TODO: We should actually do id (1.1.2-aws or 1.1.1-nginx). But maybe YAGNI
 	id := version

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
@@ -42,8 +43,25 @@ const (
 
 // TransformApplicationFromStatus modifies the Application in the deployment based off the CommonStatus
 func TransformApplicationFromStatus(ctx context.Context, instance declarative.DeclarativeObject, objects *manifest.Objects) error {
-	addonObject, ok := instance.(addonsv1alpha1.CommonObject)
-	if !ok {
+	var version string
+	var healthy bool
+	var addonObject addonsv1alpha1.CommonObject
+
+	if unstruct, ok := instance.(*unstructured.Unstructured); ok {
+		v, _, err := unstructured.NestedString(unstruct.Object, "spec", "version")
+		if err != nil {
+			return fmt.Errorf("unable to get version from unstuctured: %v", err)
+		}
+		version = v
+
+		healthy, _, err = unstructured.NestedBool(unstruct.Object, "status", "healthy")
+		if err != nil {
+			return fmt.Errorf("unable to get status from unstuctured: %v", err)
+		}
+	} else if addonObject, ok = instance.(addonsv1alpha1.CommonObject); ok {
+		version = addonObject.CommonSpec().Version
+		healthy = addonObject.GetCommonStatus().Healthy
+	} else {
 		return fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject", instance)
 	}
 
@@ -56,12 +74,12 @@ func TransformApplicationFromStatus(ctx context.Context, instance declarative.De
 	}
 
 	assemblyPhase := Pending
-	if addonObject.GetCommonStatus().Healthy {
+	if healthy {
 		assemblyPhase = Succeeded
 	}
 
 	// TODO: Version should be on CommonStatus as well
-	app.SetNestedField(addonObject.CommonSpec().Version, "spec", "descriptor", "version")
+	app.SetNestedField(version, "spec", "descriptor", "version")
 	app.SetNestedField(assemblyPhase, "spec", "assemblyPhase")
 
 	return nil
