@@ -30,11 +30,11 @@ func TestParseGitURL(t *testing.T) {
 	for _, tt := range tests {
 		gitRepo := parseGitURL(tt.rawURL)
 		if gitRepo.baseURL != tt.baseURL {
-			t.Errorf("Expected base url: %v, got %v", tt.baseURL, actualBase)
+			t.Errorf("Expected base url: %v, got %v", tt.baseURL, gitRepo.baseURL)
 		}
 
 		if gitRepo.subDir != tt.subDir {
-			t.Errorf("Expected base url: %v, got %v", tt.subDir, actualSubDir)
+			t.Errorf("Expected base url: %v, got %v", tt.subDir, gitRepo.subDir)
 		}
 	}
 }
