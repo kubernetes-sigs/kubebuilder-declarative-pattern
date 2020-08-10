@@ -25,7 +25,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"k8s.io/client-go/dynamic"
@@ -57,8 +56,8 @@ type Reconciler struct {
 	config    *rest.Config
 	kubectl   kubectlClient
 
-	rm reconcileMetrics
-	mgr           manager.Manager
+	rm  reconcileMetrics
+	mgr manager.Manager
 
 	// recorder is the EventRecorder for creating k8s events
 	recorder      recorder.EventRecorder
