@@ -23,6 +23,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+
+	"k8s.io/client-go/dynamic"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -54,9 +58,11 @@ type Reconciler struct {
 	mgr manager.Manager
 
 	// recorder is the EventRecorder for creating k8s events
-	recorder recorder.EventRecorder
+	recorder      recorder.EventRecorder
+	dynamicClient dynamic.Interface
 
-	options reconcilerParams
+	restMapper meta.RESTMapper
+	options    reconcilerParams
 }
 
 type kubectlClient interface {
@@ -84,7 +90,19 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 	r.mgr = mgr
 	globalObjectTracker.mgr = mgr
 
-	if err := r.applyOptions(opts...); err != nil {
+	d, err := dynamic.NewForConfig(r.config)
+	if err != nil {
+		return err
+	}
+	r.dynamicClient = d
+
+	restMapper, err := apiutil.NewDiscoveryRESTMapper(r.config)
+	if err != nil {
+		return err
+	}
+	r.restMapper = restMapper
+
+	if err = r.applyOptions(opts...); err != nil {
 		return err
 	}
 
@@ -184,6 +202,26 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+
+	var newItems []*manifest.Object
+	for _, obj := range objects.Items {
+
+		unstruct, err := getObjectFromCluster(obj, r)
+		if err != nil && !apierrors.IsNotFound(err) {
+			log.WithValues("name", obj.Name).Error(err, "Unable to get resource")
+		}
+		if unstruct != nil {
+			annotations := unstruct.GetAnnotations()
+			if _, ok := annotations["addons.k8s.io/ignore"]; ok {
+				log.WithValues("kind", obj.Kind).WithValues("name", obj.Name).Info("Found ignore annotation on object, " +
+					"skipping object")
+				continue
+			}
+		}
+		newItems = append(newItems, obj)
+	}
+	objects.Items = newItems
+
 	var manifestStr string
 
 	m, err := objects.JSONManifest()
@@ -513,4 +551,22 @@ func parseListKind(infos *manifest.Objects) (*manifest.Objects, error) {
 // CollectMetrics determines whether metrics of declarative reconciler is enabled
 func (r *Reconciler) CollectMetrics() bool {
 	return r.options.metrics
+}
+
+func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
+	Unstructured, error) {
+	getOptions := metav1.GetOptions{}
+	gvk := obj.GroupVersionKind()
+
+	mapping, err := r.restMapper.RESTMapping(obj.GroupKind(), gvk.Version)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get resource: %v", err)
+	}
+	ns := obj.UnstructuredObject().GetNamespace()
+	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(),
+		obj.Name, getOptions)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get mapping for resource: %v", err)
+	}
+	return unstruct, nil
 }
