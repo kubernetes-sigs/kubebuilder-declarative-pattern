@@ -22,11 +22,10 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 )
 
 var FlagChannel = "./channels"
@@ -66,29 +65,12 @@ func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Obj
 		componentName string
 	)
 
-	unstruct, ok := object.(*unstructured.Unstructured)
-	if ok {
-		v, _, err := unstructured.NestedString(unstruct.Object, "spec", "version")
-		if err != nil {
-			return nil, fmt.Errorf("unable to get spec.version: %v", err)
-		}
-		version = v
-
-		c, _, err := unstructured.NestedString(unstruct.Object, "spec", "channel")
-		if err != nil {
-			return nil, fmt.Errorf("unable to get spec.version: %v", err)
-		}
-		channelName = c
-
-		componentName = strings.ToLower(unstruct.GetKind())
-	} else if addonObject, ok := object.(addonsv1alpha1.CommonObject); ok {
-		componentName = addonObject.ComponentName()
-
-		spec := addonObject.CommonSpec()
-		version = spec.Version
-		channelName = spec.Channel
-	} else {
-		return nil, fmt.Errorf("object %T was not an addonsv1alpha1.CommonObject", object)
+	version, err := utils.GetCommonVersion(object)
+	componentName, err = utils.GetCommonName(object)
+	channelName, err = utils.GetCommonChannel(object)
+	// All the errors above are checking the same thing? Is there a better way?
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO: We should actually do id (1.1.2-aws or 1.1.1-nginx). But maybe YAGNI
@@ -122,7 +104,7 @@ func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Obj
 		log.WithValues("version", version).Info("using specified version")
 	}
 	s := make(map[string]string)
-	s, err := c.repo.LoadManifest(ctx, componentName, id)
+	s, err = c.repo.LoadManifest(ctx, componentName, id)
 	if err != nil {
 		return nil, fmt.Errorf("error loading manifest: %v", err)
 	}
