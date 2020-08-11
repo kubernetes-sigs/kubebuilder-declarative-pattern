@@ -25,15 +25,18 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 
-	"k8s.io/client-go/dynamic"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	"k8s.io/client-go/dynamic"
+	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	recorder "k8s.io/client-go/tools/record"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -53,8 +56,7 @@ type Reconciler struct {
 	config    *rest.Config
 	kubectl   kubectlClient
 
-	rm reconcileMetrics
-
+	rm  reconcileMetrics
 	mgr manager.Manager
 
 	// recorder is the EventRecorder for creating k8s events
@@ -265,6 +267,43 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if err := r.kubectl.Apply(ctx, ns, manifestStr, r.options.validate, extraArgs...); err != nil {
 		log.Error(err, "applying manifest")
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
+	}
+
+	statusMap := make(map[status.Status]bool)
+	for _, object := range objects.Items {
+
+		unstruct, err := getObjectFromCluster(object, r)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		res, err := status.Compute(unstruct)
+		if err != nil {
+			log.WithValues("unstuctured", unstruct).Error(err, "Unable to get status of unstructured")
+			statusMap[status.NotFoundStatus] = true
+		}
+		if res != nil {
+			log.WithValues("kind", object.Kind).WithValues("name", object.Name).WithValues("status", res.Status).WithValues(
+				"message", res.Message).Info("Got status of resource:")
+			statusMap[res.Status] = true
+		}
+	}
+
+	addonObject, ok := instance.(addonsv1alpha1.CommonObject)
+	if !ok {
+		return reconcile.Result{}, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject", instance)
+	}
+	status := addonObject.GetCommonStatus()
+	if status.Phase != string(aggregateStatus(statusMap)) {
+		status.Phase = string(aggregateStatus(statusMap))
+		addonObject.SetCommonStatus(status)
+		log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
+
+		err = r.client.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "error updating status")
+			return reconcile.Result{}, err
+		}
 	}
 
 	if r.options.sink != nil {
@@ -551,6 +590,22 @@ func parseListKind(infos *manifest.Objects) (*manifest.Objects, error) {
 // CollectMetrics determines whether metrics of declarative reconciler is enabled
 func (r *Reconciler) CollectMetrics() bool {
 	return r.options.metrics
+}
+
+func aggregateStatus(m map[status.Status]bool) status.Status {
+	inProgress := m[status.InProgressStatus]
+	terminating := m[status.TerminatingStatus]
+
+	failed := m[status.FailedStatus]
+
+	if inProgress || terminating {
+		return status.TerminatingStatus
+	}
+
+	if failed {
+		return status.FailedStatus
+	}
+	return status.CurrentStatus
 }
 
 func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
