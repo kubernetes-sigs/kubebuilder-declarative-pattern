@@ -20,8 +20,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -44,6 +45,11 @@ type ManifestLoader struct {
 func NewManifestLoader(channel string) (*ManifestLoader, error) {
 	if strings.HasPrefix(channel, "http://") || strings.HasPrefix(channel, "https://") {
 		repo := NewHTTPRepository(channel)
+		return &ManifestLoader{repo: repo}, nil
+	}
+
+	if strings.Contains(channel, "git//") || strings.Contains(channel, ".git") {
+		repo := NewGitRepository(channel)
 		return &ManifestLoader{repo: repo}, nil
 	}
 
