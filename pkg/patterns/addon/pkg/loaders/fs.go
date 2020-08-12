@@ -66,9 +66,16 @@ func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Obj
 	)
 
 	version, err := utils.GetCommonVersion(object)
+	if err != nil {
+		return nil, err
+	}
+
 	componentName, err = utils.GetCommonName(object)
+	if err != nil {
+		return nil, err
+	}
+
 	channelName, err = utils.GetCommonChannel(object)
-	// All the errors above are checking the same thing? Is there a better way?
 	if err != nil {
 		return nil, err
 	}
