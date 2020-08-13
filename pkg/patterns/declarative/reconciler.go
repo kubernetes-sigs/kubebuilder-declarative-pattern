@@ -290,20 +290,42 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 
 	addonObject, ok := instance.(addonsv1alpha1.CommonObject)
-	if !ok {
-		return reconcile.Result{}, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject", instance)
-	}
-	status := addonObject.GetCommonStatus()
-	if status.Phase != string(aggregateStatus(statusMap)) {
-		status.Phase = string(aggregateStatus(statusMap))
-		addonObject.SetCommonStatus(status)
-		log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
-
-		err = r.client.Status().Update(ctx, instance)
+	unstruct, unstructOk := instance.(*unstructured.Unstructured)
+	aggregatedStatus := string(aggregateStatus(statusMap))
+	if ok {
+		addonStatus := addonObject.GetCommonStatus()
+		if addonStatus.Phase != aggregatedStatus {
+			addonStatus.Phase = aggregatedStatus
+			addonObject.SetCommonStatus(addonStatus)
+			log.WithValues("name", addonObject.GetName()).WithValues("status", addonStatus).Info("updating status")
+			err = r.client.Status().Update(ctx, addonObject)
+			if err != nil {
+				log.Error(err, "error updating status")
+				return reconcile.Result{}, err
+			}
+		}
+	} else if unstructOk {
+		statusPhase, _, err := unstructured.NestedString(unstruct.Object, "status", "phase")
 		if err != nil {
-			log.Error(err, "error updating status")
 			return reconcile.Result{}, err
 		}
+
+		if statusPhase != aggregatedStatus {
+			err := unstructured.SetNestedField(unstruct.Object, statusPhase, "status", "phase")
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			log.WithValues("name", addonObject.GetName()).WithValues("phase", statusPhase).Info("updating status")
+			err = r.client.Status().Update(ctx, unstruct)
+			if err != nil {
+				log.Error(err, "error updating status")
+				return reconcile.Result{}, err
+			}
+		}
+	} else {
+		return reconcile.Result{}, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject or unstructured." +
+			"Unstructured",
+			instance)
 	}
 
 	if r.options.sink != nil {
@@ -312,7 +334,6 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 			return reconcile.Result{}, err
 		}
 	}
-
 	return reconcile.Result{}, nil
 }
 

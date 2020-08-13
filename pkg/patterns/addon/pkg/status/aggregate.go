@@ -123,8 +123,8 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 			}
 
 			log.WithValues("name", unstruct.GetName()).WithValues("status", status).Info("updating status")
-
-			err = a.client.Status().Update(ctx, unstruct)
+			fmt.Println("here")
+			err = a.client.Status().Update(ctx, src)
 			if err != nil {
 				log.Error(err, "updating status")
 				return err
