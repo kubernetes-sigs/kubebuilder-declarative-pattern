@@ -27,13 +27,11 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"k8s.io/client-go/dynamic"
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	recorder "k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
@@ -208,7 +206,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	var newItems []*manifest.Object
 	for _, obj := range objects.Items {
 
-		unstruct, err := getObjectFromCluster(obj, r)
+		unstruct, err := GetObjectFromCluster(obj, r)
 		if err != nil && !apierrors.IsNotFound(err) {
 			log.WithValues("name", obj.Name).Error(err, "Unable to get resource")
 		}
@@ -267,67 +265,6 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	if err := r.kubectl.Apply(ctx, ns, manifestStr, r.options.validate, extraArgs...); err != nil {
 		log.Error(err, "applying manifest")
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
-	}
-
-	statusMap := make(map[status.Status]bool)
-	for _, object := range objects.Items {
-
-		unstruct, err := getObjectFromCluster(object, r)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		res, err := status.Compute(unstruct)
-		if err != nil {
-			log.WithValues("unstuctured", unstruct).Error(err, "Unable to get status of unstructured")
-			statusMap[status.NotFoundStatus] = true
-		}
-		if res != nil {
-			log.WithValues("kind", object.Kind).WithValues("name", object.Name).WithValues("status", res.Status).WithValues(
-				"message", res.Message).Info("Got status of resource:")
-			statusMap[res.Status] = true
-		}
-	}
-
-	addonObject, ok := instance.(addonsv1alpha1.CommonObject)
-	unstruct, unstructOk := instance.(*unstructured.Unstructured)
-	aggregatedPhase := string(aggregateStatus(statusMap))
-	changed := false
-	if ok {
-		addonStatus := addonObject.GetCommonStatus()
-		if addonStatus.Phase != aggregatedPhase {
-			addonStatus.Phase = aggregatedPhase
-			addonObject.SetCommonStatus(addonStatus)
-			changed = true
-		}
-	} else if unstructOk {
-		statusPhase, _, err := unstructured.NestedString(unstruct.Object, "status", "phase")
-		if err != nil {
-			log.Error(err, "error retrieving status")
-			return reconcile.Result{}, err
-		}
-
-		if statusPhase != aggregatedPhase {
-			err := unstructured.SetNestedField(unstruct.Object, aggregatedPhase, "status", "phase")
-			if err != nil {
-				log.Error(err, "error retrieving status")
-				return reconcile.Result{}, err
-			}
-			changed = true
-		}
-	} else {
-		return reconcile.Result{}, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject or unstructured." +
-			"Unstructured",
-			instance)
-	}
-
-	if changed == true {
-		log.WithValues("name", instance.GetName()).WithValues("phase", aggregatedPhase).Info("updating status")
-		err = r.client.Status().Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "error updating status")
-			return reconcile.Result{}, err
-		}
 	}
 
 	if r.options.sink != nil {
@@ -632,7 +569,7 @@ func aggregateStatus(m map[status.Status]bool) status.Status {
 	return status.CurrentStatus
 }
 
-func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
+func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
 	Unstructured, error) {
 	getOptions := metav1.GetOptions{}
 	gvk := obj.GroupVersionKind()

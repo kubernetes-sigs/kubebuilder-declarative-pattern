@@ -3,8 +3,10 @@ package status
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/blang/semver"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
@@ -58,19 +60,49 @@ func (p *versionCheck) VersionCheck(
 		return true, nil
 	}
 
-	addonObject, ok := src.(addonsv1alpha1.CommonObject)
-	if !ok {
-		return false, fmt.Errorf("object %T was not an addonsv1alpha1.CommonObject", src)
+	errors := []string{
+		fmt.Sprintf("manifest needs operator version >= %v, this operator is version %v", minOperatorVersion.String(),
+			p.operatorVersion.String()),
 	}
+	unstruct, ok := src.(*unstructured.Unstructured)
+	addonObject, commonOkay := src.(addonsv1alpha1.CommonObject)
 
-	status := addonsv1alpha1.CommonStatus{
-		Healthy: false,
-		Errors: []string{
-			fmt.Sprintf("manifest needs operator version >= %v, this operator is version %v", minOperatorVersion.String(), p.operatorVersion.String()),
-		},
+	if ok {
+		unstructStatus := make(map[string]interface{})
+
+		s, _, err := unstructured.NestedMap(unstruct.Object, "status")
+		if err != nil {
+			log.Error(err, "getting status")
+			return false, fmt.Errorf("unable to get status from unstructured: %v", err)
+		}
+
+		unstructStatus = s
+		unstructStatus["Healthy"] = false
+		unstructStatus["Errors"] = errors
+
+		if !reflect.DeepEqual(unstruct, s) {
+			err = unstructured.SetNestedField(unstruct.Object, false, "status", "healthy")
+			if err != nil {
+				log.Error(err, "unable to updating status in unstructured")
+			}
+
+			err = unstructured.SetNestedStringSlice(unstruct.Object, errors,"status", "errors")
+			if err != nil {
+				log.Error(err, "unable to updating status in unstructured")
+			}
+		}
+	} else if commonOkay {
+		status := addonObject.GetCommonStatus()
+		status.Healthy = false
+		status.Errors = errors
+		if !reflect.DeepEqual(status, addonObject.GetCommonStatus()) {
+			status.Healthy = false
+			status.Errors = errors
+			addonObject.SetCommonStatus(status)
+		}
+	} else {
+		return false, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject or unstructured.Unstructured", src)
 	}
-	log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
-	addonObject.SetCommonStatus(status)
 
 	return false, fmt.Errorf("operator not qualified, manifest needs operator version >= %v", minOperatorVersion.String())
 }
