@@ -291,41 +291,43 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 
 	addonObject, ok := instance.(addonsv1alpha1.CommonObject)
 	unstruct, unstructOk := instance.(*unstructured.Unstructured)
-	aggregatedStatus := string(aggregateStatus(statusMap))
+	aggregatedPhase := string(aggregateStatus(statusMap))
+	changed := false
 	if ok {
 		addonStatus := addonObject.GetCommonStatus()
-		if addonStatus.Phase != aggregatedStatus {
-			addonStatus.Phase = aggregatedStatus
+		if addonStatus.Phase != aggregatedPhase {
+			addonStatus.Phase = aggregatedPhase
 			addonObject.SetCommonStatus(addonStatus)
-			log.WithValues("name", addonObject.GetName()).WithValues("status", addonStatus).Info("updating status")
-			err = r.client.Status().Update(ctx, addonObject)
-			if err != nil {
-				log.Error(err, "error updating status")
-				return reconcile.Result{}, err
-			}
+			changed = true
 		}
 	} else if unstructOk {
 		statusPhase, _, err := unstructured.NestedString(unstruct.Object, "status", "phase")
 		if err != nil {
+			log.Error(err, "error retrieving status")
 			return reconcile.Result{}, err
 		}
 
-		if statusPhase != aggregatedStatus {
-			err := unstructured.SetNestedField(unstruct.Object, statusPhase, "status", "phase")
+		if statusPhase != aggregatedPhase {
+			err := unstructured.SetNestedField(unstruct.Object, aggregatedPhase, "status", "phase")
 			if err != nil {
+				log.Error(err, "error retrieving status")
 				return reconcile.Result{}, err
 			}
-			log.WithValues("name", addonObject.GetName()).WithValues("phase", statusPhase).Info("updating status")
-			err = r.client.Status().Update(ctx, unstruct)
-			if err != nil {
-				log.Error(err, "error updating status")
-				return reconcile.Result{}, err
-			}
+			changed = true
 		}
 	} else {
 		return reconcile.Result{}, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject or unstructured." +
 			"Unstructured",
 			instance)
+	}
+
+	if changed == true {
+		log.WithValues("name", instance.GetName()).WithValues("phase", aggregatedPhase).Info("updating status")
+		err = r.client.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "error updating status")
+			return reconcile.Result{}, err
+		}
 	}
 
 	if r.options.sink != nil {
@@ -620,12 +622,13 @@ func aggregateStatus(m map[status.Status]bool) status.Status {
 	failed := m[status.FailedStatus]
 
 	if inProgress || terminating {
-		return status.TerminatingStatus
+		return status.InProgressStatus
 	}
 
 	if failed {
 		return status.FailedStatus
 	}
+
 	return status.CurrentStatus
 }
 

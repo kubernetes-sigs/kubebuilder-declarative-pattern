@@ -123,7 +123,6 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 			}
 
 			log.WithValues("name", unstruct.GetName()).WithValues("status", status).Info("updating status")
-			fmt.Println("here")
 			err = a.client.Status().Update(ctx, src)
 			if err != nil {
 				log.Error(err, "updating status")
@@ -136,7 +135,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 }
 
 func (a *aggregator) deployment(ctx context.Context, src declarative.DeclarativeObject, name string) (bool, error) {
-	key := client.ObjectKey{Namespace: src.GetNamespace(), Name: name}
+	key := client.ObjectKey{Name: name}
 	dep := &appsv1.Deployment{}
 
 	if err := a.client.Get(ctx, key, dep); err != nil {
