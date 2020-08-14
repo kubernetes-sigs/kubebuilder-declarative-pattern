@@ -4,26 +4,26 @@ import (
 	"context"
 	"fmt"
 
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 type kstatusAggregator struct {
-	client client.Client
+	client     client.Client
 	reconciler *declarative.Reconciler
 }
 
-func NewKstatusAgregator(c client.Client, reconciler *declarative.Reconciler) *kstatusAggregator{
+func NewKstatusAgregator(c client.Client, reconciler *declarative.Reconciler) *kstatusAggregator {
 	return &kstatusAggregator{client: c, reconciler: reconciler}
 }
 
-func(k *kstatusAggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject,
-	objs *manifest.Objects) error{
+func (k *kstatusAggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject,
+	objs *manifest.Objects) error {
 	log := log.Log
 
 	statusMap := make(map[status.Status]bool)
@@ -74,7 +74,7 @@ func(k *kstatusAggregator) Reconciled(ctx context.Context, src declarative.Decla
 			changed = true
 		}
 	} else {
-		return fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject or unstructured." +
+		return fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject or unstructured."+
 			"Unstructured",
 			src)
 	}

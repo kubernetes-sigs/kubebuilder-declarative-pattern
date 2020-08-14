@@ -47,8 +47,8 @@ func NewBasicVersionChecks(client client.Client, version string) (declarative.St
 	}, nil
 }
 
-func NewKstatusCheck(client client.Client, d *declarative.Reconciler)  declarative.Status{
+func NewKstatusCheck(client client.Client, d *declarative.Reconciler) declarative.Status {
 	return &declarative.StatusBuilder{
-		ReconciledImpl:   NewKstatusAgregator(client, d),
+		ReconciledImpl: NewKstatusAgregator(client, d),
 	}
 }

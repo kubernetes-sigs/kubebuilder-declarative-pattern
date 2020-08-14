@@ -86,7 +86,7 @@ func (p *versionCheck) VersionCheck(
 				log.Error(err, "unable to updating status in unstructured")
 			}
 
-			err = unstructured.SetNestedStringSlice(unstruct.Object, errors,"status", "errors")
+			err = unstructured.SetNestedStringSlice(unstruct.Object, errors, "status", "errors")
 			if err != nil {
 				log.Error(err, "unable to updating status in unstructured")
 			}
