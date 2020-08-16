@@ -74,42 +74,32 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 
 	unstruct, ok := src.(*unstructured.Unstructured)
 	instance, commonOkay := src.(addonv1alpha1.CommonObject)
-
-	unstructStatus := make(map[string]interface{})
-	var status addonv1alpha1.CommonStatus
-
-	if ok {
-		unstructStatus["Healthy"] = true
-	} else if commonOkay {
-		status = addonv1alpha1.CommonStatus{Healthy: true}
-	} else {
-		return fmt.Errorf("object %T was not an addonv1alpha1.CommonObject", src)
-	}
+	changed := false
 
 	if commonOkay {
+		var status = instance.GetCommonStatus()
 		status.Errors = statusErrors
 		status.Healthy = statusHealthy
 
 		if !reflect.DeepEqual(status, instance.GetCommonStatus()) {
-			instance.SetCommonStatus(status)
+			status.Healthy = statusHealthy
 
 			log.WithValues("name", instance.GetName()).WithValues("status", status).Info("updating status")
-
-			err := a.client.Status().Update(ctx, instance)
-			if err != nil {
-				log.Error(err, "updating status")
-				return err
-			}
+			changed = true
 		}
-	} else {
-		unstructStatus["Healthy"] = true
-		unstructStatus["Errors"] = statusErrors
+	} else if ok {
+		unstructStatus := make(map[string]interface{})
+
 		s, _, err := unstructured.NestedMap(unstruct.Object, "status")
 		if err != nil {
 			log.Error(err, "getting status")
 			return fmt.Errorf("unable to get status from unstructured: %v", err)
 		}
-		if !reflect.DeepEqual(status, s) {
+
+		unstructStatus = s
+		unstructStatus["Healthy"] = statusHealthy
+		unstructStatus["Errors"] = statusErrors
+		if !reflect.DeepEqual(unstruct, s) {
 			err = unstructured.SetNestedField(unstruct.Object, statusHealthy, "status", "healthy")
 			if err != nil {
 				log.Error(err, "updating status")
@@ -121,14 +111,18 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 				log.Error(err, "updating status")
 				return fmt.Errorf("unable to set status in unstructured: %v", err)
 			}
+			changed = true
+		}
+	} else {
+		return fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject or unstructured.Unstructured", src)
+	}
 
-			log.WithValues("name", unstruct.GetName()).WithValues("status", status).Info("updating status")
-
-			err = a.client.Status().Update(ctx, unstruct)
-			if err != nil {
-				log.Error(err, "updating status")
-				return err
-			}
+	if changed == true {
+		log.WithValues("name", src.GetName()).WithValues("status", statusHealthy).Info("updating status")
+		err := a.client.Status().Update(ctx, src)
+		if err != nil {
+			log.Error(err, "updating status")
+			return err
 		}
 	}
 
@@ -136,7 +130,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 }
 
 func (a *aggregator) deployment(ctx context.Context, src declarative.DeclarativeObject, name string) (bool, error) {
-	key := client.ObjectKey{Namespace: src.GetNamespace(), Name: name}
+	key := client.ObjectKey{Name: name}
 	dep := &appsv1.Deployment{}
 
 	if err := a.client.Get(ctx, key, dep); err != nil {

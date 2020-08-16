@@ -21,6 +21,8 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 )
 
+// Deprecated: This function exists for backward compatibility, please use NewKstatusCheck
+
 // NewBasic provides an implementation of declarative.Status that
 // performs no preflight checks.
 func NewBasic(client client.Client) declarative.Status {
@@ -43,4 +45,10 @@ func NewBasicVersionChecks(client client.Client, version string) (declarative.St
 		VersionCheckImpl: v,
 		// no preflight checks
 	}, nil
+}
+
+func NewKstatusCheck(client client.Client, d *declarative.Reconciler) declarative.Status {
+	return &declarative.StatusBuilder{
+		ReconciledImpl: NewKstatusAgregator(client, d),
+	}
 }

@@ -27,13 +27,11 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"k8s.io/client-go/dynamic"
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	recorder "k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
@@ -208,7 +206,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	var newItems []*manifest.Object
 	for _, obj := range objects.Items {
 
-		unstruct, err := getObjectFromCluster(obj, r)
+		unstruct, err := GetObjectFromCluster(obj, r)
 		if err != nil && !apierrors.IsNotFound(err) {
 			log.WithValues("name", obj.Name).Error(err, "Unable to get resource")
 		}
@@ -269,50 +267,12 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
 	}
 
-	statusMap := make(map[status.Status]bool)
-	for _, object := range objects.Items {
-
-		unstruct, err := getObjectFromCluster(object, r)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		res, err := status.Compute(unstruct)
-		if err != nil {
-			log.WithValues("unstuctured", unstruct).Error(err, "Unable to get status of unstructured")
-			statusMap[status.NotFoundStatus] = true
-		}
-		if res != nil {
-			log.WithValues("kind", object.Kind).WithValues("name", object.Name).WithValues("status", res.Status).WithValues(
-				"message", res.Message).Info("Got status of resource:")
-			statusMap[res.Status] = true
-		}
-	}
-
-	addonObject, ok := instance.(addonsv1alpha1.CommonObject)
-	if !ok {
-		return reconcile.Result{}, fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject", instance)
-	}
-	status := addonObject.GetCommonStatus()
-	if status.Phase != string(aggregateStatus(statusMap)) {
-		status.Phase = string(aggregateStatus(statusMap))
-		addonObject.SetCommonStatus(status)
-		log.WithValues("name", addonObject.GetName()).WithValues("status", status).Info("updating status")
-
-		err = r.client.Status().Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "error updating status")
-			return reconcile.Result{}, err
-		}
-	}
-
 	if r.options.sink != nil {
 		if err := r.options.sink.Notify(ctx, instance, objects); err != nil {
 			log.Error(err, "notifying sink")
 			return reconcile.Result{}, err
 		}
 	}
-
 	return reconcile.Result{}, nil
 }
 
@@ -599,16 +559,17 @@ func aggregateStatus(m map[status.Status]bool) status.Status {
 	failed := m[status.FailedStatus]
 
 	if inProgress || terminating {
-		return status.TerminatingStatus
+		return status.InProgressStatus
 	}
 
 	if failed {
 		return status.FailedStatus
 	}
+
 	return status.CurrentStatus
 }
 
-func getObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
+func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
 	Unstructured, error) {
 	getOptions := metav1.GetOptions{}
 	gvk := obj.GroupVersionKind()
