@@ -21,13 +21,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	addonv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
@@ -72,54 +71,23 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 
 	log.WithValues("object", src).WithValues("status", statusHealthy).V(2).Info("built status")
 
-	unstruct, ok := src.(*unstructured.Unstructured)
-	instance, commonOkay := src.(addonv1alpha1.CommonObject)
-	changed := false
-
-	if commonOkay {
-		var status = instance.GetCommonStatus()
-		status.Errors = statusErrors
-		status.Healthy = statusHealthy
-
-		if !reflect.DeepEqual(status, instance.GetCommonStatus()) {
-			status.Healthy = statusHealthy
-
-			log.WithValues("name", instance.GetName()).WithValues("status", status).Info("updating status")
-			changed = true
-		}
-	} else if ok {
-		unstructStatus := make(map[string]interface{})
-
-		s, _, err := unstructured.NestedMap(unstruct.Object, "status")
-		if err != nil {
-			log.Error(err, "getting status")
-			return fmt.Errorf("unable to get status from unstructured: %v", err)
-		}
-
-		unstructStatus = s
-		unstructStatus["Healthy"] = statusHealthy
-		unstructStatus["Errors"] = statusErrors
-		if !reflect.DeepEqual(unstruct, s) {
-			err = unstructured.SetNestedField(unstruct.Object, statusHealthy, "status", "healthy")
-			if err != nil {
-				log.Error(err, "updating status")
-				return fmt.Errorf("unable to set status in unstructured: %v", err)
-			}
-
-			err = unstructured.SetNestedStringSlice(unstruct.Object, statusErrors, "status", "errors")
-			if err != nil {
-				log.Error(err, "updating status")
-				return fmt.Errorf("unable to set status in unstructured: %v", err)
-			}
-			changed = true
-		}
-	} else {
-		return fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject or unstructured.Unstructured", src)
+	currentStatus, err := utils.GetCommonStatus(src)
+	if err != nil {
+		return err
 	}
 
-	if changed == true {
-		log.WithValues("name", src.GetName()).WithValues("status", statusHealthy).Info("updating status")
-		err := a.client.Status().Update(ctx, src)
+	status := currentStatus
+	status.Healthy = statusHealthy
+	status.Errors = statusErrors
+
+	if !reflect.DeepEqual(status, currentStatus) {
+		err := utils.SetCommonStatus(src, status)
+		if err != nil {
+			return err
+		}
+
+		log.WithValues("name", src.GetName()).WithValues("status", status).Info("updating status")
+		err = a.client.Status().Update(ctx, src)
 		if err != nil {
 			log.Error(err, "updating status")
 			return err

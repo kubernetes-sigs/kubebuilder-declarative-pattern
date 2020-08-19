@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
@@ -47,41 +46,21 @@ func (k *kstatusAggregator) Reconciled(ctx context.Context, src declarative.Decl
 		}
 	}
 
-	addonObject, ok := src.(addonsv1alpha1.CommonObject)
-	unstruct, unstructOk := src.(*unstructured.Unstructured)
 	aggregatedPhase := string(aggregateStatus(statusMap))
-	changed := false
-	if ok {
-		addonStatus := addonObject.GetCommonStatus()
-		if addonStatus.Phase != aggregatedPhase {
-			addonStatus.Phase = aggregatedPhase
-			addonObject.SetCommonStatus(addonStatus)
-			changed = true
-		}
-	} else if unstructOk {
-		statusPhase, _, err := unstructured.NestedString(unstruct.Object, "status", "phase")
+
+	currentStatus, err := utils.GetCommonStatus(src)
+	if err != nil {
+		log.Error(err, "error retrieving status")
+		return err
+	}
+	if currentStatus.Phase != aggregatedPhase {
+		currentStatus.Phase = aggregatedPhase
+		err := utils.SetCommonStatus(src, currentStatus)
 		if err != nil {
-			log.Error(err, "error retrieving status")
 			return err
 		}
-
-		if statusPhase != aggregatedPhase {
-			err := unstructured.SetNestedField(unstruct.Object, aggregatedPhase, "status", "phase")
-			if err != nil {
-				log.Error(err, "error retrieving status")
-				return err
-			}
-			changed = true
-		}
-	} else {
-		return fmt.Errorf("instance %T was not an addonsv1alpha1.CommonObject or unstructured."+
-			"Unstructured",
-			src)
-	}
-
-	if changed == true {
 		log.WithValues("name", src.GetName()).WithValues("phase", aggregatedPhase).Info("updating status")
-		err := k.client.Status().Update(ctx, src)
+		err = k.client.Status().Update(ctx, src)
 		if err != nil {
 			log.Error(err, "error updating status")
 			return fmt.Errorf("error error status: %v", err)
