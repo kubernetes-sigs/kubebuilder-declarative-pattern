@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"golang.org/x/crypto/ssh"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
@@ -88,11 +92,27 @@ func (r *GitRepository) readURL(url string) ([]byte, error) {
 	repoDir := "/tmp/repo"
 	filePath := filepath.Join(repoDir, url)
 	fmt.Println(r.baseURL)
-	_, err := git.PlainClone(repoDir, false, &git.CloneOptions{
-		URL: r.baseURL,
+
+	auth, err := getAuthMethod()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = git.PlainClone(repoDir, false, &git.CloneOptions{
+		URL:               r.baseURL,
+		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+		Auth:              auth,
 	})
+
 	if err != nil && err != git.ErrRepositoryAlreadyExists {
 		return nil, err
+	}
+
+	if err == git.ErrRepositoryAlreadyExists {
+		err := handleExistingRepo(repoDir, auth)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	b, err := ioutil.ReadFile(filePath)
@@ -121,4 +141,73 @@ func parseGitURL(url string) GitRepository {
 		baseURL: url,
 		subDir:  subdir,
 	}
+}
+
+func handleExistingRepo(path string, auth transport.AuthMethod) error {
+	gitRepo, err := git.PlainOpen(path)
+	if err != nil {
+		return err
+	}
+
+	remote, err := gitRepo.Remote("origin")
+	if err != nil {
+		return err
+	}
+
+	err = remote.Fetch(&git.FetchOptions{
+		Force: true,
+		Auth:  auth,
+	})
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		return err
+	}
+
+	w, err := gitRepo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	err = w.Checkout(&git.CheckoutOptions{
+		Branch: "refs/heads/master",
+	})
+	if err != nil {
+		return err
+	}
+
+	err = w.Reset(&git.ResetOptions{
+		Mode: git.HardReset,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getAuthMethod() (transport.AuthMethod, error) {
+	sshFile := fmt.Sprintf("%s/.ssh/id_rsa", os.Getenv("HOME"))
+	if _, err := os.Stat(sshFile); os.IsNotExist(err) {
+		return nil, nil
+	}
+	sshBytes, err := ioutil.ReadFile(sshFile)
+	if err != nil {
+		return nil, err
+	}
+
+	sshPassphrase := os.Getenv("SSH_PASSPHRASE")
+	var signer ssh.Signer
+	if sshPassphrase != "" {
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(sshBytes, []byte(sshPassphrase))
+	} else {
+		signer, err = ssh.ParsePrivateKey(sshBytes)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	auth := &gitssh.PublicKeys{
+		Signer: signer,
+		User:   "git",
+	}
+	return auth, nil
 }
