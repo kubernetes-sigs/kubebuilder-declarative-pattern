@@ -55,7 +55,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 		gk := o.Group + "/" + o.Kind
 		healthy := true
 		objKey := client.ObjectKey{
-			Name: o.Name,
+			Name:      o.Name,
 			Namespace: o.Namespace,
 		}
 		// If the namespace isn't set on the object, we would want to use the namespace of src
