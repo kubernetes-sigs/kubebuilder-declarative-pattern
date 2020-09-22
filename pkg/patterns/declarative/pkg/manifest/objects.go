@@ -39,9 +39,10 @@ type Objects struct {
 type Object struct {
 	object *unstructured.Unstructured
 
-	Group string
-	Kind  string
-	Name  string
+	Group     string
+	Kind      string
+	Name      string
+	Namespace string
 
 	json []byte
 }
@@ -58,11 +59,12 @@ func ParseJSONToObject(json []byte) (*Object, error) {
 	}
 
 	return &Object{
-		object: u,
-		Group:  gvk.Group,
-		Kind:   gvk.Kind,
-		Name:   u.GetName(),
-		json:   json,
+		object:    u,
+		Group:     gvk.Group,
+		Kind:      gvk.Kind,
+		Name:      u.GetName(),
+		Namespace: u.GetNamespace(),
+		json:      json,
 	}, nil
 }
 
@@ -360,6 +362,7 @@ func newObject(u *unstructured.Unstructured, json []byte) (*Object, error) {
 	o.Group = gvk.Group
 	o.Kind = gvk.Kind
 	o.Name = u.GetName()
+	o.Namespace = u.GetNamespace()
 
 	return o, nil
 }

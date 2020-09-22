@@ -54,12 +54,20 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 	for _, o := range objs.Items {
 		gk := o.Group + "/" + o.Kind
 		healthy := true
+		objKey := client.ObjectKey{
+			Name:      o.Name,
+			Namespace: o.Namespace,
+		}
+		// If the namespace isn't set on the object, we would want to use the namespace of src
+		if objKey.Namespace == "" {
+			objKey.Namespace = src.GetNamespace()
+		}
 		var err error
 		switch gk {
 		case "/Service":
-			healthy, err = a.service(ctx, src, o.Name)
+			healthy, err = a.service(ctx, objKey)
 		case "extensions/Deployment", "apps/Deployment":
-			healthy, err = a.deployment(ctx, src, o.Name)
+			healthy, err = a.deployment(ctx, objKey)
 		default:
 			log.WithValues("type", gk).V(2).Info("type not implemented for status aggregation, skipping")
 		}
@@ -129,8 +137,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 	return nil
 }
 
-func (a *aggregator) deployment(ctx context.Context, src declarative.DeclarativeObject, name string) (bool, error) {
-	key := client.ObjectKey{Name: name}
+func (a *aggregator) deployment(ctx context.Context, key client.ObjectKey) (bool, error) {
 	dep := &appsv1.Deployment{}
 
 	if err := a.client.Get(ctx, key, dep); err != nil {
@@ -146,8 +153,7 @@ func (a *aggregator) deployment(ctx context.Context, src declarative.Declarative
 	return false, fmt.Errorf("deployment (%s) does not meet condition: %s", key, successfulDeployment)
 }
 
-func (a *aggregator) service(ctx context.Context, src declarative.DeclarativeObject, name string) (bool, error) {
-	key := client.ObjectKey{Namespace: src.GetNamespace(), Name: name}
+func (a *aggregator) service(ctx context.Context, key client.ObjectKey) (bool, error) {
 	svc := &corev1.Service{}
 	err := a.client.Get(ctx, key, svc)
 	if err != nil {
