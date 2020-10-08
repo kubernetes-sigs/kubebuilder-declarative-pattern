@@ -34,7 +34,6 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	recorder "k8s.io/client-go/tools/record"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -550,23 +549,6 @@ func parseListKind(infos *manifest.Objects) (*manifest.Objects, error) {
 // CollectMetrics determines whether metrics of declarative reconciler is enabled
 func (r *Reconciler) CollectMetrics() bool {
 	return r.options.metrics
-}
-
-func aggregateStatus(m map[status.Status]bool) status.Status {
-	inProgress := m[status.InProgressStatus]
-	terminating := m[status.TerminatingStatus]
-
-	failed := m[status.FailedStatus]
-
-	if inProgress || terminating {
-		return status.InProgressStatus
-	}
-
-	if failed {
-		return status.FailedStatus
-	}
-
-	return status.CurrentStatus
 }
 
 func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
