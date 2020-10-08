@@ -54,8 +54,8 @@ type Reconciler struct {
 	config    *rest.Config
 	kubectl   kubectlClient
 
-	rm  reconcileMetrics
-	mgr manager.Manager
+	metrics reconcileMetrics
+	mgr     manager.Manager
 
 	// recorder is the EventRecorder for creating k8s events
 	recorder      recorder.EventRecorder
@@ -114,7 +114,7 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 		if gvk, err := apiutil.GVKForObject(prototype, r.mgr.GetScheme()); err != nil {
 			return err
 		} else {
-			reconcileMetricsFor(gvk)
+			r.metrics = reconcileMetricsFor(gvk)
 		}
 	}
 
@@ -495,8 +495,8 @@ func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObj
 
 func (r *Reconciler) collectMetrics(request reconcile.Request, result reconcile.Result, err error) {
 	if r.options.metrics {
-		r.rm.reconcileWith(request)
-		r.rm.reconcileFailedWith(request, result, err)
+		r.metrics.reconcileWith(request)
+		r.metrics.reconcileFailedWith(request, result, err)
 	}
 }
 
