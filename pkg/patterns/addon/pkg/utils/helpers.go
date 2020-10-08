@@ -9,48 +9,71 @@ import (
 	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 )
 
-func GetCommonVersion(instance runtime.Object) (string, error) {
+func genError(v runtime.Object) error {
+	return fmt.Errorf("instance %T is not addonsv1alpha1.CommonObject or unstructured", v)
+}
+
+func GetCommonStatus(instance runtime.Object) (addonsv1alpha1.CommonStatus, error) {
 	switch v := instance.(type) {
 	case addonsv1alpha1.CommonObject:
-		return v.CommonSpec().Version, nil
+		return v.GetCommonStatus(), nil
 	case *unstructured.Unstructured:
-		version, _, err := unstructured.NestedString(v.Object, "spec", "version")
+		unstructStatus, _, err := unstructured.NestedMap(v.Object, "status")
 		if err != nil {
-			return "", fmt.Errorf("unable to get version from unstuctured: %v", err)
+			return addonsv1alpha1.CommonStatus{}, fmt.Errorf("unable to get status from unstuctured: %v", err)
 		}
-		return version, nil
+		var addonStatus addonsv1alpha1.CommonStatus
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(unstructStatus, &addonStatus)
+		if err != nil {
+			return addonStatus, err
+		}
+
+		return addonStatus, nil
 	default:
-		return "", fmt.Errorf("instance %T is not addonsv1alpha1.CommonObject or unstructured", v)
+		return addonsv1alpha1.CommonStatus{}, genError(v)
 	}
 }
 
-func GetCommonHealth(instance runtime.Object) (bool, error) {
+func SetCommonStatus(instance runtime.Object, status addonsv1alpha1.CommonStatus) error {
 	switch v := instance.(type) {
 	case addonsv1alpha1.CommonObject:
-		return v.GetCommonStatus().Healthy, nil
+		v.SetCommonStatus(status)
 	case *unstructured.Unstructured:
-		version, _, err := unstructured.NestedBool(v.Object, "status", "healthy")
+		unstructStatus, err := runtime.DefaultUnstructuredConverter.ToUnstructured(status)
 		if err != nil {
-			return false, fmt.Errorf("unable to get version from unstuctured: %v", err)
+			return fmt.Errorf("unable to convert unstructured to addonStatus: %v", err)
 		}
-		return version, nil
+
+		err = unstructured.SetNestedMap(v.Object, unstructStatus, "status")
+		if err != nil {
+			return fmt.Errorf("unable to set status in unstructured: %v", err)
+		}
+
+		return nil
 	default:
-		return false, fmt.Errorf("instance %T is not addonsv1alpha1.CommonObject or unstructured", v)
+		return genError(v)
 	}
+	return nil
 }
 
-func GetCommonChannel(instance runtime.Object) (string, error) {
+func GetCommonSpec(instance runtime.Object) (addonsv1alpha1.CommonSpec, error) {
 	switch v := instance.(type) {
 	case addonsv1alpha1.CommonObject:
-		return v.CommonSpec().Channel, nil
+		return v.CommonSpec(), nil
 	case *unstructured.Unstructured:
-		channel, _, err := unstructured.NestedString(v.Object, "spec", "channel")
+		unstructSpec, _, err := unstructured.NestedMap(v.Object, "spec")
 		if err != nil {
-			return "", fmt.Errorf("unable to get version from unstuctured: %v", err)
+			return addonsv1alpha1.CommonSpec{}, fmt.Errorf("unable to get spec from unstuctured: %v", err)
 		}
-		return channel, nil
+		var addonSpec addonsv1alpha1.CommonSpec
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(unstructSpec, &addonSpec)
+		if err != nil {
+			return addonSpec, err
+		}
+
+		return addonSpec, nil
 	default:
-		return "", fmt.Errorf("instance %T is not addonsv1alpha1.CommonObject or unstructured", v)
+		return addonsv1alpha1.CommonSpec{}, genError(v)
 	}
 }
 
@@ -61,6 +84,6 @@ func GetCommonName(instance runtime.Object) (string, error) {
 	case *unstructured.Unstructured:
 		return strings.ToLower(v.GetKind()), nil
 	default:
-		return "", fmt.Errorf("instance %T is not addonsv1alpha1.CommonObject or unstructured", v)
+		return "", genError(v)
 	}
 }

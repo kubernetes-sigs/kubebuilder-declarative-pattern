@@ -65,17 +65,14 @@ func (c *ManifestLoader) ResolveManifest(ctx context.Context, object runtime.Obj
 		componentName string
 	)
 
-	version, err := utils.GetCommonVersion(object)
+	spec, err := utils.GetCommonSpec(object)
 	if err != nil {
 		return nil, err
 	}
+	version = spec.Version
+	channelName = spec.Channel
 
 	componentName, err = utils.GetCommonName(object)
-	if err != nil {
-		return nil, err
-	}
-
-	channelName, err = utils.GetCommonChannel(object)
 	if err != nil {
 		return nil, err
 	}

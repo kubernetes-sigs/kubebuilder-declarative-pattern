@@ -19,7 +19,6 @@ package addon
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
@@ -42,15 +41,17 @@ const (
 
 // TransformApplicationFromStatus modifies the Application in the deployment based off the CommonStatus
 func TransformApplicationFromStatus(ctx context.Context, instance declarative.DeclarativeObject, objects *manifest.Objects) error {
-	version, err := utils.GetCommonVersion(instance)
+	status, err := utils.GetCommonStatus(instance)
 	if err != nil {
-		return fmt.Errorf("unable to get version from object: %v", err)
+		return err
 	}
+	healthy := status.Healthy
 
-	healthy, err := utils.GetCommonHealth(instance)
+	spec, err := utils.GetCommonSpec(instance)
 	if err != nil {
-		return fmt.Errorf("unable to get health from object: %v", err)
+		return err
 	}
+	version := spec.Version
 
 	app, err := declarative.ExtractApplication(objects)
 	if err != nil {
