@@ -17,27 +17,27 @@ limitations under the License.
 package mocks
 
 import (
-	"net/http"
-
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // Mock Types for Reconciler tests:
 type Manager struct {
-	client client.Client
-	cache  cache.Cache
-	config rest.Config
-	Scheme *runtime.Scheme
+	client        client.Client
+	cache         cache.Cache
+	config        rest.Config
+	Scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
+	mapper        meta.RESTMapper
 }
 
 var _ manager.Manager = &Manager{}
@@ -91,16 +91,16 @@ func (Manager) GetRecorder(name string) record.EventRecorder {
 	panic("implement me")
 }
 
-func (Manager) GetRESTMapper() meta.RESTMapper {
-	panic("implement me")
+func (m Manager) GetRESTMapper() meta.RESTMapper {
+	return m.mapper
 }
 
 func (Manager) GetAPIReader() client.Reader {
 	panic("implement me")
 }
 
-func (Manager) GetEventRecorderFor(name string) record.EventRecorder {
-	panic("implement me")
+func (m Manager) GetEventRecorderFor(name string) record.EventRecorder {
+	return m.eventRecorder
 }
 
 func (Manager) GetWebhookServer() *webhook.Server {
