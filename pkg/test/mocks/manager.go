@@ -17,8 +17,10 @@ limitations under the License.
 package mocks
 
 import (
+	"context"
 	"net/http"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -57,7 +59,7 @@ func (Manager) SetFields(interface{}) error {
 	panic("implement me")
 }
 
-func (Manager) Start(<-chan struct{}) error {
+func (Manager) Start(context.Context) error {
 	panic("implement me")
 }
 
@@ -120,5 +122,9 @@ func (Manager) AddMetricsExtraHandler(path string, handler http.Handler) error {
 }
 
 func (Manager) Elected() <-chan struct{} {
+	panic("implement me")
+}
+
+func (Manager) GetLogger() logr.Logger {
 	panic("implement me")
 }

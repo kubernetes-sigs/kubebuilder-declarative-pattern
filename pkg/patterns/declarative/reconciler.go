@@ -122,8 +122,7 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 }
 
 // +rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-func (r *Reconciler) Reconcile(request reconcile.Request) (result reconcile.Result, err error) {
-	ctx := context.TODO()
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (result reconcile.Result, err error) {
 	log := log.Log
 	defer r.collectMetrics(request, result, err)
 

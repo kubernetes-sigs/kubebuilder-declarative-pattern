@@ -17,6 +17,7 @@ limitations under the License.
 package declarative
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -242,7 +243,8 @@ func (ot *ObjectTracker) addIfNotPresent(objects []*manifest.Object, defaultName
 
 		// addIfNotPresent is called at Reconcler.reconcileExists,
 		// so Controller & Manager is already running
-		ot.trackedGVK[gvk].start()
+		ctx := context.TODO()
+		ot.trackedGVK[gvk].start(ctx)
 	}
 
 	return errors.NewAggregate(errs)
@@ -335,8 +337,8 @@ func (gvkt *gvkTracker) deleteMetricsIfNeeded(metricsDuration int) {
 	}
 }
 
-func (gvkt *gvkTracker) start() {
-	gvkt.src.Start(gvkt.eventHandler, dummyQueue{}, gvkt.predicate)
+func (gvkt *gvkTracker) start(ctx context.Context) {
+	gvkt.src.Start(ctx, gvkt.eventHandler, dummyQueue{}, gvkt.predicate)
 }
 
 func newGVKTracker(mgr manager.Manager, obj *unstructured.Unstructured, namespaced bool) (gvkt *gvkTracker) {
@@ -532,7 +534,7 @@ type recordTrigger struct {
 }
 
 func (rt recordTrigger) Create(ev event.CreateEvent, _ workqueue.RateLimitingInterface) {
-	ns, name := ev.Meta.GetNamespace(), ev.Meta.GetName()
+	ns, name := ev.Object.GetNamespace(), ev.Object.GetName()
 
 	if rt.namespaced {
 		if len(ns) == 0 {
@@ -549,8 +551,8 @@ func (rt recordTrigger) Create(ev event.CreateEvent, _ workqueue.RateLimitingInt
 
 func (rt recordTrigger) Update(ev event.UpdateEvent, _ workqueue.RateLimitingInterface) {
 	var nsnp nsnPairs = make(map[string][]string)
-	ons, oname := ev.MetaOld.GetNamespace(), ev.MetaOld.GetName()
-	nns, nname := ev.MetaNew.GetNamespace(), ev.MetaNew.GetName()
+	ons, oname := ev.ObjectOld.GetNamespace(), ev.ObjectOld.GetName()
+	nns, nname := ev.ObjectNew.GetNamespace(), ev.ObjectNew.GetName()
 
 	if rt.namespaced {
 		if len(ons) == 0 {
@@ -582,7 +584,7 @@ func (rt recordTrigger) Update(ev event.UpdateEvent, _ workqueue.RateLimitingInt
 }
 
 func (rt recordTrigger) Delete(ev event.DeleteEvent, _ workqueue.RateLimitingInterface) {
-	ns, name := ev.Meta.GetNamespace(), ev.Meta.GetName()
+	ns, name := ev.Object.GetNamespace(), ev.Object.GetName()
 
 	if rt.namespaced {
 		if len(ns) == 0 {
