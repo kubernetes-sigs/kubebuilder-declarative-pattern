@@ -18,6 +18,7 @@ package declarative
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -262,9 +263,9 @@ func TestAddIfNotPresent(t *testing.T) {
 		t.Error(err)
 	}
 
-	stopC := make(chan struct{})
+	ctx := context.TODO()
 	go func() {
-		_ = mgr.GetCache().Start(stopC)
+		_ = mgr.GetCache().Start(ctx)
 	}()
 
 	// Set up kubectl command
@@ -557,7 +558,7 @@ func TestAddIfNotPresent(t *testing.T) {
 				// Wait for reflector sees K8s object change in K8s API server & adds it to DeltaFIFO
 				// then controller pops it and eventhandler updates metrics
 				// If we ommit it, there is a chance call of testutil.CollectAndCompare is too fast & fails.
-				_ = mgr.GetCache().WaitForCacheSync(stopC)
+				_ = mgr.GetCache().WaitForCacheSync(ctx)
 				time.Sleep(time.Second * 10)
 
 				// Check for metrics

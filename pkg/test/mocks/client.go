@@ -30,7 +30,7 @@ func NewClient(clientScheme *runtime.Scheme) FakeClient {
 	}
 }
 
-func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out runtime.Object) error {
+func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out client.Object) error {
 	gvr, err := getGVRFromObject(out, f.scheme)
 	if err != nil {
 		return err
@@ -54,11 +54,11 @@ func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out runtime.O
 	return err
 }
 
-func (FakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+func (FakeClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	panic("not implemented")
 }
 
-func (f FakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+func (f FakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	createOptions := &client.CreateOptions{}
 	createOptions.ApplyOptions(opts)
 
@@ -79,19 +79,19 @@ func (f FakeClient) Create(ctx context.Context, obj runtime.Object, opts ...clie
 	return f.tracker.Create(gvr, obj, accessor.GetNamespace())
 }
 
-func (FakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
+func (FakeClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	return nil
 }
 
-func (FakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+func (FakeClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	return nil
 }
 
-func (FakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (FakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return nil
 }
 
-func (FakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+func (FakeClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	return nil
 }
 
@@ -99,7 +99,15 @@ func (FakeClient) Status() client.StatusWriter {
 	panic("not implemented")
 }
 
-func getGVRFromObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionResource, error) {
+func (FakeClient) RESTMapper() meta.RESTMapper {
+	return nil
+}
+
+func (FakeClient) Scheme() *runtime.Scheme {
+	return scheme.Scheme
+}
+
+func getGVRFromObject(obj client.Object, scheme *runtime.Scheme) (schema.GroupVersionResource, error) {
 	gvk, err := apiutil.GVKForObject(obj, scheme)
 	if err != nil {
 		return schema.GroupVersionResource{}, err

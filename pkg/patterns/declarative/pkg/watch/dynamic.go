@@ -23,9 +23,11 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -86,6 +88,14 @@ func (dw *dynamicWatch) Add(trigger schema.GroupVersionKind, options metav1.List
 	return nil
 }
 
+var _ client.Object = clientObject{}
+
+// clientObject is a concrete client.Object to pass to watch events.
+type clientObject struct {
+	runtime.Object
+	*metav1.ObjectMeta
+}
+
 // A Watch will be closed when the pod loses connection to the API server.
 // If a Watch is opened with no ResourceVersion then we will recieve an 'ADDED'
 // event for all Watch objects[1]. This will result in 'overnotification'
@@ -109,7 +119,7 @@ func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigg
 
 	for clientEvent := range events.ResultChan() {
 		log.WithValues("type", clientEvent.Type).WithValues("kind", trigger.String()).Info("broadcasting event")
-		dw.events <- event.GenericEvent{Object: clientEvent.Object, Meta: &target}
+		dw.events <- event.GenericEvent{Object: clientObject{Object: clientEvent.Object, ObjectMeta: &target}}
 	}
 
 	log.WithValues("kind", trigger.String()).WithValues("namespace", target.Namespace).WithValues("labels", options.LabelSelector).Info("watch closed")
