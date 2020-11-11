@@ -25,9 +25,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator/api/v1alpha1"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator/controllers"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
+	addonsv1alpha1 "github.com/gtracer/kubebuilder-declarative-pattern/examples/guestbook-operator/api/v1alpha1"
+	"github.com/gtracer/kubebuilder-declarative-pattern/examples/guestbook-operator/controllers"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/addon"
 	// +kubebuilder:scaffold:imports
 )
 

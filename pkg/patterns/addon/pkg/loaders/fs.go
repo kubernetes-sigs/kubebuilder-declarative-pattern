@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"

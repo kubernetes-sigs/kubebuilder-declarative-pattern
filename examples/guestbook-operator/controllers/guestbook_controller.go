@@ -24,10 +24,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	api "sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator/api/v1alpha1"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
+	api "github.com/gtracer/kubebuilder-declarative-pattern/examples/guestbook-operator/api/v1alpha1"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/addon"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 )
 
 // GuestbookReconciler reconciles a Guestbook object

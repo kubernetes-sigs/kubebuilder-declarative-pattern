@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 // AddLabels returns an ObjectTransform that adds labels to all the objects

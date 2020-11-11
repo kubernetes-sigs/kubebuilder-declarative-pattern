@@ -709,10 +709,10 @@ sigs.k8s.io/controller-runtime v0.4.0 h1:wATM6/m+3w8lj8FXNaO6Fs/rq/vqoOjO1Q116Z9
 sigs.k8s.io/controller-runtime v0.4.0/go.mod h1:ApC79lpY3PHW9xj/w9pj+lYkLgwAAUZwfXkME1Lajns=
 sigs.k8s.io/controller-runtime v0.6.0 h1:Fzna3DY7c4BIP6KwfSlrfnj20DJ+SeMBK8HSFvOk9NM=
 sigs.k8s.io/controller-runtime v0.6.0/go.mod h1:CpYf5pdNY/B352A1TFLAS2JVSlnGQ5O2cftPHndTroo=
-sigs.k8s.io/kubebuilder-declarative-pattern v0.0.0-20200317144824-bbf1fb2a4a9a h1:UdSbADtqxVDTwICFMWXVmjPyzSn+xfaYmxjHa2jPrj0=
-sigs.k8s.io/kubebuilder-declarative-pattern v0.0.0-20200317144824-bbf1fb2a4a9a/go.mod h1:UmLMohI25YTEDjmGhTZ3eiE9DPEfxtbAykwZFQJ92g8=
-sigs.k8s.io/kubebuilder-declarative-pattern v0.0.0-20200522144838-848d48e5b073 h1:YJ9UEJ6gGV2De3oTaWYAUGHQEU/Pn0Bwu9qf7e60Wnk=
-sigs.k8s.io/kubebuilder-declarative-pattern v0.0.0-20200522144838-848d48e5b073/go.mod h1:5DqvmcipwvJ1lp2WY9qVE6hCJVC8NFFWculXqEiwkJE=
+github.com/gtracer/kubebuilder-declarative-pattern v0.0.0-20200317144824-bbf1fb2a4a9a h1:UdSbADtqxVDTwICFMWXVmjPyzSn+xfaYmxjHa2jPrj0=
+github.com/gtracer/kubebuilder-declarative-pattern v0.0.0-20200317144824-bbf1fb2a4a9a/go.mod h1:UmLMohI25YTEDjmGhTZ3eiE9DPEfxtbAykwZFQJ92g8=
+github.com/gtracer/kubebuilder-declarative-pattern v0.0.0-20200522144838-848d48e5b073 h1:YJ9UEJ6gGV2De3oTaWYAUGHQEU/Pn0Bwu9qf7e60Wnk=
+github.com/gtracer/kubebuilder-declarative-pattern v0.0.0-20200522144838-848d48e5b073/go.mod h1:5DqvmcipwvJ1lp2WY9qVE6hCJVC8NFFWculXqEiwkJE=
 sigs.k8s.io/kustomize/api v0.2.0 h1:e++6JpysnnlUbHmFrv6jvfF5rFlgQ103bS1DO7r5bWA=
 sigs.k8s.io/kustomize/api v0.2.0/go.mod h1:zVtMg179jW1gr74jo9fc2Ac9dLYLTZZThc3DDb9lDW4=
 sigs.k8s.io/kustomize/api v0.3.2 h1:64gvYVAvqe2fNfcTevtXh/GmLwVwHIcJ2Z5HBMfjncs=

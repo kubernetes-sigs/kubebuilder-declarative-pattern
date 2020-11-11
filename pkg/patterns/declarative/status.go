@@ -19,7 +19,7 @@ package declarative
 import (
 	"context"
 
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 // Status provides health and readiness information for a given DeclarativeObject

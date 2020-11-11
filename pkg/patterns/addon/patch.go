@@ -25,9 +25,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	addonsv1alpha1 "github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 // ApplyPatches is an ObjectTransform to apply Patches specified on the Addon object to the manifest

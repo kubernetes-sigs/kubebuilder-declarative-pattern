@@ -30,8 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/watch"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/watch"
 )
 
 type Source interface {

@@ -1,4 +1,4 @@
-module sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator
+module github.com/gtracer/kubebuilder-declarative-pattern/examples/guestbook-operator
 
 go 1.13
 
@@ -7,5 +7,5 @@ require (
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v0.18.2
 	sigs.k8s.io/controller-runtime v0.6.0
-	sigs.k8s.io/kubebuilder-declarative-pattern v0.0.0-20200522144838-848d48e5b073
+	github.com/gtracer/kubebuilder-declarative-pattern v0.0.0-20200522144838-848d48e5b073
 )

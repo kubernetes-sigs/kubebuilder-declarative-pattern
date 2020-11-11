@@ -34,11 +34,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/diff"
 	clientScheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/mocks"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/addon"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/test/mocks"
 	"sigs.k8s.io/kustomize/api/filesys"
 )
 

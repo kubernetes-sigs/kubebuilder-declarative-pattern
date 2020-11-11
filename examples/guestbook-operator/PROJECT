@@ -1,5 +1,5 @@
 domain: example.org
-repo: sigs.k8s.io/kubebuilder-declarative-pattern
+repo: github.com/gtracer/kubebuilder-declarative-pattern
 resources:
 - group: addons
   kind: Guestbook

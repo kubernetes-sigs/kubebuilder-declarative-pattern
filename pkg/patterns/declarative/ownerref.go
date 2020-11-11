@@ -19,7 +19,7 @@ package declarative
 import (
 	"context"
 
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 // SourceAsOwner is a OwnerSelector that selects the source DeclarativeObject as the owner

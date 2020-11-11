@@ -18,7 +18,7 @@ package status
 
 import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
+	"github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 )
 
 // Deprecated: This function exists for backward compatibility, please use NewKstatusCheck

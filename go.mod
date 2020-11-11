@@ -1,4 +1,4 @@
-module sigs.k8s.io/kubebuilder-declarative-pattern
+module github.com/gtracer/kubebuilder-declarative-pattern
 
 go 1.13
 

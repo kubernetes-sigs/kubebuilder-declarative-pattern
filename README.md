@@ -16,7 +16,7 @@ IMG=<a writeable image path, eg, gcr.io/my-project/controller:latest> go run smo
 ## Documentation
 
 - [Building an Operator (walkthrough)](./docs/addon/walkthrough/README.md)
-- [Pattern Documentation](https://godoc.org/sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns)
+- [Pattern Documentation](https://godoc.org/github.com/gtracer/kubebuilder-declarative-pattern/pkg/patterns)
 - [Managing Addons with Operators (Video, KubeCon'18)](https://www.youtube.com/watch?v=LPejvfBR5_w)
 
 ## Community, discussion, contribution, and support
