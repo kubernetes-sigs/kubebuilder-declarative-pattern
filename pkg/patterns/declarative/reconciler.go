@@ -95,11 +95,7 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 	}
 	r.dynamicClient = d
 
-	restMapper, err := apiutil.NewDiscoveryRESTMapper(r.config)
-	if err != nil {
-		return err
-	}
-	r.restMapper = restMapper
+	r.restMapper = mgr.GetRESTMapper()
 
 	if err = r.applyOptions(opts...); err != nil {
 		return err
