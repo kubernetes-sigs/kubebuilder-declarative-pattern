@@ -191,20 +191,20 @@ func WithApplyValidation() reconcilerOption {
 // argument, largest metricsDuration is set against that ot.
 func WithReconcileMetrics(metricsDuration int, ot *ObjectTracker) reconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
-		var err *error
+		var err error
 
 		p.metrics = true
 		metricsRegisterOnce.Do(func() {
 			for _, m := range metricsList {
-				*err = metrics.Registry.Register(m)
-				if *err != nil {
+				err = metrics.Registry.Register(m)
+				if err != nil {
 					break
 				}
 			}
 		})
 
-		if *err != nil {
-			panic(*err)
+		if err != nil {
+			panic(err)
 		}
 
 		if ot == nil {
