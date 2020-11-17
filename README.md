@@ -1,12 +1,12 @@
 # kubebuilder-declarative-pattern
 
-kubebuilder-declarative-pattern provides a set of tools for building declarative cluster operators with kubebuilder. Declarative operators provide a fast path to orchestrating Kubernetes deployments to enable domain experts to focus their component instead of re-answering questions like 'how do I get this YAML into the cluster?' or 'how do I update it?'.
+kubebuilder-declarative-pattern provides a set of tools for building declarative cluster operators with kubebuilder. Declarative operators provide a fast path to orchestrating Kubernetes deployments to enable domain experts to focus on their component instead of re-answering questions like 'How do I get this YAML into the cluster?' or 'How do I update it?'.
 
 ## Development
 
 ### Running Smoke Tests
 
-Smoke tests are provided to ensure basic functinality of the framework against example operators. They should be ran as part of significant code changes. The tests require a running Kubernetes cluster to be targeted from the local machine and write access to a GCR bucket.
+Smoke tests are provided to ensure basic functionality of the framework against example operators. They should be run as part of significant code changes. The tests require a running Kubernetes cluster to be targeted from the local machine and write access to a GCR bucket.
 
 ```bash
 cd hack
