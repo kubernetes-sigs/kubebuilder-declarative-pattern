@@ -55,6 +55,10 @@ func (r *GuestbookReconciler) setupReconciler(mgr ctrl.Manager) error {
 		declarative.WithPreserveNamespace(),
 		declarative.WithApplyPrune(),
 		declarative.WithObjectTransform(addon.ApplyPatches),
+
+		// Add other optional options for testing
+		declarative.WithApplyValidation(),
+		declarative.WithReconcileMetrics(0, nil),
 	)
 }
 
