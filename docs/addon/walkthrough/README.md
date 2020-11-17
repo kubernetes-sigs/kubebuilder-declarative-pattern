@@ -7,12 +7,12 @@ This walkthrough is for creating an operator to run the [guestbook](https://gith
 Install the following depenencies:
 
 - [kubebuilder](https://book.kubebuilder.io/quick-start.html#installation) (tested with 2.0.0-alpha.4)
-- [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md) (tested with v2.0.3)
+- [kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize/) (tested with v2.0.3)
 - docker
 - kubectl
 - golang (>=1.11 for go modules)
 
-Create a new directory and use kubebuilder to scafold the operator:
+Create a new directory and use kubebuilder to scaffold the operator:
 
 ```
 export GO111MODULE=on
@@ -53,7 +53,7 @@ when [server-side-apply](https://github.com/kubernetes/enhancements/issues/555)
 is available we'll use that.
 
 We suggest that even advanced operators use a manifest for their core objects.
-It's always possible to manipulate the manifest before applying them (eg, adding labels,
+It's always possible to manipulate the manifest before applying it (eg, adding labels,
 changing namespaces, and tweaking flags)
 
 Some other advantages:

@@ -150,7 +150,7 @@ cp config/samples/* k8s/resources
 ### Adding Tests
 
 For this example, we will be adding a test for KubeDNS. 
-All code changes will live in [smoketest.go](../../smoketest.go).
+All code changes will live in [smoketest.go](../../../hack/smoketest.go).
 
 1. Create a test class that inherits from `CommonAddonsTest` and a constructor.
 
