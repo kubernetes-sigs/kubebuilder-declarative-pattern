@@ -299,11 +299,19 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 		}
 
 		// 3. Parse manifest into objects
-		// 4. Perform object transformations
-		objects, err := r.parseAndTransformManifest(ctx, instance, manifestStr)
+		objects, err := r.parseManifest(ctx, instance, manifestStr)
 		if err != nil {
-			log.Error(err, "error parsing and transforming manifest")
+			log.Error(err, "error parsing manifest")
 			return nil, err
+		}
+
+		// 4. Perform object transformations
+		// (unless kustomize is in use, in which case we transform after running kustomize)
+		if !r.IsKustomizeOptionUsed() {
+			if err := r.transformManifest(ctx, instance, objects); err != nil {
+				log.Error(err, "error transforming manifest")
+				return nil, err
+			}
 		}
 
 		if fs != nil {
@@ -343,9 +351,14 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 			return nil, fmt.Errorf("error converting kustomize output to yaml: %v", err)
 		}
 
-		objects, err := r.parseAndTransformManifest(ctx, instance, string(manifestYaml))
+		objects, err := r.parseManifest(ctx, instance, string(manifestYaml))
 		if err != nil {
 			log.Error(err, "creating final manifest yaml")
+			return nil, err
+		}
+
+		if err := r.transformManifest(ctx, instance, objects); err != nil {
+			log.Error(err, "error transforming manifest")
 			return nil, err
 		}
 		manifestObjects.Items = objects.Items
@@ -357,8 +370,8 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 	return manifestObjects, nil
 }
 
-// parseAndTransformManifest parses the manifest into objects and adds any transformations as required
-func (r *Reconciler) parseAndTransformManifest(ctx context.Context, instance DeclarativeObject, manifestStr string) (*manifest.Objects, error) {
+// parseManifest parses the manifest into objects
+func (r *Reconciler) parseManifest(ctx context.Context, instance DeclarativeObject, manifestStr string) (*manifest.Objects, error) {
 	log := log.Log
 
 	objects, err := manifest.ParseObjects(ctx, manifestStr)
@@ -367,6 +380,11 @@ func (r *Reconciler) parseAndTransformManifest(ctx context.Context, instance Dec
 		return nil, err
 	}
 
+	return objects, nil
+}
+
+// transformManifest runs any transformations as required
+func (r *Reconciler) transformManifest(ctx context.Context, instance DeclarativeObject, objects *manifest.Objects) error {
 	transforms := r.options.objectTransformations
 	if r.options.labelMaker != nil {
 		transforms = append(transforms, AddLabels(r.options.labelMaker(ctx, instance)))
@@ -375,10 +393,10 @@ func (r *Reconciler) parseAndTransformManifest(ctx context.Context, instance Dec
 	for _, t := range transforms {
 		err := t(ctx, instance, objects)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return objects, nil
+	return nil
 }
 
 // loadRawManifest loads the raw manifest YAML from the repository
