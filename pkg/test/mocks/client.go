@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,9 +16,8 @@ import (
 
 // FakeClient is a struct that implements client.Client for use in tests.
 type FakeClient struct {
-	ErrIfNotFound bool
-	tracker       testing.ObjectTracker
-	scheme        *runtime.Scheme
+	tracker testing.ObjectTracker
+	scheme  *runtime.Scheme
 }
 
 func NewClient(clientScheme *runtime.Scheme) FakeClient {
@@ -37,13 +35,7 @@ func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out client.Ob
 	}
 	o, err := f.tracker.Get(gvr, key.Namespace, key.Name)
 	if err != nil {
-		//return err
-		if f.ErrIfNotFound {
-			return apierrors.NewNotFound(schema.GroupResource{}, key.Name)
-		}
-		// TODO: should always return NotFound error here. Will need to update affected unit tests to stub the
-		// necessary data first.
-		return nil
+		return err
 	}
 	j, err := json.Marshal(o)
 	if err != nil {
