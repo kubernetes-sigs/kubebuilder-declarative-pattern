@@ -37,8 +37,13 @@ func (d *DirectApplier) Apply(ctx context.Context,
 
 	b := resource.NewBuilder(restClient)
 	res := b.Unstructured().Stream(ioReader, "manifestString").Do()
+	// res.Infos returns errors for types not on the currently-connected Client.
+	// If a manifest includes both a CRD and a CR, and the CRD is not already on
+	// the cluster when Apply() is called, this will return an error and a partial
+	// set of objects to apply. We should attempt to apply this partial set even
+	// if err is non-nil.
 	infos, err := res.Infos()
-	if err != nil {
+	if infos == nil {
 		return err
 	}
 
@@ -54,5 +59,11 @@ func (d *DirectApplier) Apply(ctx context.Context,
 		IOStreams: ioStreams,
 	}
 
-	return applyOpts.Run()
+	// We can only return one error here, so prefer returning the error
+	// encountered while applying the resources over the error parsing the
+	// objects.
+	if err := applyOpts.Run(); err != nil {
+		return err
+	}
+	return err
 }
