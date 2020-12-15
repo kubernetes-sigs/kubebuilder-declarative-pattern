@@ -1,12 +1,12 @@
 module sigs.k8s.io/kubebuilder-declarative-pattern
 
-go 1.13
+go 1.15
 
 require (
-	github.com/blang/semver v3.5.0+incompatible
-	github.com/evanphx/json-patch v4.9.0+incompatible
+	github.com/blang/semver/v4 v4.0.0
+	github.com/evanphx/json-patch/v5 v5.1.0
 	github.com/go-git/go-git/v5 v5.1.0
-	github.com/go-logr/logr v0.2.1
+	github.com/go-logr/logr v0.3.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
@@ -20,7 +20,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.19.2
 	sigs.k8s.io/cli-utils v0.16.0
-	sigs.k8s.io/controller-runtime v0.7.0-alpha.5
+	sigs.k8s.io/controller-runtime v0.7.0
 	sigs.k8s.io/kustomize/api v0.3.2
 	sigs.k8s.io/yaml v1.2.0
 )

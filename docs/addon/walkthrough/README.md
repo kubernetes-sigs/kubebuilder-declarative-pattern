@@ -321,7 +321,7 @@ RUN curl -fsSL https://dl.k8s.io/release/v1.13.4/bin/linux/amd64/kubectl > /usr/
 RUN chmod a+rx /usr/bin/kubectl
 
 # Build the manager binary
-FROM golang:1.13 as builder
+FROM golang:1.15 as builder
 
 # Copy in the go src
 WORKDIR /go/src/guestbook-operator
@@ -354,7 +354,7 @@ ENTRYPOINT ["./manager"]
 ```make
 ...
 # Add vendor prerequisites before test.
-docker-build: vendor test 
+docker-build: vendor test
 	docker build . -t ${IMG}
 
 # Add vendor target.
