@@ -2,10 +2,10 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,7 +45,7 @@ func FindDNSClusterIP(ctx context.Context, c client.Client) (string, error) {
 
 	ip := net.ParseIP(kubernetesService.Spec.ClusterIP)
 	if ip == nil {
-		return "", errors.Errorf("cannot parse kubernetes ClusterIP %q", kubernetesService.Spec.ClusterIP)
+		return "", fmt.Errorf("cannot parse kubernetes ClusterIP %q", kubernetesService.Spec.ClusterIP)
 	}
 
 	// The kubernetes Service ClusterIP is the 1st IP in the Service Subnet.
