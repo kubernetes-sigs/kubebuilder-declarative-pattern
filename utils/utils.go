@@ -72,7 +72,7 @@ func GetDNSDomain() string {
 	}
 
 	domain := strings.TrimPrefix(cname, svc)
-	domain = strings.TrimSuffix(dnsDomain, ".")
+	domain = strings.TrimSuffix(domain, ".")
 
 	klog.Infof("determined DNS Domain for DNS should be %q", domain)
 
