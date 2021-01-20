@@ -36,6 +36,9 @@ func DefaultObjectOrder(ctx context.Context) func(o *manifest.Object) int {
 		case "apiextensions.k8s.io/CustomResourceDefinition":
 			return -1000
 
+		// Namespaces need to be created before any other resources
+		case "/Namespace":
+			return 0
 		// We need to create ServiceAccounts, Roles before we bind them with a RoleBinding
 		case "/ServiceAccount", "rbac.authorization.k8s.io/ClusterRole":
 			return 1
