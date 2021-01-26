@@ -151,3 +151,238 @@ configMapGenerator:
 		})
 	}
 }
+
+func Test_ObjectAddLabels(t *testing.T) {
+	inputManifest := `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-app
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-app
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: test-app
+    spec:
+      containers:
+      - image: busybox
+        name: busybox`
+	tests := []struct {
+		name           string
+		inputManifest  string
+		inputLabels    map[string]string
+		expectedLabels map[string]string
+	}{
+		{
+			name:           "add labels which are all new one",
+			inputManifest:  inputManifest,
+			inputLabels:    map[string]string{"sample-key1": "sample-value1", "sample-key2": "sample-value2"},
+			expectedLabels: map[string]string{"app": "test-app", "sample-key1": "sample-value1", "sample-key2": "sample-value2"},
+		},
+		{
+			// If call AddLabels with a key which has exists already, value will be overwritten.
+			name:           "add label which has already exist in manifest",
+			inputManifest:  inputManifest,
+			inputLabels:    map[string]string{"app": "test-app2"},
+			expectedLabels: map[string]string{"app": "test-app2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			objects, err := ParseObjects(ctx, tt.inputManifest)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			for _, o := range objects.Items {
+				o.AddLabels(tt.inputLabels)
+				if len(tt.expectedLabels) != len(o.object.GetLabels()) {
+					t.Errorf("Expected length of labels to be %v but is %v", len(tt.expectedLabels), len(o.object.GetLabels()))
+				}
+				for k, v := range tt.expectedLabels {
+					if o.object.GetLabels()[k] != v {
+						t.Fatalf("unexpected result, expected ========\n%v\n\nactual ========\n%v\n", tt.expectedLabels, o.object.GetLabels())
+					}
+				}
+			}
+		})
+	}
+}
+
+func Test_ParseJSONToObject(t *testing.T) {
+	tests := []struct {
+		name           string
+		inputManifest  string
+		expectedObject *Object
+		error          bool
+	}{
+		{
+			name: "valid json manifest",
+			inputManifest: `{
+  "apiVersion": "v1",
+  "kind": "ServiceAccount",
+  "metadata": {
+    "name": "foo-operator",
+    "namespace": "kube-system"
+  }
+}`,
+			expectedObject: &Object{
+				object: &unstructured.Unstructured{
+					Object: map[string]interface{}{
+						"apiVersion": "v1",
+						"kind":       "ServiceAccount",
+						"metadata": map[string]interface{}{
+							"name":      "foo-operator",
+							"namespace": "kube-system",
+						},
+					},
+				},
+			},
+			error: false,
+		},
+		{
+			name: "parse json error will occur",
+			inputManifest: `{
+  "apiVersion": "v1",
+  "kind": "ServiceAccount",
+  "metadata": {
+    "name": "foo-operator",
+    "invalid-key": 
+  }
+}`,
+			expectedObject: nil,
+			error:          true,
+		},
+		{
+			name: "unexpected type error will occur",
+			inputManifest: `{
+  "apiVersion": "v1",
+  "invalid-kind": "ServiceAccount",
+  "metadata": {
+    "name": "foo-operator",
+    "namespace": "kube-system"
+  }
+}`,
+			expectedObject: nil,
+			error:          true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.error == true {
+				_, err := ParseJSONToObject([]byte(tt.inputManifest))
+				if err == nil {
+					t.Fatalf("expect error occur, but error doesn't occur")
+				}
+			} else {
+				object, err := ParseJSONToObject([]byte(tt.inputManifest))
+				if err != nil {
+					t.Fatalf("unexpected err: %v", err)
+				}
+				actual, _ := object.object.MarshalJSON()
+				expected, _ := tt.expectedObject.object.MarshalJSON()
+				if string(actual) != string(expected) {
+					t.Fatalf("unexpected result, expected ========\n%v\n\nactual ========\n%v\n", tt.expectedObject.object, object.object)
+				}
+			}
+		})
+	}
+}
+
+func Test_SetNestedStringMap(t *testing.T) {
+	tests := []struct {
+		name           string
+		inputManifest  string
+		inputMap       map[string]string
+		expectedObject []*Object
+	}{
+		{
+			name: "normal pattern",
+			inputManifest: `---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: foo-operator
+  namespace: kube-system`,
+			inputMap: map[string]string{"foo": "bar"},
+			expectedObject: []*Object{
+				{
+					object: &unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"apiVersion": "v1",
+							"kind":       "ServiceAccount",
+							"metadata": map[string]interface{}{
+								"name":      "foo-operator",
+								"namespace": "kube-system",
+								"labels": map[string]interface{}{
+									"foo": "bar",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:          "nil object pattern",
+			inputManifest: "",
+			inputMap:      map[string]string{"foo": "bar"},
+			expectedObject: []*Object{
+				{
+					object: &unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"metadata": map[string]interface{}{
+								"labels": map[string]interface{}{
+									"foo": "bar",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if len(tt.inputManifest) != 0 {
+				objects, err := ParseObjects(ctx, tt.inputManifest)
+				if err != nil {
+					t.Fatalf("unexpected err: %v", err)
+				}
+				for _, o := range objects.Items {
+					o.SetNestedStringMap(tt.inputMap, "metadata", "labels")
+					actualBytes, _ := o.JSON()
+					actualStr := string(actualBytes)
+
+					expectedBytes, _ := tt.expectedObject[0].JSON()
+					expectedStr := string(expectedBytes)
+
+					if expectedStr != actualStr {
+						t.Fatalf("unexpected result, expected ========\n%v\n\nactual ========\n%v\n", expectedStr, actualStr)
+					}
+				}
+			} else { // Test for object.Object == nil pattern
+				o, _ := NewObject(&unstructured.Unstructured{})
+				o.SetNestedStringMap(tt.inputMap, "metadata", "labels")
+				actualBytes, _ := o.JSON()
+				actualStr := string(actualBytes)
+
+				expectedBytes, _ := tt.expectedObject[0].JSON()
+				expectedStr := string(expectedBytes)
+
+				if expectedStr != actualStr {
+					t.Fatalf("unexpected result, expected ========\n%v\n\nactual ========\n%v\n", expectedStr, actualStr)
+				}
+			}
+		})
+	}
+}
