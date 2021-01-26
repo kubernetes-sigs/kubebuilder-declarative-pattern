@@ -67,11 +67,12 @@ func GetDNSDomain() string {
 	cname, err := net.LookupCNAME(svc)
 	if err != nil {
 		// If it cannot determine the domain, we default it to "cluster.local"
-		klog.Infof("determined DNS Domain for cluster should be %q", dnsDomain)
+		klog.Infof("could not determine the domain, the DNS Domain for the cluster will default to %q", dnsDomain)
 		return dnsDomain
 	}
 
 	domain := strings.TrimPrefix(cname, svc)
+	domain = strings.TrimPrefix(domain, ".")
 	domain = strings.TrimSuffix(domain, ".")
 
 	klog.Infof("determined DNS Domain for DNS should be %q", domain)
