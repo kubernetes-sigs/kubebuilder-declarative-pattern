@@ -2,7 +2,10 @@ package manifest
 
 import (
 	"context"
+	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -383,6 +386,250 @@ metadata:
 					t.Fatalf("unexpected result, expected ========\n%v\n\nactual ========\n%v\n", expectedStr, actualStr)
 				}
 			}
+		})
+	}
+}
+
+func Test_MutateContainers(t *testing.T) {
+	tests := []struct {
+		name           string
+		inputManifest  string
+		expectedObject []*Object
+		error          bool
+		errorString    string
+		fn             func(map[string]interface{}) error
+	}{
+		{
+			name: "normal success pattern",
+			inputManifest: `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: test-app
+spec:
+  selector:
+    matchLabels:
+      app: guestbook
+      tier: frontend
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers:
+      - name: php-redis
+        image: gcr.io/google-samples/gb-frontend:v4`,
+			expectedObject: []*Object{
+				{
+					object: &unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"apiVersion": "apps/v1",
+							"kind":       "Deployment",
+							"metadata": map[string]interface{}{
+								"labels": map[string]interface{}{
+									"app": "test-app",
+								},
+								"name": "frontend",
+							},
+							"spec": map[string]interface{}{
+								"replicas": 3,
+								"selector": map[string]interface{}{
+									"matchLabels": map[string]interface{}{
+										"app":  "guestbook",
+										"tier": "frontend",
+									},
+								},
+								"template": map[string]interface{}{
+									"metadata": map[string]interface{}{
+										"labels": map[string]interface{}{
+											"app":  "guestbook",
+											"tier": "frontend",
+										},
+									},
+									"spec": map[string]interface{}{
+										"containers": []interface{}{
+											map[string]interface{}{
+												"image": "gcr.io/google-samples/gb-frontend:v4",
+												"name":  "php-redis",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			error: false,
+		},
+		{
+			name: "object has no containers key",
+			inputManifest: `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: test-app
+spec:
+  selector:
+    matchLabels:
+      app: guestbook
+      tier: frontend
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec: invalid-value`,
+			expectedObject: nil,
+			error:          true,
+			errorString:    "error reading containers: spec.template.spec.containers accessor error: invalid-value is of the type string, expected map[string]interface{}",
+			fn: func(m map[string]interface{}) error {
+				return nil
+			},
+		},
+		{
+			name:           "no manifest",
+			inputManifest:  "",
+			expectedObject: nil,
+			error:          true,
+			errorString:    "containers not found",
+			fn: func(m map[string]interface{}) error {
+				return nil
+			},
+		},
+		{
+			name: "object has no containers list",
+			inputManifest: `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: test-app
+spec:
+  selector:
+    matchLabels:
+      app: guestbook
+      tier: frontend
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers: invalid-value`,
+			expectedObject: nil,
+			error:          true,
+			errorString:    "containers was not a list",
+			fn: func(m map[string]interface{}) error {
+				return nil
+			},
+		},
+		{
+			name: "object has no containers normal structure",
+			inputManifest: `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: test-app
+spec:
+  selector:
+    matchLabels:
+      app: guestbook
+      tier: frontend
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers:
+      - dummy-value`,
+			expectedObject: nil,
+			error:          true,
+			errorString:    "container was not an object",
+			fn: func(m map[string]interface{}) error {
+				return nil
+			},
+		},
+		{
+			name: "mutate function return error",
+			inputManifest: `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: test-app
+spec:
+  selector:
+    matchLabels:
+      app: guestbook
+      tier: frontend
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers:
+      - name: php-redis
+        image: gcr.io/google-samples/gb-frontend:v4`,
+			expectedObject: nil,
+			error:          true,
+			errorString:    "error occures in mutate function",
+			fn: func(m map[string]interface{}) error {
+				return fmt.Errorf("error occures in mutate function")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			objects, err := ParseObjects(ctx, tt.inputManifest)
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			if tt.error == false {
+				for _, o := range objects.Items {
+					err = o.MutateContainers(func(m map[string]interface{}) error {
+						return nil
+					})
+					actualBytes, _ := o.JSON()
+					actualStr := string(actualBytes)
+
+					expectedBytes, _ := tt.expectedObject[0].JSON()
+					expectedStr := string(expectedBytes)
+
+					if expectedStr != actualStr {
+						t.Fatalf("unexpected result, expected ========\n%v\n\nactual ========\n%v\n", expectedStr, actualStr)
+					}
+				}
+			} else {
+				if tt.inputManifest == "" {
+					o, _ := NewObject(&unstructured.Unstructured{})
+					err = o.MutateContainers(tt.fn)
+					assert.EqualError(t, err, tt.errorString)
+				} else {
+					for _, o := range objects.Items {
+						err = o.MutateContainers(tt.fn)
+						assert.EqualError(t, err, tt.errorString)
+					}
+				}
+			}
+
 		})
 	}
 }
