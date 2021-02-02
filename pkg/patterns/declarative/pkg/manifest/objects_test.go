@@ -155,7 +155,7 @@ configMapGenerator:
 	}
 }
 
-func Test_ObjectAddLabels(t *testing.T) {
+func Test_AddLabels(t *testing.T) {
 	inputManifest := `---
 apiVersion: apps/v1
 kind: Deployment
@@ -838,6 +838,147 @@ spec:
 				}
 			}
 
+		})
+	}
+}
+
+func Test_Sort(t *testing.T) {
+	deployment1 := &Object{
+		object: &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "apps/v1",
+				"kind":       "Deployment",
+				"metadata": map[string]interface{}{
+					"name": "frontend111",
+				},
+			},
+		},
+		Name:  "frontend111",
+		Kind:  "Deployment",
+		Group: "apps",
+	}
+	deployment2 := &Object{
+		object: &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "apps/v1",
+				"kind":       "Deployment",
+				"metadata": map[string]interface{}{
+					"name": "frontend22222",
+				},
+			},
+		},
+		Name:  "frontend22222",
+		Kind:  "Deployment",
+		Group: "apps",
+	}
+	service := &Object{
+		object: &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Service",
+				"metadata": map[string]interface{}{
+					"name": "frontend-service",
+				},
+			},
+		},
+		Name:  "frontend-service",
+		Kind:  "Service",
+		Group: "",
+	}
+	serviceAccount := &Object{
+		object: &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "ServiceAccount",
+				"metadata": map[string]interface{}{
+					"name": "serviceaccount",
+				},
+			},
+		},
+		Name:  "serviceaccount",
+		Kind:  "ServiceAccount",
+		Group: "",
+	}
+	tests := []struct {
+		name            string
+		inputObjects    *Objects
+		expectedObjects *Objects
+		error           bool
+		scoreFunc       func(*Object) int
+	}{
+		{
+			name: "sort with score function's result",
+			inputObjects: &Objects{
+				Items: []*Object{
+					deployment2,
+					deployment1,
+				},
+			},
+			expectedObjects: &Objects{
+				Items: []*Object{
+					deployment1,
+					deployment2,
+				},
+			},
+			error:     false,
+			scoreFunc: func(o *Object) int { return len(o.Name) },
+		},
+		{
+			name: "sort with Group",
+			inputObjects: &Objects{
+				Items: []*Object{
+					deployment1,
+					service,
+				},
+			},
+			expectedObjects: &Objects{
+				Items: []*Object{
+					service,
+					deployment1,
+				},
+			},
+			error:     false,
+			scoreFunc: func(o *Object) int { return 0 },
+		},
+		{
+			name: "sort with Kind",
+			inputObjects: &Objects{
+				Items: []*Object{
+					serviceAccount,
+					service,
+				},
+			},
+			expectedObjects: &Objects{
+				Items: []*Object{
+					service,
+					serviceAccount,
+				},
+			},
+			error:     false,
+			scoreFunc: func(o *Object) int { return 0 },
+		},
+		{
+			name: "sort with Name",
+			inputObjects: &Objects{
+				Items: []*Object{
+					deployment2,
+					deployment1,
+				},
+			},
+			expectedObjects: &Objects{
+				Items: []*Object{
+					deployment1,
+					deployment2,
+				},
+			},
+			error:     false,
+			scoreFunc: func(o *Object) int { return 0 },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.inputObjects.Sort(tt.scoreFunc)
+			assert.Equal(t, tt.expectedObjects, tt.inputObjects)
 		})
 	}
 }
