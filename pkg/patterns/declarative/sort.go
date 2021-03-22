@@ -46,7 +46,7 @@ func DefaultObjectOrder(ctx context.Context) func(o *manifest.Object) int {
 			return 2
 
 		// Pods might need configmap or secrets - avoid backoff by creating them first
-		case "/ConfigMap", "/Secrets":
+		case "/ConfigMap", "/Secret":
 			return 100
 
 		// Create the pods after we've created other things they might be waiting for
