@@ -2,6 +2,7 @@ package applier
 
 import (
 	"context"
+	//"io/ioutil"
 	"os"
 	"strings"
 
@@ -14,11 +15,14 @@ import (
 )
 
 type DirectApplier struct {
-	a apply.ApplyOptions
+	a           apply.ApplyOptions
+	ConfigFlags genericclioptions.RESTClientGetter
 }
 
 func NewDirectApplier() *DirectApplier {
-	return &DirectApplier{}
+	return &DirectApplier{
+		ConfigFlags: genericclioptions.NewConfigFlags(true).WithDeprecatedPasswordFlag(),
+	}
 }
 
 func (d *DirectApplier) Apply(ctx context.Context,
@@ -32,7 +36,7 @@ func (d *DirectApplier) Apply(ctx context.Context,
 		Out:    os.Stdout,
 		ErrOut: os.Stderr,
 	}
-	restClient := genericclioptions.NewConfigFlags(true).WithDeprecatedPasswordFlag()
+	restClient := d.ConfigFlags
 	ioReader := strings.NewReader(manifest)
 
 	b := resource.NewBuilder(restClient)
@@ -56,3 +60,57 @@ func (d *DirectApplier) Apply(ctx context.Context,
 
 	return applyOpts.Run()
 }
+
+//func (d *DirectApplier) Apply(ctx context.Context,
+//	namespace string,
+//	manifest string,
+//	validate bool,
+//	extraArgs ...string,
+//) error {
+//
+//	tmpFile, err := ioutil.TempFile("", "tmp-manifest-*.yaml")
+//	if err != nil {
+//		return err
+//	}
+//	tmpFile.Write([]byte(manifest))
+//	tmpFile.Close()
+//	defer os.Remove(tmpFile.Name())
+//	ioStreams := genericclioptions.IOStreams{
+//		In:     tmpFile,
+//		Out:    os.Stdout,
+//		ErrOut: os.Stderr,
+//	}
+//	restClient := d.ConfigFlags
+//	f := cmdutil.NewFactory(restClient)
+//	schema, err := f.Validator(validate)
+//	if err != nil {
+//		return err
+//	}
+//	applyOpts := apply.NewApplyOptions(ioStreams)
+//
+//	applyOpts.DynamicClient, err = f.DynamicClient()
+//	if err != nil {
+//		return err
+//	}
+//	applyOpts.DeleteOptions, _ = applyOpts.DeleteFlags.ToOptions(applyOpts.DynamicClient, applyOpts.IOStreams)
+//
+//	applyOpts.Namespace, applyOpts.EnforceNamespace, err = f.ToRawKubeConfigLoader().Namespace()
+//	if namespace != "" {
+//		applyOpts.Namespace = namespace
+//		//applyOpts.EnforceNamespace = true
+//	}
+//	applyOpts.Validator = schema
+//	applyOpts.Builder = f.NewBuilder()
+//	applyOpts.Mapper, err = f.ToRESTMapper()
+//	applyOpts.ToPrinter = func(operation string) (printers.ResourcePrinter, error) {
+//		applyOpts.PrintFlags.NamePrintFlags.Operation = operation
+//		cmdutil.PrintFlagsWithDryRunStrategy(applyOpts.PrintFlags, applyOpts.DryRunStrategy)
+//		return applyOpts.PrintFlags.ToPrinter()
+//	}
+//	applyOpts.DeleteOptions = &cmdDelete.DeleteOptions{
+//		IOStreams: ioStreams,
+//	}
+//	applyOpts.DeleteOptions.Filenames = []string{tmpFile.Name()}
+//
+//	return applyOpts.Run()
+//}
