@@ -338,8 +338,8 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 	if r.IsKustomizeOptionUsed() {
 		// run kustomize to create final manifest
 		opts := krusty.MakeDefaultOptions()
-		k := krusty.MakeKustomizer(fs, opts)
-		m, err := k.Run(manifestObjects.Path)
+		k := krusty.MakeKustomizer(opts)
+		m, err := k.Run(fs, manifestObjects.Path)
 		if err != nil {
 			log.Error(err, "running kustomize to create final manifest")
 			return nil, fmt.Errorf("error running kustomize: %v", err)
