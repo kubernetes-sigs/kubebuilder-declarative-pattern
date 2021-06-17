@@ -42,6 +42,7 @@ type GuestbookStatus struct {
 // +kubebuilder:object:root=true
 
 // Guestbook is the Schema for the guestbooks API
+// +kubebuilder:subresource:status
 type Guestbook struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
