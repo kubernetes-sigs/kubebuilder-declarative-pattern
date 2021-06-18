@@ -201,7 +201,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	for _, obj := range objects.Items {
 
 		unstruct, err := GetObjectFromCluster(obj, r)
-		if err != nil && !apierrors.IsNotFound(err) {
+		if err != nil && !apierrors.IsNotFound(errors.Unwrap(err)) {
 			log.WithValues("name", obj.Name).Error(err, "Unable to get resource")
 		}
 		if unstruct != nil {
