@@ -8,8 +8,8 @@ require (
 	github.com/go-git/go-git/v5 v5.1.0
 	github.com/go-logr/logr v0.3.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
+	github.com/google/go-cmp v0.5.2
 	github.com/prometheus/client_golang v1.7.1
-	github.com/stretchr/testify v1.6.1
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/tools v0.0.0-20200714190737-9048b464a08d
 	k8s.io/api v0.20.1

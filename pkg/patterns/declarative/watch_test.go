@@ -3,11 +3,11 @@ package declarative
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_uniqueGroupVersionKind(t *testing.T) {
@@ -131,7 +131,9 @@ func Test_uniqueGroupVersionKind(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actualSchema := uniqueGroupVersionKind(tt.inputObjects)
-			assert.Equal(t, tt.expectedSchema, actualSchema)
+			if diff := cmp.Diff(tt.expectedSchema, actualSchema); diff != "" {
+				t.Errorf("schema mismatch (-want +got):\n%s", diff)
+			}
 		})
 	}
 }
