@@ -22,14 +22,15 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
+	//"time"
 
 	//appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
-	diskcached "k8s.io/client-go/discovery/cached/disk"
+	//diskcached "k8s.io/client-go/discovery/cached/disk"
+	memorycached "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
@@ -332,7 +333,8 @@ func (d *DummyRESTClientGetter) ToDiscoveryClient() (discovery.CachedDiscoveryIn
 	//httpCacheDir := filepath.Join(cacheDir, "http")
 	//discoveryCacheDir := computeDiscoverCacheDir(filepath.Join(cacheDir, "discovery"), config.Host)
 
-	return diskcached.NewCachedDiscoveryClientForConfig(config, "", "", time.Duration(10*time.Minute))
+	//return diskcached.NewCachedDiscoveryClientForConfig(config, "", "", time.Duration(10*time.Minute))
+	return memorycached.NewMemCacheClient(discovery.NewDiscoveryClientForConfigOrDie(config)), nil
 	//return diskcached.NewCachedDiscoveryClientForConfig(config, discoveryCacheDir, httpCacheDir, time.Duration(10*time.Minute))
 }
 
