@@ -50,6 +50,7 @@ func TestDirectApply(t *testing.T) {
 		args              []string
 	}{
 		{
+			//TODO: IMHO, it is needed to pass this test w/ all applier. We should update direct.go
 			name:              "namespace defaulting",
 			namespace:         "",
 			expectedNamespace: apiv1.NamespaceDefault,
@@ -147,6 +148,7 @@ spec:
         image: gcr.io/google-samples/gb-frontend:v4`,
 		},
 		{
+			//TODO: IMHO, it is needed to pass this test w/ all applier. We should update direct.go
 			name:              "preserve namespace apply",
 			namespace:         "preserve-namespace-apply-ns", // case of using PreserveNamespace()
 			expectedNamespace: "preserve-namespace-apply-ns",
