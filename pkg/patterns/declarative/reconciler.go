@@ -65,7 +65,7 @@ type Reconciler struct {
 }
 
 type kubectlClient interface {
-	Apply(ctx context.Context, namespace string, manifest string, validate bool, args ...string) error
+	applier.Applier
 }
 
 type DeclarativeObject interface {
