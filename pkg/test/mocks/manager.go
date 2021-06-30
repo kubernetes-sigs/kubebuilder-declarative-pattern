@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -35,12 +36,13 @@ import (
 
 // Mock Types for Reconciler tests:
 type Manager struct {
-	client        client.Client
-	cache         cache.Cache
-	config        rest.Config
-	Scheme        *runtime.Scheme
-	eventRecorder record.EventRecorder
-	mapper        meta.RESTMapper
+	client            client.Client
+	cache             cache.Cache
+	config            rest.Config
+	Scheme            *runtime.Scheme
+	eventRecorder     record.EventRecorder
+	mapper            meta.RESTMapper
+	controllerOptions v1alpha1.ControllerConfigurationSpec
 }
 
 var _ manager.Manager = &Manager{}
@@ -62,6 +64,10 @@ func (Manager) SetFields(interface{}) error {
 
 func (Manager) Start(context.Context) error {
 	panic("implement me")
+}
+
+func (m Manager) GetControllerOptions() v1alpha1.ControllerConfigurationSpec {
+	return m.controllerOptions
 }
 
 func (m Manager) GetConfig() *rest.Config {

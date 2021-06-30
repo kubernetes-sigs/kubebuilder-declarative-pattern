@@ -20,9 +20,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"os"
-	"os/exec"
-	"path/filepath"
+	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -32,6 +30,7 @@ import (
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -242,10 +241,10 @@ func TestReconcileFailedWith(t *testing.T) {
 // and point that path.
 func TestAddIfNotPresent(t *testing.T) {
 	const defKubectlPath = "/usr/local/kubebuilder/bin"
-	var kubectlPath string
 
 	// Run local kube-apiserver & etecd
 	testEnv := envtest.Environment{}
+
 	restConf, err := testEnv.Start()
 	if err != nil {
 		t.Log("Maybe, you have to make sure control plane binaries" + " " +
@@ -253,6 +252,12 @@ func TestAddIfNotPresent(t *testing.T) {
 			"/usr/local/kubebuilder/bin" + " " +
 			"or have to set environment variable" + " " +
 			"KUBEBUILDER_ASSETS to the path these binaries reside in")
+		t.Error(err)
+	}
+
+	// Add user for test
+	user, err := testEnv.AddUser(envtest.User{Name: "default", Groups: []string{"system:masters"}}, &rest.Config{})
+	if err != nil {
 		t.Error(err)
 	}
 
@@ -268,11 +273,9 @@ func TestAddIfNotPresent(t *testing.T) {
 		_ = mgr.GetCache().Start(ctx)
 	}()
 
-	// Set up kubectl command
-	if envPath := os.Getenv("KUBEBUILDER_ASSETS"); envPath != "" {
-		kubectlPath = filepath.Join(envPath, "kubectl")
-	} else {
-		kubectlPath = filepath.Join("/usr/local/kubebuilder/bin", "kubectl")
+	ctl, err := user.Kubectl()
+	if err != nil {
+		t.Error(err)
 	}
 
 	// kubectl arg for "kubectl apply"
@@ -488,7 +491,6 @@ func TestAddIfNotPresent(t *testing.T) {
 			globalObjectTracker.SetMetricsDuration(st.metricsDuration)
 
 			for i, yobjList := range st.objects {
-				var cmd *exec.Cmd
 				var stdout bytes.Buffer
 				var stderr bytes.Buffer
 				var cmdArgs []string
@@ -529,26 +531,38 @@ func TestAddIfNotPresent(t *testing.T) {
 					t.Error(err)
 				}
 
+				tmpManifests, err := ioutil.TempFile(t.TempDir(), "tmp-manifests-*.yaml")
+				if err != nil {
+					t.Error(err)
+				}
+				_, err = tmpManifests.WriteString(yobj)
+				if err != nil {
+					tmpManifests.Close()
+					t.Error(err)
+				}
+				err = tmpManifests.Close()
+				if err != nil {
+					t.Error(err)
+				}
+
 				// Set up kubectl command
 				if st.actions[i] != "Delete" {
 					if len(st.defaultNamespace) != 0 {
-						cmdArgs = append(applyArgs, "-n", st.defaultNamespace, "-f", "-")
+						cmdArgs = append(applyArgs, "-n", st.defaultNamespace, "-f", tmpManifests.Name())
 					} else {
-						cmdArgs = append(applyArgs, "-f", "-")
+						cmdArgs = append(applyArgs, "-f", tmpManifests.Name())
 					}
 				} else {
 					if len(st.defaultNamespace) != 0 {
-						cmdArgs = append(deleteArgs, "-n", st.defaultNamespace, "-f", "-")
+						cmdArgs = append(deleteArgs, "-n", st.defaultNamespace, "-f", tmpManifests.Name())
 					} else {
-						cmdArgs = append(deleteArgs, "-f", "-")
+						cmdArgs = append(deleteArgs, "-f", tmpManifests.Name())
 					}
 				}
-				cmd = exec.Command(kubectlPath, cmdArgs...)
-				cmd.Stdin = strings.NewReader(yobj)
-				cmd.Stdout = &stdout
-				cmd.Stderr = &stderr
-
-				if err := cmd.Run(); err != nil {
+				stdOut, stdErr, err := ctl.Run(cmdArgs...)
+				if err != nil {
+					stdout.ReadFrom(stdOut)
+					stderr.ReadFrom(stdErr)
 					t.Logf("action: %v\n", st.actions[i])
 					t.Logf("stdout: %v\n", stdout.String())
 					t.Logf("stderr: %v\n", stderr.String())
