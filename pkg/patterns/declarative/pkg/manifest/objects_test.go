@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -210,10 +211,8 @@ spec:
 				if len(tt.expectedLabels) != len(o.object.GetLabels()) {
 					t.Errorf("Expected length of labels to be %v but is %v", len(tt.expectedLabels), len(o.object.GetLabels()))
 				}
-				for k, v := range tt.expectedLabels {
-					if o.object.GetLabels()[k] != v {
-						t.Fatalf("unexpected result, expected ========\n%v\n\nactual ========\n%v\n", tt.expectedLabels, o.object.GetLabels())
-					}
+				if diff := cmp.Diff(tt.expectedLabels, o.object.GetLabels()); diff != "" {
+					t.Fatalf("result mismatch (-want +got):\n%s", diff)
 				}
 			}
 		})
@@ -621,11 +620,16 @@ spec:
 				if tt.inputManifest == "" {
 					o, _ := NewObject(&unstructured.Unstructured{})
 					err = o.MutateContainers(tt.fn)
-					assert.EqualError(t, err, tt.errorString)
+					if diff := cmp.Diff(tt.errorString, err.Error()); diff != "" {
+						t.Errorf("error mismatch (-want +got):\n%s", diff)
+					}
+
 				} else {
 					for _, o := range objects.Items {
 						err = o.MutateContainers(tt.fn)
-						assert.EqualError(t, err, tt.errorString)
+						if diff := cmp.Diff(tt.errorString, err.Error()); diff != "" {
+							t.Errorf("error mismatch (-want +got):\n%s", diff)
+						}
 					}
 				}
 			}
@@ -829,11 +833,15 @@ spec:
 				if tt.inputManifest == "" {
 					o, _ := NewObject(&unstructured.Unstructured{})
 					err = o.MutatePodSpec(tt.fn)
-					assert.EqualError(t, err, tt.errorString)
+					if diff := cmp.Diff(tt.errorString, err.Error()); diff != "" {
+						t.Errorf("error mismatch (-want +got):\n%s", diff)
+					}
 				} else {
 					for _, o := range objects.Items {
 						err = o.MutatePodSpec(tt.fn)
-						assert.EqualError(t, err, tt.errorString)
+						if diff := cmp.Diff(tt.errorString, err.Error()); diff != "" {
+							t.Errorf("error mismatch (-want +got):\n%s", diff)
+						}
 					}
 				}
 			}
@@ -978,7 +986,9 @@ func Test_Sort(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.inputObjects.Sort(tt.scoreFunc)
-			assert.Equal(t, tt.expectedObjects, tt.inputObjects)
+			if diff := cmp.Diff(tt.expectedObjects, tt.inputObjects, cmpopts.IgnoreUnexported(Object{})); diff != "" {
+				t.Errorf("objects mismatch (-want +got):\n%s", diff)
+			}
 		})
 	}
 }
