@@ -571,13 +571,13 @@ func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
 
 	mapping, err := r.restMapper.RESTMapping(obj.GroupKind(), gvk.Version)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get resource: %v", err)
+		return nil, fmt.Errorf("unable to get mapping for resource: %w", err)
 	}
 	ns := obj.UnstructuredObject().GetNamespace()
 	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(),
 		obj.Name, getOptions)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get mapping for resource: %v", err)
+		return nil, fmt.Errorf("unable to get object: %w", err)
 	}
 	return unstruct, nil
 }
