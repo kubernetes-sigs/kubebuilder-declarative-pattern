@@ -20,10 +20,9 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -74,12 +73,9 @@ type watchAll struct {
 func (w *watchAll) Notify(ctx context.Context, dest DeclarativeObject, objs *manifest.Objects) error {
 	log := log.Log
 
-	labelSelector := strings.Builder{}
-	for k, v := range w.labelMaker(ctx, dest) {
-		if labelSelector.Len() != 0 {
-			labelSelector.WriteRune(',')
-		}
-		fmt.Fprintf(&labelSelector, "%s=%s", k, fields.EscapeValue(v))
+	labelSelector, err := labels.ValidatedSelectorFromSet(w.labelMaker(ctx, dest))
+	if err != nil {
+		return fmt.Errorf("failed to build label selector: %w", err)
 	}
 
 	notify := metav1.ObjectMeta{Name: dest.GetName(), Namespace: dest.GetNamespace()}
