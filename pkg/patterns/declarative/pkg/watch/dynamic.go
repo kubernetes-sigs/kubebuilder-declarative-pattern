@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -105,8 +106,10 @@ type clientObject struct {
 func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigger schema.GroupVersionKind, options metav1.ListOptions, target metav1.ObjectMeta) {
 	log := log.Log
 
-	events, err := client.Watch(context.TODO(), options)
+	// Though we don't use the resource version, we allow bookmarks to help keep TCP connections healthy.
+	options.AllowWatchBookmarks = true
 
+	events, err := client.Watch(context.TODO(), options)
 	if err != nil {
 		log.WithValues("kind", trigger.String()).WithValues("namespace", target.Namespace).WithValues("labels", options.LabelSelector).Error(err, "adding watch to dynamic client")
 		return
@@ -118,6 +121,10 @@ func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigg
 	defer events.Stop()
 
 	for clientEvent := range events.ResultChan() {
+		if clientEvent.Type == watch.Bookmark {
+			// not an invalidation, we ignore it
+			continue
+		}
 		log.WithValues("type", clientEvent.Type).WithValues("kind", trigger.String()).Info("broadcasting event")
 		dw.events <- event.GenericEvent{Object: clientObject{Object: clientEvent.Object, ObjectMeta: &target}}
 	}
