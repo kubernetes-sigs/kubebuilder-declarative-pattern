@@ -27,9 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -37,27 +35,19 @@ import (
 // WatchDelay is the time between a Watch being dropped and attempting to resume it
 const WatchDelay = 30 * time.Second
 
-func NewDynamicWatch(config rest.Config) (*dynamicWatch, chan event.GenericEvent, error) {
-	dw := &dynamicWatch{events: make(chan event.GenericEvent)}
-
-	restMapper, err := apiutil.NewDiscoveryRESTMapper(&config)
-	if err != nil {
-		return nil, nil, err
+// NewDynamicWatch constructs a watcher for unstructured objects.
+// Deprecated: avoid using directly; will move to internal in future.
+func NewDynamicWatch(restMapper meta.RESTMapper, client dynamic.Interface) (*dynamicWatch, chan event.GenericEvent, error) {
+	dw := &dynamicWatch{
+		events:     make(chan event.GenericEvent),
+		restMapper: restMapper,
+		client:     client,
 	}
 
-	client, err := dynamic.NewForConfig(&config)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	dw.restMapper = restMapper
-	dw.config = config
-	dw.client = client
 	return dw, dw.events, nil
 }
 
 type dynamicWatch struct {
-	config     rest.Config
 	client     dynamic.Interface
 	restMapper meta.RESTMapper
 	events     chan event.GenericEvent
