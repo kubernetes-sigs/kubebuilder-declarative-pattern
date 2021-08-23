@@ -19,7 +19,7 @@ package declarative
 import (
 	"context"
 	"fmt"
-	"sort"
+	"sync"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -33,47 +33,91 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/watch"
 )
 
-type Source interface {
+type eventsSource interface {
 	SetSink(sink Sink)
 }
 
 type DynamicWatch interface {
-	// Add registers a watch for changes to 'trigger' filtered by 'options' to raise an event on 'target'
-	Add(trigger schema.GroupVersionKind, options metav1.ListOptions, target metav1.ObjectMeta) error
+	// Add registers a watch for changes to 'trigger' filtered by 'options' to raise an event on 'target'.
+	// If namespace is specified, the watch will be restricted to that namespace.
+	Add(trigger schema.GroupVersionKind, options metav1.ListOptions, namespace string, target metav1.ObjectMeta) error
 }
 
-// WatchAll creates a Watch on ctrl for all objects reconciled by recnl
-func WatchAll(config *rest.Config, ctrl controller.Controller, recnl Source, labelMaker LabelMaker) (chan struct{}, error) {
-	if labelMaker == nil {
+// WatchChildrenOptions configures how we want to watch children.
+type WatchChildrenOptions struct {
+	// RESTConfig is the configuration for connecting to the cluster
+	RESTConfig *rest.Config
+
+	// LabelMaker is used to build the labels we should watch on.
+	LabelMaker LabelMaker
+
+	// Controller contains the controller itself
+	Controller controller.Controller
+
+	// Reconciler lets us hook into the post-apply lifecycle event.
+	Reconciler eventsSource
+
+	// ScopeWatchesToNamespace controls whether watches are per-namespace.
+	// This allows for more narrowly scoped RBAC permissions, at the cost of more watches.
+	ScopeWatchesToNamespace bool
+}
+
+// WatchAll creates a Watch on ctrl for all objects reconciled by recnl.
+// Deprecated: prefer WatchChildren (and consider setting ScopeWatchesToNamespace)
+func WatchAll(config *rest.Config, ctrl controller.Controller, reconciler eventsSource, labelMaker LabelMaker) (chan struct{}, error) {
+	options := WatchChildrenOptions{
+		RESTConfig:              config,
+		Controller:              ctrl,
+		Reconciler:              reconciler,
+		LabelMaker:              labelMaker,
+		ScopeWatchesToNamespace: false,
+	}
+	return WatchChildren(options)
+}
+
+// WatchChildren sets up watching of the objects applied by a controller.
+func WatchChildren(options WatchChildrenOptions) (chan struct{}, error) {
+	if options.LabelMaker == nil {
 		return nil, fmt.Errorf("labelMaker is required to scope watches")
 	}
 
-	dw, events, err := watch.NewDynamicWatch(*config)
+	dw, events, err := watch.NewDynamicWatch(*options.RESTConfig)
 	if err != nil {
 		return nil, fmt.Errorf("creating dynamic watch: %v", err)
 	}
+
 	src := &source.Channel{Source: events}
 	// Inject a stop channel that will never close. The controller does not have a concept of
 	// shutdown, so there is no oppritunity to stop the watch.
 	stopCh := make(chan struct{})
 	src.InjectStopChannel(stopCh)
-	if err := ctrl.Watch(src, &handler.EnqueueRequestForObject{}); err != nil {
-		return nil, fmt.Errorf("setting up dynamic watch on the controller: %v", err)
+	if err := options.Controller.Watch(src, &handler.EnqueueRequestForObject{}); err != nil {
+		return nil, fmt.Errorf("setting up dynamic watch on the controller: %w", err)
 	}
-	recnl.SetSink(&watchAll{dw, labelMaker, make(map[string]struct{})})
+
+	options.Reconciler.SetSink(&watchAll{
+		dw:         dw,
+		options:    options,
+		registered: make(map[string]struct{})})
+
 	return stopCh, nil
 }
 
 type watchAll struct {
-	dw         DynamicWatch
-	labelMaker LabelMaker
+	dw DynamicWatch
+
+	options WatchChildrenOptions
+
+	mutex sync.Mutex
+	// registered tracks what we are currently watching, avoid duplicate watches.
 	registered map[string]struct{}
 }
 
+// Notify is called by the controller when the object changes.  We establish any new watches.
 func (w *watchAll) Notify(ctx context.Context, dest DeclarativeObject, objs *manifest.Objects) error {
 	log := log.Log
 
-	labelSelector, err := labels.ValidatedSelectorFromSet(w.labelMaker(ctx, dest))
+	labelSelector, err := labels.ValidatedSelectorFromSet(w.options.LabelMaker(ctx, dest))
 	if err != nil {
 		return fmt.Errorf("failed to build label selector: %w", err)
 	}
@@ -81,13 +125,27 @@ func (w *watchAll) Notify(ctx context.Context, dest DeclarativeObject, objs *man
 	notify := metav1.ObjectMeta{Name: dest.GetName(), Namespace: dest.GetNamespace()}
 	filter := metav1.ListOptions{LabelSelector: labelSelector.String()}
 
-	for _, gvk := range uniqueGroupVersionKind(objs) {
-		key := fmt.Sprintf("%s,%s,%s", gvk.String(), labelSelector.String(), dest.GetNamespace())
-		if _, ok := w.registered[key]; ok {
+	// Protect against concurrent invocation
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	for _, obj := range objs.Items {
+		gvk := obj.GroupVersionKind()
+
+		key := fmt.Sprintf("gvk=%s:%s:%s;labels=%s", gvk.Group, gvk.Version, gvk.Kind, filter.LabelSelector)
+
+		filterNamespace := ""
+		if w.options.ScopeWatchesToNamespace && obj.Namespace != "" {
+			filterNamespace = obj.Namespace
+			key += ";namespace=" + filterNamespace
+		}
+
+		if _, found := w.registered[key]; found {
 			continue
 		}
 
-		err := w.dw.Add(gvk, filter, notify)
+		log.Info("adding watch", "key", key)
+		err := w.dw.Add(gvk, filter, filterNamespace, notify)
 		if err != nil {
 			log.WithValues("GroupVersionKind", gvk.String()).Error(err, "adding watch")
 			continue
@@ -96,20 +154,4 @@ func (w *watchAll) Notify(ctx context.Context, dest DeclarativeObject, objs *man
 		w.registered[key] = struct{}{}
 	}
 	return nil
-}
-
-// uniqueGroupVersionKind returns all unique GroupVersionKind defined in objects
-func uniqueGroupVersionKind(objects *manifest.Objects) []schema.GroupVersionKind {
-	kinds := map[schema.GroupVersionKind]struct{}{}
-	for _, o := range objects.Items {
-		kinds[o.GroupVersionKind()] = struct{}{}
-	}
-	var unique []schema.GroupVersionKind
-	for gvk := range kinds {
-		unique = append(unique, gvk)
-	}
-	sort.Slice(unique, func(i, j int) bool {
-		return unique[i].String() < unique[j].String()
-	})
-	return unique
 }

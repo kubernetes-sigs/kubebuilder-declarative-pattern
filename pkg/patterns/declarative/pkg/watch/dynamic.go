@@ -63,24 +63,29 @@ type dynamicWatch struct {
 	events     chan event.GenericEvent
 }
 
-func (dw *dynamicWatch) newDynamicClient(gvk schema.GroupVersionKind) (dynamic.ResourceInterface, error) {
+func (dw *dynamicWatch) newDynamicClient(gvk schema.GroupVersionKind, namespace string) (dynamic.ResourceInterface, error) {
 	mapping, err := dw.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return nil, err
 	}
-	return dw.client.Resource(mapping.Resource), nil
+	resource := dw.client.Resource(mapping.Resource)
+	if namespace == "" {
+		return resource, nil
+	} else {
+		return resource.Namespace(namespace), nil
+	}
 }
 
 // Add registers a watch for changes to 'trigger' filtered by 'options' to raise an event on 'target'
-func (dw *dynamicWatch) Add(trigger schema.GroupVersionKind, options metav1.ListOptions, target metav1.ObjectMeta) error {
-	client, err := dw.newDynamicClient(trigger)
+func (dw *dynamicWatch) Add(trigger schema.GroupVersionKind, options metav1.ListOptions, filterNamespace string, target metav1.ObjectMeta) error {
+	client, err := dw.newDynamicClient(trigger, filterNamespace)
 	if err != nil {
 		return fmt.Errorf("creating client for (%s): %v", trigger.String(), err)
 	}
 
 	go func() {
 		for {
-			dw.watchUntilClosed(client, trigger, options, target)
+			dw.watchUntilClosed(client, trigger, options, filterNamespace, target)
 
 			time.Sleep(WatchDelay)
 		}
@@ -103,7 +108,7 @@ type clientObject struct {
 // from this Watch but it will ensure we always Reconcile when needed`.
 //
 // [1] https://github.com/kubernetes/kubernetes/issues/54878#issuecomment-357575276
-func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigger schema.GroupVersionKind, options metav1.ListOptions, target metav1.ObjectMeta) {
+func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigger schema.GroupVersionKind, options metav1.ListOptions, filterNamespace string, target metav1.ObjectMeta) {
 	log := log.Log
 
 	// Though we don't use the resource version, we allow bookmarks to help keep TCP connections healthy.
@@ -111,11 +116,11 @@ func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigg
 
 	events, err := client.Watch(context.TODO(), options)
 	if err != nil {
-		log.WithValues("kind", trigger.String()).WithValues("namespace", target.Namespace).WithValues("labels", options.LabelSelector).Error(err, "adding watch to dynamic client")
+		log.WithValues("kind", trigger.String()).WithValues("namespace", filterNamespace).WithValues("labels", options.LabelSelector).Error(err, "failed to add watch to dynamic client")
 		return
 	}
 
-	log.WithValues("kind", trigger.String()).WithValues("namespace", target.Namespace).WithValues("labels", options.LabelSelector).Info("watch began")
+	log.WithValues("kind", trigger.String()).WithValues("namespace", filterNamespace).WithValues("labels", options.LabelSelector).Info("watch began")
 
 	// Always clean up watchers
 	defer events.Stop()
@@ -129,7 +134,7 @@ func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigg
 		dw.events <- event.GenericEvent{Object: clientObject{Object: clientEvent.Object, ObjectMeta: &target}}
 	}
 
-	log.WithValues("kind", trigger.String()).WithValues("namespace", target.Namespace).WithValues("labels", options.LabelSelector).Info("watch closed")
+	log.WithValues("kind", trigger.String()).WithValues("namespace", filterNamespace).WithValues("labels", options.LabelSelector).Info("watch closed")
 
 	return
 }
