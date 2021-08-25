@@ -21,10 +21,14 @@ import (
 	"fmt"
 	"sync"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -45,7 +49,10 @@ type DynamicWatch interface {
 
 // WatchChildrenOptions configures how we want to watch children.
 type WatchChildrenOptions struct {
-	// RESTConfig is the configuration for connecting to the cluster
+	// Manager is used as a factory for the default RESTConfig and the RESTMapper.
+	Manager ctrl.Manager
+
+	// RESTConfig is the configuration for connecting to the cluster.
 	RESTConfig *rest.Config
 
 	// LabelMaker is used to build the labels we should watch on.
@@ -81,7 +88,31 @@ func WatchChildren(options WatchChildrenOptions) (chan struct{}, error) {
 		return nil, fmt.Errorf("labelMaker is required to scope watches")
 	}
 
-	dw, events, err := watch.NewDynamicWatch(*options.RESTConfig)
+	if options.RESTConfig == nil {
+		if options.Manager != nil {
+			options.RESTConfig = options.Manager.GetConfig()
+		} else {
+			return nil, fmt.Errorf("RESTConfig or Manager should be set")
+		}
+	}
+
+	var restMapper meta.RESTMapper
+	if options.Manager != nil {
+		restMapper = options.Manager.GetRESTMapper()
+	} else {
+		rm, err := apiutil.NewDiscoveryRESTMapper(options.RESTConfig)
+		if err != nil {
+			return nil, err
+		}
+		restMapper = rm
+	}
+
+	client, err := dynamic.NewForConfig(options.RESTConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	dw, events, err := watch.NewDynamicWatch(restMapper, client)
 	if err != nil {
 		return nil, fmt.Errorf("creating dynamic watch: %v", err)
 	}
