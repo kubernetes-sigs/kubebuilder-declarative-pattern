@@ -6,7 +6,7 @@ This walkthrough is for creating an operator to run the [guestbook](https://gith
 
 Install the following depenencies:
 
-- [kubebuilder](https://book.kubebuilder.io/quick-start.html#installation) (tested with 2.0.0-alpha.4)
+- [kubebuilder](https://book.kubebuilder.io/quick-start.html#installation) (tested with 3.1.0)
 - [kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize/) (tested with v2.0.3)
 - docker
 - kubectl
@@ -18,20 +18,14 @@ Create a new directory and use kubebuilder to scaffold the operator:
 export GO111MODULE=on
 mkdir -p guestbook-operator/
 cd guestbook-operator/
-kubebuilder init --domain example.org --license apache2 --owner "TODO($USER): assign copyright"
-```
-
-Add the patterns to your project:
-
-```
-go get sigs.k8s.io/kubebuilder-declarative-pattern
+kubebuilder init --plugins go.kubebuilder.io/v3,declarative.go.kubebuilder.io/v1 --domain example.org --license apache2 --owner "TODO($USER): assign copyright"
 ```
 
 ### Adding our first CRD
 
 ```
 # generate the API/controllers
-kubebuilder create api --controller=true --example=false --group=addons --kind=Guestbook --make=false --namespaced=true --resource=true --version=v1alpha1
+kubebuilder create api --controller=true --group=addons --kind=Guestbook --make=false --namespaced=true --resource=true --version=v1alpha1
 # remove the  test suites that are more checking that kubebuilder is working
 find . -name "*_test.go" -delete
 ```
