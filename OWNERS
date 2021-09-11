@@ -4,7 +4,6 @@ approvers:
   - kubebuilder-admins
   - justinsb
   - johnsonj
-reviewers:
   - atoato88
 labels:
   - sig/api-machinery
