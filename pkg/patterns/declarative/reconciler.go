@@ -256,7 +256,16 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}
 
-	if err := r.kubectl.Apply(ctx, ns, manifestStr, r.options.validate, extraArgs...); err != nil {
+	applyOpt := applier.ApplierOptions{
+		RESTConfig: r.config,
+		RESTMapper: r.restMapper,
+		Namespace:  ns,
+		Manifest:   manifestStr,
+		Validate:   r.options.validate,
+		ExtraArgs:  extraArgs,
+	}
+
+	if err := r.kubectl.Apply(ctx, applyOpt); err != nil {
 		log.Error(err, "applying manifest")
 		return reconcile.Result{}, fmt.Errorf("error applying manifest: %v", err)
 	}
@@ -564,14 +573,13 @@ func (r *Reconciler) CollectMetrics() bool {
 	return r.options.metrics
 }
 
-func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.
-	Unstructured, error) {
+func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Unstructured, error) {
 	getOptions := metav1.GetOptions{}
 	gvk := obj.GroupVersionKind()
 
 	mapping, err := r.restMapper.RESTMapping(obj.GroupKind(), gvk.Version)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get mapping for resource: %w", err)
+		return nil, fmt.Errorf("unable to get mapping for resource %v: %w", gvk, err)
 	}
 	ns := obj.UnstructuredObject().GetNamespace()
 	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(),
