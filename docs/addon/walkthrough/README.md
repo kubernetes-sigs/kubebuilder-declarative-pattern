@@ -18,7 +18,7 @@ Create a new directory and use kubebuilder to scaffold the operator:
 export GO111MODULE=on
 mkdir -p guestbook-operator/
 cd guestbook-operator/
-kubebuilder init --plugins go.kubebuilder.io/v3,declarative.go.kubebuilder.io/v1 --domain example.org --license apache2 --owner "TODO($USER): assign copyright"
+kubebuilder init --plugins go.kubebuilder.io/v3,declarative.go.kubebuilder.io/v1 --domain example.org --license apache2 --owner "TODO($USER): assign copyright" --repo example.org/guestbook-operator
 ```
 
 ### Adding our first CRD
