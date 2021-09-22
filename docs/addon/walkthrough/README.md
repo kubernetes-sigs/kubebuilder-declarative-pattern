@@ -147,7 +147,6 @@ func (r *GuestbookReconciler) setupReconciler(mgr ctrl.Manager) error {
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(r.watchLabels),
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
-		declarative.WithPreserveNamespace(),
 		declarative.WithApplyPrune(),
 		declarative.WithReconcileMetrics(0, nil),
 	)
@@ -233,6 +232,8 @@ kubectl get crds guestbooks.addons.example.org
 ```
 
 2) Create a guestbook CR:
+
+Remove `spec.foo` key in `config/samples/addons_v1alpha1_guestbook.yaml` if exists.
 
 ```bash
 kubectl apply -n kube-system -f config/samples/addons_v1alpha1_guestbook.yaml
