@@ -52,7 +52,6 @@ func (r *GuestbookReconciler) setupReconciler(mgr ctrl.Manager) error {
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(r.watchLabels),
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
-		declarative.WithPreserveNamespace(),
 		declarative.WithApplyPrune(),
 		declarative.WithObjectTransform(addon.ApplyPatches),
 
