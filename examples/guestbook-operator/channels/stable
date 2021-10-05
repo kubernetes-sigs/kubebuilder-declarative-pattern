@@ -1,3 +1,4 @@
+# Versions for the stable channel
 manifests:
 - name: guestbook
   version: 0.1.0

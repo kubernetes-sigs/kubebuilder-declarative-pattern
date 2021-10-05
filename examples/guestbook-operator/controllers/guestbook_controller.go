@@ -19,16 +19,21 @@ package controllers
 import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	api "sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator/api/v1alpha1"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
+
+	api "sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator/api/v1alpha1"
 )
+
+var _ reconcile.Reconciler = &GuestbookReconciler{}
 
 // GuestbookReconciler reconciles a Guestbook object
 type GuestbookReconciler struct {
@@ -52,7 +57,6 @@ func (r *GuestbookReconciler) setupReconciler(mgr ctrl.Manager) error {
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(r.watchLabels),
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
-		declarative.WithPreserveNamespace(),
 		declarative.WithApplyPrune(),
 		declarative.WithObjectTransform(addon.ApplyPatches),
 
