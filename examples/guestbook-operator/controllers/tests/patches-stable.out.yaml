@@ -116,6 +116,7 @@ spec:
   selector:
     app: guestbook
     tier: frontend
+  type: NodePort
 
 ---
 

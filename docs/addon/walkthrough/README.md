@@ -7,7 +7,7 @@ This walkthrough is for creating an operator to run the [guestbook](https://gith
 Install the following depenencies:
 
 - [kubebuilder](https://book.kubebuilder.io/quick-start.html#installation) (tested with 3.1.0)
-- [kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize/) (tested with v2.0.3)
+- [kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize/) (tested with v3.8.7)
 - docker
 - kubectl
 - golang (>=1.11 for go modules)
@@ -298,7 +298,7 @@ EOF
 3. Reference the patch by adding `manager_resource_patch.yaml` to the `patches` section of `config/default/kustomization.yaml`:
 
 ```yaml
-patches:
+patchesStrategicMerge:
 - manager_resource_patch.yaml
 # ... existing patches
 ```
@@ -309,28 +309,24 @@ This is requried to run kubectl in the container.
    and run in a slim container:
 
 ```Dockerfile
-FROM ubuntu:latest as kubectl
-RUN apt-get update
-RUN apt-get install -y curl
-RUN curl -fsSL https://dl.k8s.io/release/v1.13.4/bin/linux/amd64/kubectl > /usr/bin/kubectl
-RUN chmod a+rx /usr/bin/kubectl
-
 # Build the manager binary
-FROM golang:1.15 as builder
+FROM golang:1.16 as builder
 
 # Copy in the go src
-WORKDIR /go/src/guestbook-operator
+WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
 RUN go mod download
-
 COPY vendor/   vendor/
+
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY channels/ channels/
+RUN chmod -R a+rx channels/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
@@ -338,9 +334,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 # Copy the operator and dependencies into a thin image
 FROM gcr.io/distroless/static:latest
 WORKDIR /
-COPY --from=builder /go/src/guestbook-operator/manager .
-COPY --from=kubectl /usr/bin/kubectl /usr/bin/kubectl
-COPY channels/ channels/
+COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/channels/ channels/
+
+USER 65532:65532
+
 ENTRYPOINT ["./manager"]
 ```
 
@@ -426,7 +424,7 @@ You can verify that the operator has created the `kubernetes-guestbook`
 deployment:
 
 e.g. `kubectl get pods -n guestbook-operator-system` or
-`kubectl get deploy -n guestbook-operator-system`.
+`kubectl get deployments -n guestbook-operator-system`.
 
 ## Manifest simplification: Automatic labels
 

@@ -1,7 +1,24 @@
 domain: example.org
-repo: sigs.k8s.io/kubebuilder-declarative-pattern
+layout:
+- go.kubebuilder.io/v3
+- declarative.go.kubebuilder.io/v1
+plugins:
+  declarative.go.kubebuilder.io/v1:
+    resources:
+    - domain: example.org
+      group: addons
+      kind: Guestbook
+      version: v1alpha1
+projectName: guestbook-operator
+repo: example.org/guestbook-operator
 resources:
-- group: addons
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: example.org
+  group: addons
   kind: Guestbook
+  path: example.org/guestbook-operator/api/v1alpha1
   version: v1alpha1
-version: "2"
+version: "3"

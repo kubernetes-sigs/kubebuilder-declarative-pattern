@@ -26,20 +26,23 @@ import (
 
 // GuestbookSpec defines the desired state of Guestbook
 type GuestbookSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	addonv1alpha1.CommonSpec `json:",inline"`
 	addonv1alpha1.PatchSpec  `json:",inline"`
+
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // GuestbookStatus defines the observed state of Guestbook
 type GuestbookStatus struct {
+	addonv1alpha1.CommonStatus `json:",inline"`
+
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	addonv1alpha1.CommonStatus `json:",inline"`
 }
 
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
 
 // Guestbook is the Schema for the guestbooks API
 type Guestbook struct {
@@ -50,7 +53,30 @@ type Guestbook struct {
 	Status GuestbookStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+var _ addonv1alpha1.CommonObject = &Guestbook{}
+var _ addonv1alpha1.Patchable = &Guestbook{}
+
+func (o *Guestbook) ComponentName() string {
+	return "guestbook"
+}
+
+func (o *Guestbook) CommonSpec() addonv1alpha1.CommonSpec {
+	return o.Spec.CommonSpec
+}
+
+func (o *Guestbook) PatchSpec() addonv1alpha1.PatchSpec {
+	return o.Spec.PatchSpec
+}
+
+func (o *Guestbook) GetCommonStatus() addonv1alpha1.CommonStatus {
+	return o.Status.CommonStatus
+}
+
+func (o *Guestbook) SetCommonStatus(s addonv1alpha1.CommonStatus) {
+	o.Status.CommonStatus = s
+}
+
+//+kubebuilder:object:root=true
 
 // GuestbookList contains a list of Guestbook
 type GuestbookList struct {
@@ -61,27 +87,4 @@ type GuestbookList struct {
 
 func init() {
 	SchemeBuilder.Register(&Guestbook{}, &GuestbookList{})
-}
-
-var _ addonv1alpha1.CommonObject = &Guestbook{}
-var _ addonv1alpha1.Patchable = &Guestbook{}
-
-func (c *Guestbook) ComponentName() string {
-	return "guestbook"
-}
-
-func (c *Guestbook) CommonSpec() addonv1alpha1.CommonSpec {
-	return c.Spec.CommonSpec
-}
-
-func (c *Guestbook) GetCommonStatus() addonv1alpha1.CommonStatus {
-	return c.Status.CommonStatus
-}
-
-func (c *Guestbook) SetCommonStatus(s addonv1alpha1.CommonStatus) {
-	c.Status.CommonStatus = s
-}
-
-func (c *Guestbook) PatchSpec() addonv1alpha1.PatchSpec {
-	return c.Spec.PatchSpec
 }
