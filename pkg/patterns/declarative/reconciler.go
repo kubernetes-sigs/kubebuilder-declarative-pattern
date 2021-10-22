@@ -493,9 +493,12 @@ func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObj
 			continue
 		}
 
-		// TODO, error/skip if:
-		// - owner is namespaced and o is not
-		// - owner is in a different namespace than o
+		if owner.GetNamespace() != "" && owner.GetNamespace() != o.Namespace {
+			// a namespaced object can only own objects within the same namespace, not objects in other namespaces or cluster-scoped objects
+			// for any other combination, skip setting owner reference here, to allow declarative.SourceAsOwner to be used for the
+			// subset of objects that make up a supported combination
+			continue
+		}
 
 		ownerRefs := []interface{}{
 			map[string]interface{}{
