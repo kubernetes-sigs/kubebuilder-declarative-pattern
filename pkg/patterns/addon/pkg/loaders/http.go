@@ -19,7 +19,7 @@ package loaders
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -113,7 +113,7 @@ func (r *HTTPRepository) readURL(url string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error fetching %q: %v", url, err)
 	}
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response for %q: %v", url, err)
 	}

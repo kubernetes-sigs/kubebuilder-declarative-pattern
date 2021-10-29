@@ -3,7 +3,6 @@ package loaders
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -115,7 +114,7 @@ func (r *GitRepository) readURL(url string) ([]byte, error) {
 		}
 	}
 
-	b, err := ioutil.ReadFile(filePath)
+	b, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +188,7 @@ func getAuthMethod() (transport.AuthMethod, error) {
 	if _, err := os.Stat(sshFile); os.IsNotExist(err) {
 		return nil, nil
 	}
-	sshBytes, err := ioutil.ReadFile(sshFile)
+	sshBytes, err := os.ReadFile(sshFile)
 	if err != nil {
 		return nil, err
 	}

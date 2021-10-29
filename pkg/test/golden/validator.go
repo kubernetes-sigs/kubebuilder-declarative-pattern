@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -146,7 +146,7 @@ func (v *validator) Validate(r declarative.Reconciler) {
 		basedir = v.TestDir
 	}
 
-	files, err := ioutil.ReadDir(basedir)
+	files, err := os.ReadDir(basedir)
 	if err != nil {
 		t.Fatalf("error reading dir %s: %v", basedir, err)
 	}
@@ -175,7 +175,7 @@ func (v *validator) Validate(r declarative.Reconciler) {
 			continue
 		}
 
-		b, err := ioutil.ReadFile(p)
+		b, err := os.ReadFile(p)
 		if err != nil {
 			t.Errorf("error reading file %s: %v", p, err)
 			continue
@@ -247,7 +247,7 @@ func (v *validator) Validate(r declarative.Reconciler) {
 		expectedPath := strings.Replace(p, ".in.yaml", ".out.yaml", -1)
 		var expectedYAML string
 		{
-			b, err := ioutil.ReadFile(expectedPath)
+			b, err := os.ReadFile(expectedPath)
 			if err != nil {
 				t.Errorf("error reading file %s: %v", expectedPath, err)
 				continue
@@ -258,7 +258,7 @@ func (v *validator) Validate(r declarative.Reconciler) {
 		if actualYAML != expectedYAML {
 			if os.Getenv("HACK_AUTOFIX_EXPECTED_OUTPUT") != "" {
 				t.Logf("HACK_AUTOFIX_EXPECTED_OUTPUT is set; replacing expected output in %s", expectedPath)
-				if err := ioutil.WriteFile(expectedPath, []byte(actualYAML), 0644); err != nil {
+				if err := os.WriteFile(expectedPath, []byte(actualYAML), 0644); err != nil {
 					t.Fatalf("error writing expected output to %s: %v", expectedPath, err)
 				}
 				continue
@@ -279,7 +279,7 @@ func (v *validator) Validate(r declarative.Reconciler) {
 func diffFiles(t *testing.T, expectedPath, actual string) error {
 	t.Helper()
 	writeTmp := func(content string) (string, error) {
-		tmp, err := ioutil.TempFile("", "*.yaml")
+		tmp, err := os.CreateTemp("", "*.yaml")
 		if err != nil {
 			return "", err
 		}
@@ -309,7 +309,7 @@ func diffFiles(t *testing.T, expectedPath, actual string) error {
 		return fmt.Errorf("start command failed: %w", err)
 	}
 
-	diff, err := ioutil.ReadAll(stdout)
+	diff, err := io.ReadAll(stdout)
 	if err != nil {
 		return fmt.Errorf("read from diff stdout failed: %w", err)
 	}
