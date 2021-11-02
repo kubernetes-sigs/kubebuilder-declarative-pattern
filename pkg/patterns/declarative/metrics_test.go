@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -531,7 +531,7 @@ func TestAddIfNotPresent(t *testing.T) {
 					t.Error(err)
 				}
 
-				tmpManifests, err := ioutil.TempFile(t.TempDir(), "tmp-manifests-*.yaml")
+				tmpManifests, err := os.CreateTemp(t.TempDir(), "tmp-manifests-*.yaml")
 				if err != nil {
 					t.Error(err)
 				}

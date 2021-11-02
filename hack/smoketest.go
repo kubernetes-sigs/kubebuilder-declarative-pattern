@@ -29,7 +29,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -450,7 +449,7 @@ func (h *RealTestHarness) KubectlApply(p string) {
 	}
 
 	if stat.IsDir() {
-		files, err := ioutil.ReadDir(p)
+		files, err := os.ReadDir(p)
 		if err != nil {
 			h.Fatalf("error reading directory %s: %v", p, err)
 		}
@@ -483,7 +482,7 @@ func (h *RealTestHarness) KubectlDelete(p string) {
 }
 
 func (h *RealTestHarness) kubectlApplyFile(p string) {
-	b, err := ioutil.ReadFile(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		h.Fatalf("error reading file %s: %v", p, err)
 	}

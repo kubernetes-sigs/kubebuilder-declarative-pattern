@@ -19,7 +19,7 @@ package loaders
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -97,7 +97,7 @@ func (r *FSRepository) LoadChannel(ctx context.Context, name string) (*Channel, 
 	log.WithValues("channel", name).WithValues("base", r.basedir).Info("loading channel")
 
 	p := filepath.Join(r.basedir, name)
-	b, err := ioutil.ReadFile(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		log.WithValues("path", p).Error(err, "error reading channel")
 		return nil, fmt.Errorf("error reading channel %s: %v", p, err)
@@ -124,7 +124,7 @@ func (r *FSRepository) LoadManifest(ctx context.Context, packageName string, id 
 	log.WithValues("package", packageName).Info("loading package")
 
 	dirPath := filepath.Join(r.basedir, "packages", packageName, id)
-	filesPath, err := ioutil.ReadDir(dirPath)
+	filesPath, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading directory %s: %v", dirPath, err)
 	}
@@ -136,7 +136,7 @@ func (r *FSRepository) LoadManifest(ctx context.Context, packageName string, id 
 		}
 
 		filePath := filepath.Join(dirPath, p.Name())
-		b, err := ioutil.ReadFile(filePath)
+		b, err := os.ReadFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading file %s: %v", filePath, err)
 		}

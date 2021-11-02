@@ -19,12 +19,10 @@ package applier
 import (
 	"context"
 	"errors"
-	"testing"
-
-	"io/ioutil"
-	"reflect"
-
+	"io"
 	"os/exec"
+	"reflect"
+	"testing"
 )
 
 // collector is a commandSite implementation that stubs cmd.Run() calls for tests
@@ -108,7 +106,7 @@ func TestKubectlApply(t *testing.T) {
 				t.Errorf("argument mistmatch, expected: %v, got: %v", test.expectArgs, cmd.Args)
 			}
 
-			stdinBytes, err := ioutil.ReadAll(cmd.Stdin)
+			stdinBytes, err := io.ReadAll(cmd.Stdin)
 			if stdin := string(stdinBytes); stdin != test.manifest {
 				t.Errorf("manifest mismatch, expected: %v, got: %v", test.manifest, stdin)
 			}
