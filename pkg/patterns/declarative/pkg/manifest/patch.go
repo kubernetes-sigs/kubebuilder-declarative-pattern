@@ -28,8 +28,11 @@ import (
 )
 
 func (objects *Objects) Patch(patches []*unstructured.Unstructured) error {
-	log := log.Log
+	if len(patches) == 0 {
+		return nil
+	}
 
+	log := log.Log
 	for i, o := range objects.Items {
 		log.WithValues("object", o).Info("applying patches")
 
