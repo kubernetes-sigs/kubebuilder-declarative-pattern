@@ -23,8 +23,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,6 +53,10 @@ type dynamicWatch struct {
 	client     dynamic.Interface
 	restMapper meta.RESTMapper
 	events     chan event.GenericEvent
+
+	// lastRV caches the last reported resource version.
+	// This helps us avoid sending duplicate events (e.g. on a rewatch)
+	lastRV map[types.NamespacedName]string
 }
 
 func (dw *dynamicWatch) newDynamicClient(gvk schema.GroupVersionKind, namespace string) (dynamic.ResourceInterface, error) {
@@ -72,6 +78,8 @@ func (dw *dynamicWatch) Add(trigger schema.GroupVersionKind, options metav1.List
 	if err != nil {
 		return fmt.Errorf("creating client for (%s): %v", trigger.String(), err)
 	}
+
+	dw.lastRV = make(map[types.NamespacedName]string)
 
 	go func() {
 		for {
@@ -116,11 +124,33 @@ func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigg
 	defer events.Stop()
 
 	for clientEvent := range events.ResultChan() {
-		if clientEvent.Type == watch.Bookmark {
-			// not an invalidation, we ignore it
+		switch clientEvent.Type {
+		case watch.Bookmark:
+			// not an object change, we ignore it
 			continue
+		case watch.Error:
+			log.Error(fmt.Errorf("unexpected error from watch: %v", clientEvent.Object), "error during watch")
+			return
 		}
-		log.WithValues("type", clientEvent.Type).WithValues("kind", trigger.String()).Info("broadcasting event")
+
+		u := clientEvent.Object.(*unstructured.Unstructured)
+		key := types.NamespacedName{Namespace: u.GetNamespace(), Name: u.GetName()}
+		rv := u.GetResourceVersion()
+
+		switch clientEvent.Type {
+		case watch.Deleted:
+			// stop lastRV growing indefinitely
+			delete(dw.lastRV, key)
+			// We always send the delete notification
+		case watch.Added, watch.Modified:
+			if previousRV, found := dw.lastRV[key]; found && previousRV == rv {
+				// Don't send spurious invalidations
+				continue
+			}
+			dw.lastRV[key] = rv
+		}
+
+		log.WithValues("type", clientEvent.Type).WithValues("kind", trigger.String()).WithValues("name", key.Name, "namespace", key.Namespace).Info("broadcasting event")
 		dw.events <- event.GenericEvent{Object: clientObject{Object: clientEvent.Object, ObjectMeta: &target}}
 	}
 
