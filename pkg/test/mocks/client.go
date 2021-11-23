@@ -88,7 +88,7 @@ func (FakeClient) Update(ctx context.Context, obj client.Object, opts ...client.
 }
 
 func (FakeClient) Status() client.StatusWriter {
-	panic("not implemented")
+	return FakeStatusClient{}
 }
 
 func (FakeClient) RESTMapper() meta.RESTMapper {
@@ -106,4 +106,14 @@ func getGVRFromObject(obj client.Object, scheme *runtime.Scheme) (schema.GroupVe
 	}
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
 	return gvr, nil
+}
+
+type FakeStatusClient struct{}
+
+func (FakeStatusClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	return nil
+}
+
+func (FakeStatusClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return nil
 }
