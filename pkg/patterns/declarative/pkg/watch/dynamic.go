@@ -19,6 +19,7 @@ package watch
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -56,7 +57,7 @@ type dynamicWatch struct {
 
 	// lastRV caches the last reported resource version.
 	// This helps us avoid sending duplicate events (e.g. on a rewatch)
-	lastRV map[types.NamespacedName]string
+	lastRV sync.Map
 }
 
 func (dw *dynamicWatch) newDynamicClient(gvk schema.GroupVersionKind, namespace string) (dynamic.ResourceInterface, error) {
@@ -79,7 +80,7 @@ func (dw *dynamicWatch) Add(trigger schema.GroupVersionKind, options metav1.List
 		return fmt.Errorf("creating client for (%s): %v", trigger.String(), err)
 	}
 
-	dw.lastRV = make(map[types.NamespacedName]string)
+	dw.lastRV = sync.Map{}
 
 	go func() {
 		for {
@@ -140,14 +141,14 @@ func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigg
 		switch clientEvent.Type {
 		case watch.Deleted:
 			// stop lastRV growing indefinitely
-			delete(dw.lastRV, key)
+			dw.lastRV.Delete(key)
 			// We always send the delete notification
 		case watch.Added, watch.Modified:
-			if previousRV, found := dw.lastRV[key]; found && previousRV == rv {
+			if previousRV, found := dw.lastRV.Load(key); found && previousRV == rv {
 				// Don't send spurious invalidations
 				continue
 			}
-			dw.lastRV[key] = rv
+			dw.lastRV.Store(key, rv)
 		}
 
 		log.WithValues("type", clientEvent.Type).WithValues("kind", trigger.String()).WithValues("name", key.Name, "namespace", key.Namespace).Info("broadcasting event")
