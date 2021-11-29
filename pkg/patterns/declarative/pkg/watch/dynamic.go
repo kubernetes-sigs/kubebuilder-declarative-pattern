@@ -19,7 +19,6 @@ package watch
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -54,37 +53,56 @@ type dynamicWatch struct {
 	client     dynamic.Interface
 	restMapper meta.RESTMapper
 	events     chan event.GenericEvent
+}
+
+type dynamicKindWatch struct {
+	GVK             schema.GroupVersionKind
+	FilterNamespace string
+	FilterOptions   metav1.ListOptions
+
+	resource dynamic.ResourceInterface
 
 	// lastRV caches the last reported resource version.
 	// This helps us avoid sending duplicate events (e.g. on a rewatch)
-	lastRV sync.Map
+	lastRV map[types.NamespacedName]string
+
+	// events is the destination to which we send events.
+	events chan event.GenericEvent
 }
 
-func (dw *dynamicWatch) newDynamicClient(gvk schema.GroupVersionKind, namespace string) (dynamic.ResourceInterface, error) {
+func (dw *dynamicWatch) newDynamicClient(events chan event.GenericEvent, gvk schema.GroupVersionKind, options metav1.ListOptions, filterNamespace string) (*dynamicKindWatch, error) {
 	mapping, err := dw.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return nil, err
 	}
-	resource := dw.client.Resource(mapping.Resource)
-	if namespace == "" {
-		return resource, nil
-	} else {
-		return resource.Namespace(namespace), nil
+
+	dkw := &dynamicKindWatch{
+		GVK:             gvk,
+		FilterNamespace: filterNamespace,
+		FilterOptions:   options,
+		events:          events,
+		lastRV:          make(map[types.NamespacedName]string),
 	}
+
+	resource := dw.client.Resource(mapping.Resource)
+	if filterNamespace == "" {
+		dkw.resource = resource
+	} else {
+		dkw.resource = resource.Namespace(filterNamespace)
+	}
+	return dkw, nil
 }
 
 // Add registers a watch for changes to 'trigger' filtered by 'options' to raise an event on 'target'
 func (dw *dynamicWatch) Add(trigger schema.GroupVersionKind, options metav1.ListOptions, filterNamespace string, target metav1.ObjectMeta) error {
-	client, err := dw.newDynamicClient(trigger, filterNamespace)
+	dkw, err := dw.newDynamicClient(dw.events, trigger, options, filterNamespace)
 	if err != nil {
 		return fmt.Errorf("creating client for (%s): %v", trigger.String(), err)
 	}
 
-	dw.lastRV = sync.Map{}
-
 	go func() {
 		for {
-			dw.watchUntilClosed(client, trigger, options, filterNamespace, target)
+			dkw.watchUntilClosed(target)
 
 			time.Sleep(WatchDelay)
 		}
@@ -107,19 +125,20 @@ type clientObject struct {
 // from this Watch but it will ensure we always Reconcile when needed`.
 //
 // [1] https://github.com/kubernetes/kubernetes/issues/54878#issuecomment-357575276
-func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigger schema.GroupVersionKind, options metav1.ListOptions, filterNamespace string, target metav1.ObjectMeta) {
+func (w *dynamicKindWatch) watchUntilClosed(eventTarget metav1.ObjectMeta) {
 	log := log.Log
 
+	options := w.FilterOptions
 	// Though we don't use the resource version, we allow bookmarks to help keep TCP connections healthy.
 	options.AllowWatchBookmarks = true
 
-	events, err := client.Watch(context.TODO(), options)
+	events, err := w.resource.Watch(context.TODO(), options)
 	if err != nil {
-		log.WithValues("kind", trigger.String()).WithValues("namespace", filterNamespace).WithValues("labels", options.LabelSelector).Error(err, "failed to add watch to dynamic client")
+		log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).Error(err, "failed to add watch to dynamic client")
 		return
 	}
 
-	log.WithValues("kind", trigger.String()).WithValues("namespace", filterNamespace).WithValues("labels", options.LabelSelector).Info("watch began")
+	log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).Info("watch began")
 
 	// Always clean up watchers
 	defer events.Stop()
@@ -141,21 +160,19 @@ func (dw *dynamicWatch) watchUntilClosed(client dynamic.ResourceInterface, trigg
 		switch clientEvent.Type {
 		case watch.Deleted:
 			// stop lastRV growing indefinitely
-			dw.lastRV.Delete(key)
+			delete(w.lastRV, key)
 			// We always send the delete notification
 		case watch.Added, watch.Modified:
-			if previousRV, found := dw.lastRV.Load(key); found && previousRV == rv {
+			if previousRV, found := w.lastRV[key]; found && previousRV == rv {
 				// Don't send spurious invalidations
 				continue
 			}
-			dw.lastRV.Store(key, rv)
+			w.lastRV[key] = rv
 		}
 
-		log.WithValues("type", clientEvent.Type).WithValues("kind", trigger.String()).WithValues("name", key.Name, "namespace", key.Namespace).Info("broadcasting event")
-		dw.events <- event.GenericEvent{Object: clientObject{Object: clientEvent.Object, ObjectMeta: &target}}
+		log.WithValues("type", clientEvent.Type).WithValues("kind", w.GVK.String()).WithValues("name", key.Name, "namespace", key.Namespace).Info("broadcasting event")
+		w.events <- event.GenericEvent{Object: clientObject{Object: clientEvent.Object, ObjectMeta: &eventTarget}}
 	}
 
-	log.WithValues("kind", trigger.String()).WithValues("namespace", filterNamespace).WithValues("labels", options.LabelSelector).Info("watch closed")
-
-	return
+	log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).Info("watch closed")
 }
