@@ -310,7 +310,7 @@ This is requried to run kubectl in the container.
 
 ```Dockerfile
 # Build the manager binary
-FROM golang:1.16 as builder
+FROM golang:1.17 as builder
 
 # Copy in the go src
 WORKDIR /workspace
