@@ -36,8 +36,10 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
-const emptyNamespace = "_Empty_"
-const clusterScoped = "_Cluster_"
+const (
+	emptyNamespace = "_Empty_"
+	clusterScoped  = "_Cluster_"
+)
 
 const (
 	Declarative = "declarative_reconciler"
@@ -102,8 +104,10 @@ type reconcileMetrics struct {
 }
 
 func reconcileMetricsFor(gvk schema.GroupVersionKind) reconcileMetrics {
-	return reconcileMetrics{groupVersionKind: gvkString(gvk),
-		reconcileCounterVec: reconcileCount, reconcileFailureCounterVec: reconcileFailure}
+	return reconcileMetrics{
+		groupVersionKind:    gvkString(gvk),
+		reconcileCounterVec: reconcileCount, reconcileFailureCounterVec: reconcileFailure,
+	}
 }
 
 func (rm *reconcileMetrics) reconcileWith(req reconcile.Request) {
@@ -366,6 +370,7 @@ func (dummyQueue) AddAfter(item interface{}, duration time.Duration) {}
 func (dummyQueue) AddRateLimited(item interface{})                   {}
 func (dummyQueue) Forget(item interface{})                           {}
 func (dummyQueue) NumRequeues(item interface{}) int                  { return 0 }
+func (dummyQueue) ShutDownWithDrain()                                {}
 
 // Namespace & list of Name pairs
 type nsnPairs map[string][]string
@@ -384,7 +389,6 @@ func (i *items) insert(namespace string, names ...string) {
 		i.ids[namespace] = record{}
 	}
 	i.ids[namespace].Insert(names...)
-
 }
 
 func (i *items) has(namespace, name string) bool {
