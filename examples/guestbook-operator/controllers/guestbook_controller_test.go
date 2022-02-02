@@ -27,9 +27,7 @@ import (
 func TestGuestbook(t *testing.T) {
 	v := golden.NewValidator(t, api.SchemeBuilder)
 	dr := &GuestbookReconciler{
-		//Client: v.Client(),
-		// TODO: Uncomment line above, remove the line below to use latest version of kubebuilder-declarative-pattern
-		Client: v.Manager().GetClient(),
+		Client: v.Client(),
 	}
 	err := dr.setupReconciler(v.Manager())
 	if err != nil {
