@@ -20,10 +20,201 @@ import (
 	"context"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"sigs.k8s.io/kustomize/api/filesys"
 )
+
+func Test_allowManifestChannelName(t *testing.T) {
+	var testcast = []struct {
+		description string
+		name        string
+		expected    bool
+	}{
+		{
+			description: "success pattern",
+			name:        "stable",
+			expected:    true,
+		},
+		{
+			description: "fail pattern which has hyphen",
+			name:        "stable-alpha",
+			expected:    false,
+		},
+		{
+			description: "fail pattern which has prefix dot",
+			name:        ".stable",
+			expected:    false,
+		},
+	}
+	for _, test := range testcast {
+		actual := allowedChannelName(test.name)
+		expected := test.expected
+		if actual != expected {
+			t.Fatalf("expected %+v but got %+v", expected, actual)
+		}
+
+	}
+}
+
+func Test_allowManifestId(t *testing.T) {
+	var testcast = []struct {
+		description string
+		name        string
+		expected    bool
+	}{
+		{
+			description: "success pattern",
+			name:        "v1.0",
+			expected:    true,
+		},
+		{
+			description: "fail pattern which has @",
+			name:        "v1.0@stable",
+			expected:    false,
+		},
+		{
+			description: "fail pattern which has prefix dot",
+			name:        ".v1.0",
+			expected:    false,
+		},
+	}
+	for _, test := range testcast {
+		actual := allowedManifestId(test.name)
+		expected := test.expected
+		if actual != expected {
+			t.Fatalf("expected %+v but got %+v", expected, actual)
+		}
+
+	}
+}
+
+func TestFSRepository_LoadChannel(t *testing.T) {
+	var testcases = []struct {
+		description   string
+		name          string
+		errorString   string
+		channelString string
+	}{
+		{
+			description: "success pattern",
+			name:        "stable",
+			errorString: "",
+			channelString: `# Versions for the stable channel
+manifests:
+- name: nginx
+  version: 0.1.0`,
+		},
+		{
+			description: "fail pattern which has @ in name",
+			name:        "stable@-stable",
+			errorString: "invalid channel name: ",
+			channelString: `# Versions for the stable channel
+manifests:
+- name: nginx
+  version: 0.1.0`,
+		},
+		{
+			description: "fail pattern which has invalid channel",
+			name:        "xxxxx",
+			errorString: "error reading channel ",
+			channelString: `# Versions for the stable channel
+manifests:
+- name: nginx
+  version: 0.1.0`,
+		},
+	}
+
+	for _, test := range testcases {
+		fSys := filesys.MakeFsOnDisk()
+		baseDir := "/tmp/packages/"
+		err := fSys.MkdirAll(baseDir)
+		if err != nil {
+			t.Fatalf("unexpected err: %v", err)
+		}
+		defer fSys.RemoveAll(baseDir)
+
+		filePath := filepath.Join(baseDir, "stable")
+		err = fSys.WriteFile(filePath, []byte(test.channelString))
+		if err != nil {
+			t.Fatalf("writing channel file: %v", err)
+		}
+
+		expected := Channel{
+			Manifests: []Version{
+				{
+					Package: "nginx",
+					Version: "0.1.0",
+				},
+			},
+		}
+
+		ctx := context.Background()
+		var fs = NewFSRepository("/tmp/packages/")
+
+		actual, err := fs.LoadChannel(ctx, test.name)
+
+		if err != nil {
+			if strings.HasPrefix(err.Error(), test.errorString) == false {
+				t.Fatalf("expected start with: \"%s\" but got: \"%s\"", test.errorString, err.Error())
+			}
+		} else {
+			if !reflect.DeepEqual(*actual, expected) {
+				t.Fatalf("expected %+v but got %+v", expected, actual)
+			}
+		}
+	}
+}
+
+func TestFSRepository_Latest(t *testing.T) {
+	var testcases = []struct {
+		description   string
+		name          string
+		expected      string
+		channelString string
+	}{
+		{
+			description: "success pattern",
+			name:        "stable",
+			expected:    "0.2.0",
+			channelString: `# Versions for the stable channel
+manifests:
+- name: nginx
+  version: 0.1.0
+- name: nginx
+  version: 0.2.0
+- name: apache
+  version: 1.1.0`,
+		},
+	}
+
+	for _, test := range testcases {
+		fSys := filesys.MakeFsOnDisk()
+		baseDir := "/tmp/packages/"
+		err := fSys.MkdirAll(baseDir)
+		if err != nil {
+			t.Fatalf("unexpected err: %v", err)
+		}
+		defer fSys.RemoveAll(baseDir)
+
+		filePath := filepath.Join(baseDir, "stable")
+		err = fSys.WriteFile(filePath, []byte(test.channelString))
+		if err != nil {
+			t.Fatalf("writing channel file: %v", err)
+		}
+
+		ctx := context.Background()
+		var fs = NewFSRepository("/tmp/packages/")
+
+		channel, err := fs.LoadChannel(ctx, test.name)
+		actual, err := channel.Latest("nginx")
+
+		if actual.Version != test.expected {
+			t.Fatalf("expected %+v but got %+v", test.expected, actual.Version)
+		}
+	}
+}
 
 func TestFSRepository_LoadManifest(t *testing.T) {
 
