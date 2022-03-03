@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 func TestFSRepository_LoadManifest(t *testing.T) {
