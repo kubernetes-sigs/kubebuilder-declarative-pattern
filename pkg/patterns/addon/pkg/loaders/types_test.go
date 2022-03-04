@@ -49,12 +49,13 @@ func Test_allowManifestChannelName(t *testing.T) {
 		},
 	}
 	for _, test := range testcast {
-		actual := allowedChannelName(test.name)
-		expected := test.expected
-		if actual != expected {
-			t.Fatalf("expected %+v but got %+v", expected, actual)
-		}
-
+		t.Run(test.description, func(t *testing.T) {
+			actual := allowedChannelName(test.name)
+			expected := test.expected
+			if actual != expected {
+				t.Fatalf("expected %+v but got %+v", expected, actual)
+			}
+		})
 	}
 }
 
@@ -81,12 +82,13 @@ func Test_allowManifestId(t *testing.T) {
 		},
 	}
 	for _, test := range testcast {
-		actual := allowedManifestId(test.name)
-		expected := test.expected
-		if actual != expected {
-			t.Fatalf("expected %+v but got %+v", expected, actual)
-		}
-
+		t.Run(test.description, func(t *testing.T) {
+			actual := allowedManifestId(test.name)
+			expected := test.expected
+			if actual != expected {
+				t.Fatalf("expected %+v but got %+v", expected, actual)
+			}
+		})
 	}
 }
 
@@ -127,43 +129,45 @@ manifests:
 	}
 
 	for _, test := range testcases {
-		fSys := filesys.MakeFsOnDisk()
-		baseDir := "/tmp/packages/"
-		err := fSys.MkdirAll(baseDir)
-		if err != nil {
-			t.Fatalf("unexpected err: %v", err)
-		}
-		defer fSys.RemoveAll(baseDir)
+		t.Run(test.description, func(t *testing.T) {
+			fSys := filesys.MakeFsOnDisk()
+			baseDir := "/tmp/packages/"
+			err := fSys.MkdirAll(baseDir)
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			defer fSys.RemoveAll(baseDir)
 
-		filePath := filepath.Join(baseDir, "stable")
-		err = fSys.WriteFile(filePath, []byte(test.channelString))
-		if err != nil {
-			t.Fatalf("writing channel file: %v", err)
-		}
+			filePath := filepath.Join(baseDir, "stable")
+			err = fSys.WriteFile(filePath, []byte(test.channelString))
+			if err != nil {
+				t.Fatalf("writing channel file: %v", err)
+			}
 
-		expected := Channel{
-			Manifests: []Version{
-				{
-					Package: "nginx",
-					Version: "0.1.0",
+			expected := Channel{
+				Manifests: []Version{
+					{
+						Package: "nginx",
+						Version: "0.1.0",
+					},
 				},
-			},
-		}
-
-		ctx := context.Background()
-		var fs = NewFSRepository("/tmp/packages/")
-
-		actual, err := fs.LoadChannel(ctx, test.name)
-
-		if err != nil {
-			if strings.HasPrefix(err.Error(), test.errorString) == false {
-				t.Fatalf("expected start with: \"%s\" but got: \"%s\"", test.errorString, err.Error())
 			}
-		} else {
-			if !reflect.DeepEqual(*actual, expected) {
-				t.Fatalf("expected %+v but got %+v", expected, actual)
+
+			ctx := context.Background()
+			var fs = NewFSRepository("/tmp/packages/")
+
+			actual, err := fs.LoadChannel(ctx, test.name)
+
+			if err != nil {
+				if strings.HasPrefix(err.Error(), test.errorString) == false {
+					t.Fatalf("expected start with: \"%s\" but got: \"%s\"", test.errorString, err.Error())
+				}
+			} else {
+				if !reflect.DeepEqual(*actual, expected) {
+					t.Fatalf("expected %+v but got %+v", expected, actual)
+				}
 			}
-		}
+		})
 	}
 }
 
@@ -190,29 +194,31 @@ manifests:
 	}
 
 	for _, test := range testcases {
-		fSys := filesys.MakeFsOnDisk()
-		baseDir := "/tmp/packages/"
-		err := fSys.MkdirAll(baseDir)
-		if err != nil {
-			t.Fatalf("unexpected err: %v", err)
-		}
-		defer fSys.RemoveAll(baseDir)
+		t.Run(test.description, func(t *testing.T) {
+			fSys := filesys.MakeFsOnDisk()
+			baseDir := "/tmp/packages/"
+			err := fSys.MkdirAll(baseDir)
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			defer fSys.RemoveAll(baseDir)
 
-		filePath := filepath.Join(baseDir, "stable")
-		err = fSys.WriteFile(filePath, []byte(test.channelString))
-		if err != nil {
-			t.Fatalf("writing channel file: %v", err)
-		}
+			filePath := filepath.Join(baseDir, "stable")
+			err = fSys.WriteFile(filePath, []byte(test.channelString))
+			if err != nil {
+				t.Fatalf("writing channel file: %v", err)
+			}
 
-		ctx := context.Background()
-		var fs = NewFSRepository("/tmp/packages/")
+			ctx := context.Background()
+			var fs = NewFSRepository("/tmp/packages/")
 
-		channel, err := fs.LoadChannel(ctx, test.name)
-		actual, err := channel.Latest("nginx")
+			channel, err := fs.LoadChannel(ctx, test.name)
+			actual, err := channel.Latest("nginx")
 
-		if actual.Version != test.expected {
-			t.Fatalf("expected %+v but got %+v", test.expected, actual.Version)
-		}
+			if actual.Version != test.expected {
+				t.Fatalf("expected %+v but got %+v", test.expected, actual.Version)
+			}
+		})
 	}
 }
 
