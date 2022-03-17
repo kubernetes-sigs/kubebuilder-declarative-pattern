@@ -22,6 +22,11 @@ The bulk of these tests are implemented in `pkg/tests` via the `StandardValidato
 The test scans a `tests` directory for `*.in.yaml` files, runs the operator for each 
 of them, and compares the output to `*.out.yaml` files.
 
+It is also possible to provide `*.side_in.yaml` file that contains resources that
+should exist before the resource defined in `*.in.yaml` is applied. These resources
+are going to be created before running a test, and cleaned up upon finishing. They
+will be accessible via Get and List.
+
 We perform simple comparison-of-output tests, any changes
 to the output are treated as test failures, and printed as a diff. 
 This means that the output is materialized and checked in to the repo; this
@@ -59,7 +64,7 @@ the env-var cheat code.
     func TestController(t *testing.T) {
 	v := golden.NewValidator(t, api.SchemeBuilder)
 	dr := &{{operator}}Reconciler{
-		Client: v.Manager().GetClient(),
+		Client: v.Client(),
 	}
 	err := dr.setupReconciler(v.Manager())
 	if err != nil {

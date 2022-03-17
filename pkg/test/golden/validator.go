@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/diff"
-	clientScheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
@@ -52,7 +51,8 @@ func NewValidator(t *testing.T, b *scheme.Builder) *validator {
 	addon.Init()
 	v.findChannelsPath()
 
-	v.mgr = mocks.NewManager(mocks.NewClient(clientScheme.Scheme))
+	v.client = mocks.NewClient(v.scheme)
+	v.mgr = mocks.NewManager(v.client)
 	v.mgr.Scheme = v.scheme
 	return v
 }
@@ -62,6 +62,7 @@ type validator struct {
 	scheme  *runtime.Scheme
 	TestDir string
 	mgr     mocks.Manager
+	client  mocks.FakeClient
 }
 
 // findChannelsPath will search for a channels directory, which is helpful when running under bazel
@@ -132,6 +133,10 @@ func (v *validator) Manager() *mocks.Manager {
 	return &v.mgr
 }
 
+func (v *validator) Client() *mocks.FakeClient {
+	return &v.client
+}
+
 func (v *validator) Validate(r declarative.Reconciler) {
 	t := v.T
 	t.Helper()
@@ -168,11 +173,39 @@ func (v *validator) Validate(r declarative.Reconciler) {
 			continue
 		}
 
+		// Ignore any files that are not input - we want to find .side_in and .out files
+		// that correspond to given .in file
 		if !strings.HasSuffix(p, ".in.yaml") {
-			if !strings.HasSuffix(p, ".out.yaml") {
-				t.Errorf("unexpected file in tests directory: %s", p)
-			}
 			continue
+		}
+
+		objectsToCleanup := []runtime.Object{}
+		// Check if there is a file containing side inputs for this test
+		sideInputPath := strings.Replace(p, ".in.yaml", ".side_in.yaml", -1)
+		sideInputRead, err := os.ReadFile(sideInputPath)
+		if err != nil {
+			t.Logf("Could not read side input file %s: %v, skipping", sideInputPath, err)
+		} else {
+			objs, err := manifest.ParseObjects(ctx, string(sideInputRead))
+			if err != nil {
+				t.Errorf("error parsing file %s: %v", p, err)
+				continue
+			}
+
+			for _, obj := range objs.Items {
+				json, err := obj.JSON()
+				if err != nil {
+					t.Errorf("error converting resource to json in %s: %v", p, err)
+					continue
+				}
+				decoded, _, err := serializer.Decode(json, nil, nil)
+				if err != nil {
+					t.Errorf("error parsing resource in %s: %v", p, err)
+					continue
+				}
+				v.client.CreateRuntimeObject(ctx, decoded)
+				objectsToCleanup = append(objectsToCleanup, decoded)
+			}
 		}
 
 		b, err := os.ReadFile(p)
@@ -273,6 +306,9 @@ func (v *validator) Validate(r declarative.Reconciler) {
 			t.Logf(`To regenerate the output based on this result, rerun this test with HACK_AUTOFIX_EXPECTED_OUTPUT="true"`)
 		}
 
+		for _, objectToCleanup := range objectsToCleanup {
+			v.client.DeleteRuntimeObject(ctx, objectToCleanup)
+		}
 	}
 }
 

@@ -27,7 +27,7 @@ import (
 func TestGuestbook(t *testing.T) {
 	v := golden.NewValidator(t, api.SchemeBuilder)
 	dr := &GuestbookReconciler{
-		Client: v.Manager().GetClient(),
+		Client: v.Client(),
 	}
 	err := dr.setupReconciler(v.Manager())
 	if err != nil {
