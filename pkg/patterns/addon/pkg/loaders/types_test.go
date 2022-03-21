@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 func Test_allowManifestChannelName(t *testing.T) {

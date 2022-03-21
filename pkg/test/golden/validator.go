@@ -38,7 +38,7 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/mocks"
-	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 func NewValidator(t *testing.T, b *scheme.Builder) *validator {
