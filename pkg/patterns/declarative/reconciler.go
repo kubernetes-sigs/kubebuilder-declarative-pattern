@@ -230,6 +230,25 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 			if _, ok := annotations["addons.k8s.io/ignore"]; ok {
 				log.WithValues("kind", obj.Kind).WithValues("name", obj.GetName()).Info("Found ignore annotation on object, " +
 					"skipping object")
+
+				// remove labels, avoiding be removed when kubectl.Apply is called with flag `prune`
+				needUpdate := false
+				{ // remove labels from object
+					labels := unstruct.GetLabels()
+					for k := range r.options.labelMaker(ctx, instance) {
+						if _, ok := labels[k]; ok {
+							needUpdate = true
+						}
+						delete(labels, k)
+					}
+					unstruct.SetLabels(labels)
+				}
+				if needUpdate { // update object if it's necessary
+					if _, err := UpdateObjectFromCluster(unstruct, r); err != nil {
+						return objects, fmt.Errorf("remove label for resource with 'addons.k8s.io/ignore' failed, %w", err)
+					}
+				}
+
 				continue
 			}
 		}
@@ -609,6 +628,22 @@ func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Un
 	ns := obj.GetNamespace()
 	name := obj.GetName()
 	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(), name, getOptions)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get object: %w", err)
+	}
+	return unstruct, nil
+}
+
+func UpdateObjectFromCluster(obj *unstructured.Unstructured, r *Reconciler) (*unstructured.Unstructured, error) {
+	updateOptions := metav1.UpdateOptions{}
+	gvk := obj.GroupVersionKind()
+
+	mapping, err := r.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get mapping for resource %v: %w", gvk, err)
+	}
+	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(obj.GetNamespace()).Update(context.Background(),
+		obj, updateOptions)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get object: %w", err)
 	}
