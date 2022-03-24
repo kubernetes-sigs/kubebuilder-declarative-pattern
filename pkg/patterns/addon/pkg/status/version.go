@@ -77,7 +77,7 @@ func (p *versionCheck) VersionCheck(
 	if !reflect.DeepEqual(status, currentStatus) {
 		err := utils.SetCommonStatus(src, status)
 		if err != nil {
-			log.Error(err, "unable to updating status")
+			log.Error(err, "unable to update status")
 		}
 	}
 

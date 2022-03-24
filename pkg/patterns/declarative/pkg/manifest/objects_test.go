@@ -861,7 +861,7 @@ func Test_Sort(t *testing.T) {
 				},
 			},
 		},
-		Name:  "frontend111",
+		name:  "frontend111",
 		Kind:  "Deployment",
 		Group: "apps",
 	}
@@ -875,7 +875,7 @@ func Test_Sort(t *testing.T) {
 				},
 			},
 		},
-		Name:  "frontend22222",
+		name:  "frontend22222",
 		Kind:  "Deployment",
 		Group: "apps",
 	}
@@ -889,7 +889,7 @@ func Test_Sort(t *testing.T) {
 				},
 			},
 		},
-		Name:  "frontend-service",
+		name:  "frontend-service",
 		Kind:  "Service",
 		Group: "",
 	}
@@ -903,7 +903,7 @@ func Test_Sort(t *testing.T) {
 				},
 			},
 		},
-		Name:  "serviceaccount",
+		name:  "serviceaccount",
 		Kind:  "ServiceAccount",
 		Group: "",
 	}
@@ -929,7 +929,7 @@ func Test_Sort(t *testing.T) {
 				},
 			},
 			error:     false,
-			scoreFunc: func(o *Object) int { return len(o.Name) },
+			scoreFunc: func(o *Object) int { return len(o.GetName()) },
 		},
 		{
 			name: "sort with Group",

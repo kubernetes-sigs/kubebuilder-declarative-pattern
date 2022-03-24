@@ -74,7 +74,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		case "--prune":
 			applyOpts.Prune = true
 		case "--selector":
-			applyOpts.Selector = opt.ExtraArgs[i + 1]
+			applyOpts.Selector = opt.ExtraArgs[i+1]
 		default:
 			continue
 		}
