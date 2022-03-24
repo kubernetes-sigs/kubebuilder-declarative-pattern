@@ -39,9 +39,16 @@ type Objects struct {
 type Object struct {
 	object *unstructured.Unstructured
 
-	Group     string
-	Kind      string
-	Name      string
+	Group   string
+	Version string
+	Kind    string
+
+	// Name is the metadata.name of the object.
+	// deprecated: prefer GetName
+	Name string
+
+	// Name is the metadata.namespace of the object.
+	// deprecated: prefer GetNamespace
 	Namespace string
 
 	json []byte
@@ -61,6 +68,7 @@ func ParseJSONToObject(json []byte) (*Object, error) {
 	return &Object{
 		object:    u,
 		Group:     gvk.Group,
+		Version:   gvk.Version,
 		Kind:      gvk.Kind,
 		Name:      u.GetName(),
 		Namespace: u.GetNamespace(),
@@ -81,6 +89,30 @@ func (o *Object) AddLabels(labels map[string]string) {
 	o.object.SetLabels(merged)
 	// Invalidate cached json
 	o.json = nil
+}
+
+func (o *Object) GetNamespace() string {
+	return o.Namespace
+}
+
+func (o *Object) SetNamespace(ns string) error {
+	if err := o.SetNestedField(ns, "metadata", "namespace"); err != nil {
+		return fmt.Errorf("failed to set namespace: %w", err)
+	}
+	o.Namespace = ns
+	return nil
+}
+
+func (o *Object) GetName() string {
+	return o.Name
+}
+
+func (o *Object) SetName(name string) error {
+	if err := o.SetNestedField(name, "metadata", "name"); err != nil {
+		return fmt.Errorf("failed to set name: %w", err)
+	}
+	o.Name = name
+	return nil
 }
 
 func (o *Object) SetNestedStringMap(value map[string]string, fields ...string) error {
