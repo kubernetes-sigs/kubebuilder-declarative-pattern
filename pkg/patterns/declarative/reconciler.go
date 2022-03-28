@@ -606,8 +606,11 @@ func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Un
 	if err != nil {
 		return nil, fmt.Errorf("unable to get mapping for resource %v: %w", gvk, err)
 	}
-	ns := obj.GetNamespace()
-	name := obj.GetName()
+
+	ns, name := "", obj.GetName()
+	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+		ns = obj.GetNamespace()
+	}
 	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(), name, getOptions)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get object: %w", err)
