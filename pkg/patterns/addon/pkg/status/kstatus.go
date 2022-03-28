@@ -31,18 +31,18 @@ func (k *kstatusAggregator) Reconciled(ctx context.Context, src declarative.Decl
 
 		unstruct, err := declarative.GetObjectFromCluster(object, k.reconciler)
 		if err != nil {
-			log.WithValues("object", object.Kind+"/"+object.Name).Error(err, "Unable to get status of object")
+			log.WithValues("object", object.Kind+"/"+object.GetName()).Error(err, "Unable to get status of object")
 			return err
 		}
 
 		res, err := status.Compute(unstruct)
 		if err != nil {
-			log.WithValues("kind", object.Kind).WithValues("name", object.Name).WithValues("status", res.Status).WithValues(
+			log.WithValues("kind", object.Kind).WithValues("name", object.GetName()).WithValues("status", res.Status).WithValues(
 				"message", res.Message).Info("Got status of resource:")
 			statusMap[status.NotFoundStatus] = true
 		}
 		if res != nil {
-			log.WithValues("kind", object.Kind).WithValues("name", object.Name).WithValues("status", res.Status).WithValues("message", res.Message).Info("Got status of resource:")
+			log.WithValues("kind", object.Kind).WithValues("name", object.GetName()).WithValues("status", res.Status).WithValues("message", res.Message).Info("Got status of resource:")
 			statusMap[res.Status] = true
 		}
 	}
