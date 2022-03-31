@@ -324,15 +324,19 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 		}
 
 		if fs != nil {
-			// 5. Write objects to filesystem for kustomizing
+			// 5. Write objects to filesystem for kustomizing, allow multiple objects in a file
+			finalJson := []byte("")
+			separator := []byte("---\n")
 			for _, item := range objects.Items {
 				json, err := item.JSON()
 				if err != nil {
 					log.Error(err, "error converting object to json")
 					return nil, err
 				}
-				fs.WriteFile(string(manifestPath), json)
+				finalJson = append(finalJson, separator...)
+				finalJson = append(finalJson, json...)
 			}
+			fs.WriteFile(string(manifestPath), finalJson)
 			for _, blob := range objects.Blobs {
 				fs.WriteFile(string(manifestPath), blob)
 			}
