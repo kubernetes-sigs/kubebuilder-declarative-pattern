@@ -464,6 +464,160 @@ spec:
 				},
 			},
 			error: false,
+			fn: func(m map[string]interface{}) error {
+				return nil
+			},
+		},
+		{
+			name: "normal success pattern without init container",
+			inputManifest: `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: test-app
+spec:
+  selector:
+    matchLabels:
+      app: guestbook
+      tier: frontend
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers:
+      - name: php-redis
+        image: gcr.io/google-samples/gb-frontend:v4`,
+			expectedObject: []*Object{
+				{
+					object: &unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"apiVersion": "apps/v1",
+							"kind":       "Deployment",
+							"metadata": map[string]interface{}{
+								"labels": map[string]interface{}{
+									"app": "test-app",
+								},
+								"name": "frontend",
+							},
+							"spec": map[string]interface{}{
+								"replicas": 3,
+								"selector": map[string]interface{}{
+									"matchLabels": map[string]interface{}{
+										"app":  "guestbook",
+										"tier": "frontend",
+									},
+								},
+								"template": map[string]interface{}{
+									"metadata": map[string]interface{}{
+										"labels": map[string]interface{}{
+											"app":  "guestbook",
+											"tier": "frontend",
+										},
+									},
+									"spec": map[string]interface{}{
+										"containers": []interface{}{
+											map[string]interface{}{
+												"image": "mutated_image",
+												"name":  "php-redis",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			error: false,
+			fn: func(container map[string]interface{}) error {
+				container["image"] = "mutated_image"
+				return nil
+			},
+		},
+		{
+			name: "normal success pattern with init containers",
+			inputManifest: `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: test-app
+spec:
+  selector:
+    matchLabels:
+      app: guestbook
+      tier: frontend
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      initContainers:
+      - name: init
+        image: gcr.io/google-samples/gb-frontend:v4
+      containers:
+      - name: php-redis
+        image: gcr.io/google-samples/gb-frontend:v4`,
+			expectedObject: []*Object{
+				{
+					object: &unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"apiVersion": "apps/v1",
+							"kind":       "Deployment",
+							"metadata": map[string]interface{}{
+								"labels": map[string]interface{}{
+									"app": "test-app",
+								},
+								"name": "frontend",
+							},
+							"spec": map[string]interface{}{
+								"replicas": 3,
+								"selector": map[string]interface{}{
+									"matchLabels": map[string]interface{}{
+										"app":  "guestbook",
+										"tier": "frontend",
+									},
+								},
+								"template": map[string]interface{}{
+									"metadata": map[string]interface{}{
+										"labels": map[string]interface{}{
+											"app":  "guestbook",
+											"tier": "frontend",
+										},
+									},
+									"spec": map[string]interface{}{
+										"initContainers": []interface{}{
+											map[string]interface{}{
+												"image": "mutated_image",
+												"name":  "init",
+											},
+										},
+										"containers": []interface{}{
+											map[string]interface{}{
+												"image": "mutated_image",
+												"name":  "php-redis",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			error: false,
+			fn: func(container map[string]interface{}) error {
+				container["image"] = "mutated_image"
+				return nil
+			},
 		},
 		{
 			name: "object has no containers key",
@@ -603,9 +757,7 @@ spec:
 			}
 			if tt.error == false {
 				for _, o := range objects.Items {
-					err = o.MutateContainers(func(m map[string]interface{}) error {
-						return nil
-					})
+					err = o.MutateContainers(tt.fn)
 					actualBytes, _ := o.JSON()
 					actualStr := string(actualBytes)
 
