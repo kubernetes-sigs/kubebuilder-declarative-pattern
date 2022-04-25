@@ -154,6 +154,20 @@ func (o *Object) MutateContainers(fn func(map[string]interface{}) error) error {
 		return fmt.Errorf("containers was not a list")
 	}
 
+	initContainers, found, err := nestedFieldNoCopy(o.object.Object, "spec", "template", "spec", "initContainers")
+	if err != nil {
+		return fmt.Errorf("error reading init containers: %v", err)
+	}
+
+	if found {
+		initContainerList, ok := initContainers.([]interface{})
+		if !ok {
+			return fmt.Errorf("init containers was not a list")
+		}
+
+		containerList = append(containerList, initContainerList...)
+	}
+
 	for _, co := range containerList {
 		container, ok := co.(map[string]interface{})
 		if !ok {
