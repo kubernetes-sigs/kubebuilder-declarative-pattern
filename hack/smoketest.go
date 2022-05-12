@@ -27,28 +27,24 @@ package main
 import (
 	"bytes"
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
-	"flag"
-
-	"path/filepath"
-
-	"regexp"
-
-	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -135,35 +131,35 @@ func main() {
 		}
 	}
 
-	glog.Info("Run: Deploying CRDs")
+	klog.Info("Run: Deploying CRDs")
 	for _, op := range operators {
 		op.InstallCRDs()
 	}
-	glog.Info("Run: Deploying Operators")
+	klog.Info("Run: Deploying Operators")
 	for _, op := range operators {
 		op.InstallOperators()
 	}
-	glog.Info("Run: Deploying Addons (1/2)")
+	klog.Info("Run: Deploying Addons (1/2)")
 	for _, op := range operators {
 		op.InstallResources()
 	}
 
-	glog.Info("Verify: Addons started")
+	klog.Info("Verify: Addons started")
 	err = verifyAllUpOrTimeout(operators, verifyTimeout, "initial creation")
 	if err != nil {
-		glog.Errorf("verifying all up: %v", err)
+		klog.Errorf("verifying all up: %v", err)
 	}
 
-	glog.Info("Verify: Disrupted addons recover")
+	klog.Info("Verify: Disrupted addons recover")
 	for _, op := range operators {
 		op.Disrupt()
 	}
 	err = verifyAllUpOrTimeout(operators, verifyTimeout, "disruption recovery")
 	if err != nil {
-		glog.Errorf("verifying all up: %v", err)
+		klog.Errorf("verifying all up: %v", err)
 	}
 
-	glog.Info("Verify: Addons delete")
+	klog.Info("Verify: Addons delete")
 	for _, op := range operators {
 		op.DeleteResources()
 	}
@@ -172,10 +168,10 @@ func main() {
 	}
 	err = verifyAllDownOrTimeout(operators, verifyTimeout, "tear down")
 	if err != nil {
-		glog.Errorf("verifying all down: %v", err)
+		klog.Errorf("verifying all down: %v", err)
 	}
 
-	glog.Info("Run: Deploying Addons (2/2)")
+	klog.Info("Run: Deploying Addons (2/2)")
 	for _, op := range operators {
 		op.InstallResources()
 	}
@@ -186,18 +182,18 @@ func main() {
 	}
 
 	if !*skipCustomScenarios {
-		glog.Info("Run/Verify: Addon specific scenarios")
+		klog.Info("Run/Verify: Addon specific scenarios")
 		err = verifyCustomScenarios(operators, verifyTimeout, "custom testing scenarios")
 		if err != nil {
-			glog.Errorf("verifying custom scenarios: %v", err)
+			klog.Errorf("verifying custom scenarios: %v", err)
 		}
 	}
 
-	glog.Infof("Clean up: Delete Addons")
+	klog.Infof("Clean up: Delete Addons")
 	for _, op := range operators {
 		op.DeleteResources()
 	}
-	glog.Infof("Clean up: Delete Operators")
+	klog.Infof("Clean up: Delete Operators")
 	for _, op := range operators {
 		op.DeleteOperators()
 	}
@@ -487,7 +483,7 @@ func (h *RealTestHarness) kubectlApplyFile(p string) {
 		h.Fatalf("error reading file %s: %v", p, err)
 	}
 
-	glog.Infof("applying file %s", p)
+	klog.Infof("applying file %s", p)
 
 	repo := strings.TrimSuffix(*imageRepo, "/")
 	tag := *imageTag
@@ -562,7 +558,7 @@ func (c *CommonAddonTest) CustomScenarios() error {
 func (c *CommonAddonTest) Disrupt() {
 	// no-op
 	// Specific operators should add specific disruption scenarios
-	glog.Infof("Disrupt not configured for operator: %s", c.Name())
+	klog.Infof("Disrupt not configured for operator: %s", c.Name())
 }
 
 func (c *CommonAddonTest) VerifyDown() error {
@@ -593,7 +589,7 @@ func (k *GuestbookTest) VerifyUp() error {
 func (t *GuestbookTest) Disrupt() {
 	_, err := executeCommand("kubectl", "delete", "all", "-l", "example-app=guestbook", "-n", defaultSystemNamespace)
 	if err != nil {
-		glog.Warningf("kubectl delete finished with error: %v", err)
+		klog.Warningf("kubectl delete finished with error: %v", err)
 	}
 }
 
