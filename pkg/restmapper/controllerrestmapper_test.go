@@ -2,23 +2,40 @@ package restmapper
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
+	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/mocks/mockkubeapiserver"
 )
 
 func TestRESTMapping(t *testing.T) {
-	// TODO: Add mock
-	home := homedir.HomeDir()
-	kubeconfigPath := filepath.Join(home, ".kube", "config")
-	restConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
 	if err != nil {
-		panic(err)
+		t.Fatalf("error building mock kube-apiserver: %v", err)
+	}
+
+	k8s.Add(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
+
+	defer func() {
+		if err := k8s.Stop(); err != nil {
+			t.Fatalf("error closing mock kube-apiserver: %v", err)
+		}
+	}()
+
+	addr, err := k8s.StartServing()
+	if err != nil {
+		t.Errorf("error starting mock kube-apiserver: %v", err)
+	}
+
+	klog.Infof("mock kubeapiserver will listen on %v", addr)
+
+	restConfig := &rest.Config{
+		Host: addr.String(),
 	}
 
 	restMapper, err := NewControllerRESTMapper(restConfig)
