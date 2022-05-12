@@ -228,6 +228,11 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		return objects, fmt.Errorf("error parsing list kind: %v", err)
 	}
 
+	err = r.setNamespaces(ctx, instance, objects)
+	if err != nil {
+		return objects, err
+	}
+
 	err = r.injectOwnerRef(ctx, instance, objects)
 	if err != nil {
 		return objects, err
@@ -504,6 +509,39 @@ func (r *Reconciler) validateOptions() error {
 		return fmt.Errorf(strings.Join(errs, ","))
 	}
 
+	return nil
+}
+
+// setNamespaces will set the object on all namespace-scoped objects, unless the preserveNamespace option is set
+func (r *Reconciler) setNamespaces(ctx context.Context, instance DeclarativeObject, objects *manifest.Objects) error {
+	if r.options.preserveNamespace {
+		return nil
+	}
+
+	ns := instance.GetNamespace()
+	if ns == "" {
+		// No namespace to set
+		return nil
+	}
+
+	log := log.Log
+	log.WithValues("namespace", ns).Info("setting namespace")
+
+	for _, o := range objects.Items {
+		if o.GetNamespace() != "" {
+			continue
+		}
+
+		gvk := o.GroupVersionKind()
+		mapping, err := r.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			log.Error(err, "error getting scope for gvk", "gvk", gvk)
+			continue
+		}
+		if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+			o.SetNamespace(ns)
+		}
+	}
 	return nil
 }
 
