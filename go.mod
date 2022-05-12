@@ -7,7 +7,6 @@ require (
 	github.com/evanphx/json-patch/v5 v5.1.0
 	github.com/go-git/go-git/v5 v5.1.0
 	github.com/go-logr/logr v1.2.0
-	github.com/golang/glog v1.0.0
 	github.com/google/go-cmp v0.5.6
 	github.com/prometheus/client_golang v1.11.0
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
