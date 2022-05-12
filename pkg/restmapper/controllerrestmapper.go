@@ -2,7 +2,6 @@ package restmapper
 
 import (
 	"fmt"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -28,6 +27,7 @@ func NewControllerRESTMapper(cfg *rest.Config) (meta.RESTMapper, error) {
 // Controllers primarily need to map from GVK -> GVR.
 type ControllerRESTMapper struct {
 	uncached discovery.DiscoveryInterface
+	cache    *cache
 }
 
 var _ meta.RESTMapper = &ControllerRESTMapper{}
@@ -56,33 +56,12 @@ func (m *ControllerRESTMapper) ResourcesFor(input schema.GroupVersionResource) (
 func (m *ControllerRESTMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
 	for _, version := range versions {
 		gv := schema.GroupVersion{Group: gk.Group, Version: version}
-		resourceList, err := m.uncached.ServerResourcesForGroupVersion(gv.String())
+		mapping, err := m.cache.findRESTMapping(m.uncached, gv, gk.Kind)
 		if err != nil {
-			// ignore "no match" errors, but any other error percolates back up
-			if meta.IsNoMatchError(err) {
-				continue
-			}
-			return nil, fmt.Errorf("error from ServerResourcesForGroupVersion(%v): %w", gv, err)
+			return nil, err
 		}
-		for i := range resourceList.APIResources {
-			resource := resourceList.APIResources[i]
-
-			// if we have a slash, then this is a subresource and we shouldn't create mappings for those.
-			if strings.Contains(resource.Name, "/") {
-				continue
-			}
-
-			if resource.Kind == gk.Kind {
-				scope := meta.RESTScopeRoot
-				if resource.Namespaced {
-					scope = meta.RESTScopeNamespace
-				}
-				return &meta.RESTMapping{
-					Resource:         gv.WithResource(resource.Name),
-					GroupVersionKind: gv.WithKind(gk.Kind),
-					Scope:            scope,
-				}, nil
-			}
+		if mapping != nil {
+			return mapping, nil
 		}
 	}
 
