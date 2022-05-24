@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -15,6 +17,7 @@ import (
 	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdDelete "k8s.io/kubectl/pkg/cmd/delete"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"k8s.io/kubectl/pkg/scheme"
 )
 
 type DirectApplier struct {
@@ -42,7 +45,16 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	if opt.Validate {
 		// This potentially causes redundant work, but validation isn't the common path
-		v, err := cmdutil.NewFactory(&genericclioptions.ConfigFlags{}).Validator(true)
+		// v, err := cmdutil.NewFactory(&genericclioptions.ConfigFlags{}).Validator(true)
+
+		f := cmdutil.NewFactory(&genericclioptions.ConfigFlags{})
+		dynamicClient, err := f.DynamicClient()
+		if err != nil {
+			return err
+		}
+		nqpv := resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamFieldValidation)
+
+		v, err := cmdutil.NewFactory(&genericclioptions.ConfigFlags{}).Validator(metav1.FieldValidationStrict, nqpv)
 		if err != nil {
 			return err
 		}
@@ -65,7 +77,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		}
 	}
 
-	applyOpts := apply.NewApplyOptions(ioStreams)
+	applyOpts := NewApplyOptions(ioStreams)
 
 	for i, arg := range opt.ExtraArgs {
 		switch arg {
@@ -120,4 +132,21 @@ func (s *staticRESTClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
 		return nil, fmt.Errorf("RESTMapper not set")
 	}
 	return s.RESTMapper, nil
+}
+
+// NewApplyOptions creates new ApplyOptions for the `apply` command
+func NewApplyOptions(ioStreams genericclioptions.IOStreams) *apply.ApplyOptions {
+	return &apply.ApplyOptions{
+		PrintFlags: genericclioptions.NewPrintFlags("created").WithTypeSetter(scheme.Scheme),
+
+		Overwrite:    true,
+		OpenAPIPatch: true,
+
+		Recorder: genericclioptions.NoopRecorder{},
+
+		IOStreams: ioStreams,
+
+		VisitedUids:       sets.NewString(),
+		VisitedNamespaces: sets.NewString(),
+	}
 }
