@@ -42,12 +42,12 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		RESTConfig: opt.RESTConfig,
 	}
 	b := resource.NewBuilder(restClientGetter)
+	f := cmdutil.NewFactory(&genericclioptions.ConfigFlags{})
 
 	if opt.Validate {
 		// This potentially causes redundant work, but validation isn't the common path
 		// v, err := cmdutil.NewFactory(&genericclioptions.ConfigFlags{}).Validator(true)
 
-		f := cmdutil.NewFactory(&genericclioptions.ConfigFlags{})
 		dynamicClient, err := f.DynamicClient()
 		if err != nil {
 			return err
@@ -77,7 +77,13 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		}
 	}
 
-	applyOpts := NewApplyOptions(ioStreams)
+	baseName := "declarative-direct"
+	applyFlags := apply.NewApplyFlags(f, ioStreams)
+	applyCmd := apply.NewCmdApply(baseName, f, ioStreams)
+	applyOpts, err := applyFlags.ToOptions(applyCmd, baseName, nil)
+	if err != nil {
+		return fmt.Errorf("error getting apply options: %w", err)
+	}
 
 	for i, arg := range opt.ExtraArgs {
 		switch arg {
