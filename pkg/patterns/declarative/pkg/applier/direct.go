@@ -76,6 +76,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	baseName := "declarative-direct"
 	applyFlags := apply.NewApplyFlags(f, ioStreams)
+	applyFlags.DeleteFlags.FileNameFlags.Filenames = &[]string{"dummy"}
 	applyCmd := apply.NewCmdApply(baseName, f, ioStreams)
 	applyOpts, err := applyFlags.ToOptions(applyCmd, baseName, nil)
 	if err != nil {
