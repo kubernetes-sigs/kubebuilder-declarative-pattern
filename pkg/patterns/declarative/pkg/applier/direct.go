@@ -8,6 +8,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -58,10 +59,15 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		b.Schema(v)
 	}
 
-	res := b.Unstructured().Stream(ioReader, "manifestString").Do()
+	var errs []error
+	res := b.Unstructured().ContinueOnError().Stream(ioReader, "manifestString").Do()
 	infos, err := res.Infos()
 	if err != nil {
-		return err
+		errs = append(errs, err)
+
+		if len(infos) == 0 {
+			return err
+		}
 	}
 
 	// Populate the namespace on any namespace-scoped objects
@@ -69,7 +75,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		visitor := resource.SetNamespace(opt.Namespace)
 		for _, info := range infos {
 			if err := info.Visit(visitor); err != nil {
-				return fmt.Errorf("error from SetNamespace: %w", err)
+				return utilerrors.NewAggregate(append(errs, fmt.Errorf("error from SetNamespace: %w", err)))
 			}
 		}
 	}
@@ -79,7 +85,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	applyCmd := apply.NewCmdApply(baseName, f, ioStreams)
 	applyOpts, err := applyFlags.ToOptions(applyCmd, baseName, nil)
 	if err != nil {
-		return fmt.Errorf("error getting apply options: %w", err)
+		return utilerrors.NewAggregate(append(errs, fmt.Errorf("error getting apply options: %w", err)))
 	}
 
 	for i, arg := range opt.ExtraArgs {
@@ -106,7 +112,8 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		IOStreams: ioStreams,
 	}
 
-	return applyOpts.Run()
+	err = applyOpts.Run()
+	return utilerrors.NewAggregate(append(errs, fmt.Errorf("error from apply yamls: %w", err)))
 }
 
 // staticRESTClientGetter returns a fixed RESTClient
