@@ -113,8 +113,10 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		IOStreams: ioStreams,
 	}
 
-	err = applyOpts.Run()
-	return utilerrors.NewAggregate(append(errs, fmt.Errorf("error from apply yamls: %w", err)))
+	if err := applyOpts.Run(); err != nil {
+		return utilerrors.NewAggregate(append(errs, fmt.Errorf("error from apply yamls: %w", err)))
+	}
+	return utilerrors.NewAggregate(errs)
 }
 
 // staticRESTClientGetter returns a fixed RESTClient
