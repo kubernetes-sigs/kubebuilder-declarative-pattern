@@ -153,6 +153,24 @@ metadata:
 			},
 			expectedBlobs: []string{},
 		},
+		{
+			name: "empty doc",
+			inputManifest: `
+`,
+			expectedObject: []*Object{},
+			expectedBlobs:  []string{},
+		},
+		{
+			name: "empty objects",
+			inputManifest: `
+---
+null
+---
+---
+`,
+			expectedObject: []*Object{},
+			expectedBlobs:  []string{},
+		},
 	}
 
 	for _, tt := range tests {

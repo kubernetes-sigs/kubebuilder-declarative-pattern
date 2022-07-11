@@ -347,7 +347,7 @@ func ParseObjects(ctx context.Context, manifest string) (*Objects, error) {
 				return objects, nil
 			}
 
-			return nil, fmt.Errorf("invalid YAML doc, %w", err)
+			return nil, fmt.Errorf("invalid YAML doc: %w", err)
 		}
 
 		raw = bytes.TrimSpace(raw)
