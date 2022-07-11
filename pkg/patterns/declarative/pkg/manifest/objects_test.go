@@ -109,6 +109,50 @@ configMapGenerator:
 `,
 			},
 		},
+		{
+			name: "multi doc with comment",
+			inputManifest: `--- # first one
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: foo-operator
+  namespace: kube-system
+--- # empty doc
+# comments only
+--- # second one
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: foo-operator
+  namespace: kube-system`,
+			expectedObject: []*Object{
+				{
+					object: &unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"apiVersion": "v1",
+							"kind":       "ServiceAccount",
+							"metadata": map[string]interface{}{
+								"name":      "foo-operator",
+								"namespace": "kube-system",
+							},
+						},
+					},
+				},
+				{
+					object: &unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"apiVersion": "v1",
+							"kind":       "ServiceAccount",
+							"metadata": map[string]interface{}{
+								"name":      "foo-operator",
+								"namespace": "kube-system",
+							},
+						},
+					},
+				},
+			},
+			expectedBlobs: []string{},
+		},
 	}
 
 	for _, tt := range tests {

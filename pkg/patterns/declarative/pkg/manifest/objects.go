@@ -17,9 +17,11 @@ limitations under the License.
 package manifest
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -336,60 +338,35 @@ func (o *Objects) Sort(score func(o *Object) int) {
 func ParseObjects(ctx context.Context, manifest string) (*Objects, error) {
 	log := log.Log
 
-	var b bytes.Buffer
-
-	var yamls []string
-	for _, line := range strings.Split(manifest, "\n") {
-		if line == "---" {
-			// yaml separator
-			yamls = append(yamls, b.String())
-			b.Reset()
-		} else {
-			b.WriteString(line)
-			b.WriteString("\n")
-		}
-	}
-	yamls = append(yamls, b.String())
-
 	objects := &Objects{}
-
-	for _, yaml := range yamls {
-		// We need this so we don't error on a file that is commented out
-		// TODO: How does apimachinery avoid this problem?
-		hasContent := false
-		for _, line := range strings.Split(yaml, "\n") {
-			l := strings.TrimSpace(line)
-			if l != "" && !strings.HasPrefix(l, "#") {
-				hasContent = true
-				break
+	reader := k8syaml.NewYAMLReader(bufio.NewReader(strings.NewReader(manifest)))
+	for {
+		raw, err := reader.Read()
+		if err != nil {
+			if err == io.EOF {
+				return objects, nil
 			}
+
+			return nil, fmt.Errorf("invalid YAML doc, %w", err)
 		}
 
-		if !hasContent {
+		raw = bytes.TrimSpace(raw)
+		out := unstructured.Unstructured{}
+		if err := k8syaml.Unmarshal(raw, &out); err != nil {
+			log.WithValues("error", err).WithValues("yaml", raw).V(2).Info("Unable to parse into Unstructured, storing as blob")
+			objects.Blobs = append(objects.Blobs, append(bytes.TrimPrefix(raw, []byte("---\n")), '\n'))
+		}
+
+		if len(raw) == 0 || bytes.Equal(raw, []byte("null")) || len(out.Object) == 0 {
 			continue
 		}
 
-		r := bytes.NewReader([]byte(yaml))
-		decoder := k8syaml.NewYAMLOrJSONDecoder(r, 1024)
-
-		out := &unstructured.Unstructured{}
-		err := decoder.Decode(out)
+		o, err := NewObject(&out)
 		if err != nil {
-			log.WithValues("error", err).WithValues("yaml", yaml).V(2).Info("Unable to parse into Unstructured, storing as blob")
-			objects.Blobs = append(objects.Blobs, []byte(yaml))
-		} else {
-			// We don't reuse the manifest because it's probably yaml, and we want to use json
-			// json = yaml
-			o, err := NewObject(out)
-			if err != nil {
-				return nil, err
-			}
-			objects.Items = append(objects.Items, o)
+			return nil, err
 		}
-
+		objects.Items = append(objects.Items, o)
 	}
-
-	return objects, nil
 }
 
 func newObject(u *unstructured.Unstructured, json []byte) (*Object, error) {
