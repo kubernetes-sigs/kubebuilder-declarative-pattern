@@ -170,8 +170,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 
 		if r.options.status != nil {
-			if err = r.options.status.Reconciled(ctx, instance, objects, err); err != nil {
-				log.Error(err, "failed to reconcile status")
+			if statusErr := r.options.status.Reconciled(ctx, instance, objects, err); statusErr != nil {
+				log.Error(statusErr, "failed to reconcile status")
 			}
 		}
 	}()
