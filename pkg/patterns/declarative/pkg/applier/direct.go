@@ -20,12 +20,35 @@ import (
 )
 
 type DirectApplier struct {
+	inner directApplierSite
 }
 
 var _ Applier = &DirectApplier{}
 
-func NewDirectApplier() *DirectApplier {
-	return &DirectApplier{}
+type directApplier struct {
+}
+
+type directApplierSite interface {
+	Run(a *apply.ApplyOptions) error
+	NewBuilder(opt ApplierOptions) *resource.Builder
+}
+
+func (d *directApplier) Run(a *apply.ApplyOptions) error {
+	return a.Run()
+}
+
+func (d *directApplier) NewBuilder(opt ApplierOptions) *resource.Builder {
+	restClientGetter := &staticRESTClientGetter{
+		RESTMapper: opt.RESTMapper,
+		RESTConfig: opt.RESTConfig,
+	}
+	return resource.NewBuilder(restClientGetter)
+}
+
+func NewDirectApplier() Applier {
+	return &DirectApplier{
+		inner: &directApplier{},
+	}
 }
 
 func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
@@ -36,11 +59,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	}
 	ioReader := strings.NewReader(opt.Manifest)
 
-	restClientGetter := &staticRESTClientGetter{
-		RESTMapper: opt.RESTMapper,
-		RESTConfig: opt.RESTConfig,
-	}
-	b := resource.NewBuilder(restClientGetter)
+	b := d.inner.NewBuilder(opt)
 	f := cmdutil.NewFactory(&genericclioptions.ConfigFlags{})
 
 	if opt.Validate {
@@ -113,7 +132,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		IOStreams: ioStreams,
 	}
 
-	if err := applyOpts.Run(); err != nil {
+	if err := d.inner.Run(applyOpts); err != nil {
 		return utilerrors.NewAggregate(append(errs, fmt.Errorf("error from apply yamls: %w", err)))
 	}
 	return utilerrors.NewAggregate(errs)
