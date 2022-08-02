@@ -28,6 +28,8 @@ import (
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/kubectl/pkg/cmd/apply"
+	kubectltesting "k8s.io/kubectl/pkg/cmd/testing"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
 )
 
@@ -53,6 +55,10 @@ func (d *directApplierTestSite) NewBuilder(opt ApplierOptions) *resource.Builder
 		func() (restmapper.CategoryExpander, error) {
 			return resource.FakeCategoryExpander, nil
 		})
+}
+
+func (d *directApplierTestSite) NewFactory() cmdutil.Factory {
+	return kubectltesting.NewTestFactory()
 }
 
 func newDirectApplierTest(d *directApplierTestSite) Applier {
@@ -98,33 +104,34 @@ metadata:
 			},
 			expectCheckFunc: func(opt *apply.ApplyOptions) error {
 				if opt.Namespace == "test-namespace" {
-					// validator is set, not nil.
 					return nil
 				} else {
 					return fmt.Errorf("namespace doesn't match to \"test-namespace\"")
 				}
 			},
 		},
-		{
-			name:      "manifest with validate",
-			namespace: "",
-			manifest: `---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: foo-operator
-  namespace: kube-system`,
-			validate: true,
-			args:     []string{},
-			expectCheckFunc: func(opt *apply.ApplyOptions) error {
-				if opt.Validator != nil {
-					// validator is set, not nil.
-					return nil
-				} else {
-					return fmt.Errorf("validator is not nil")
-				}
-			},
-		},
+		// This test use fake test factory on "k8s.io/kubectl/pkg/cmd/testing", that's why this test for validate is commented out.
+		// opt.Validator is always set to validation.NullSchema instance by fake test factory, so we can't check if validator is set successfully.
+		//		{
+		//			name:      "manifest with validate",
+		//			namespace: "",
+		//			manifest: `---
+		//apiVersion: v1
+		//kind: ServiceAccount
+		//metadata:
+		//  name: foo-operator
+		//  namespace: kube-system`,
+		//			validate: true,
+		//			args:     []string{},
+		//			expectCheckFunc: func(opt *apply.ApplyOptions) error {
+		//				if opt.Validator != nil {
+		//                  // success pattern, validator is set.
+		//					return nil
+		//				} else {
+		//					return fmt.Errorf("validator is not nil")
+		//				}
+		//			},
+		//		},
 		{
 			name:      "manifest with prune",
 			namespace: "",
@@ -178,14 +185,17 @@ metadata:
 				Validate:  test.validate,
 				ExtraArgs: test.args,
 			}
-			err := testApplier.Apply(context.Background(), opts)
 
+			err := testApplier.Apply(context.Background(), opts)
 			if err != nil {
 				t.Errorf("unexpected error on call Apply: %v", err)
 			}
 
-			err = test.expectCheckFunc(d.applyOpts)
+			if d.applyOpts == nil {
+				t.Fatal("unexpected error: ApplyOptions is nil")
+			}
 
+			err = test.expectCheckFunc(d.applyOpts)
 			if err != nil {
 				t.Errorf("unexpected error on ApplyOptions: %v", err)
 			}
