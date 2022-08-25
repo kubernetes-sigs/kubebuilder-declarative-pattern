@@ -60,5 +60,6 @@ type Patchable interface {
 
 // +k8s:deepcopy-gen=true
 type PatchSpec struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Patches []*runtime.RawExtension `json:"patches,omitempty"`
 }

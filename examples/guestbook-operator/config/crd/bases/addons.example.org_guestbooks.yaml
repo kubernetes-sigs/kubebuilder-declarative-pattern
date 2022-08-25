@@ -44,6 +44,7 @@ spec:
                 items:
                   type: object
                 type: array
+                x-kubernetes-preserve-unknown-fields: true
               version:
                 description: Version specifies the exact addon version to be deployed,
                   eg 1.2.3 It should not be specified if Channel is specified
