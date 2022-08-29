@@ -18,7 +18,7 @@ limitations under the License.
 // declarative Kubernetes operators to manage the lifecycle of a
 // deployment.
 //
-// Getting Started
+// # Getting Started
 //
 // Follow the project documentation for a getting started guide:
 // - https://github.com/kubernetes-sigs/kubebuilder-declarative-pattern/tree/master/docs
