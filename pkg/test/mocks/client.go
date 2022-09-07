@@ -28,7 +28,7 @@ func NewClient(clientScheme *runtime.Scheme) FakeClient {
 	}
 }
 
-func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out client.Object) error {
+func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out client.Object, opts ...client.GetOption) error {
 	gvr, err := getGVRFromObject(out, f.scheme)
 	if err != nil {
 		return err
