@@ -5,21 +5,19 @@ import (
 	"net/http"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/discovery/cached/disk"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/restmapper"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
 
-func TestApplylibApplier(t *testing.T) {
+func TestApplySetApplier(t *testing.T) {
 	testharness.RunGoldenTests(t, "testdata/applylib", func(h *testharness.Harness, testdir string) {
 		ctx := context.Background()
 
@@ -63,16 +61,10 @@ func TestApplylibApplier(t *testing.T) {
 		}
 		manifest := string(h.MustReadFile(filepath.Join(testdir, "manifest.yaml")))
 
-		tmpdir := h.TempDir()
-		discoveryCacheDir := filepath.Join(tmpdir, "discoverycache")
-		httpCacheDir := filepath.Join(tmpdir, "httpcache")
-		ttl := 10 * time.Minute
-
-		cachedDiscoveryClient, err := disk.NewCachedDiscoveryClientForConfig(restConfig, discoveryCacheDir, httpCacheDir, ttl)
+		restMapper, err := restmapper.NewControllerRESTMapper(restConfig)
 		if err != nil {
-			h.Fatalf("error from NewCachedDiscoveryClientForConfig: %v", err)
+			t.Fatalf("error building controller RESTMapper: %v", err)
 		}
-		restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscoveryClient)
 		options := ApplierOptions{
 			Manifest:   manifest,
 			RESTConfig: restConfig,
