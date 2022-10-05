@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -111,13 +112,15 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		}
 	}
 
-	baseName := "declarative-direct"
-	applyFlags := apply.NewApplyFlags(f, ioStreams)
-	applyFlags.DeleteFlags.FileNameFlags.Filenames = &[]string{"dummy"}
-	applyCmd := apply.NewCmdApply(baseName, f, ioStreams)
-	applyOpts, err := applyFlags.ToOptions(applyCmd, baseName, nil)
-	if err != nil {
-		return utilerrors.NewAggregate(append(errs, fmt.Errorf("error getting apply options: %w", err)))
+	printFlags := genericclioptions.NewPrintFlags("apply")
+	applyOpts := &apply.ApplyOptions{
+		Recorder:            &genericclioptions.NoopRecorder{},
+		VisitedUids:         sets.NewString(),
+		VisitedNamespaces:   sets.NewString(),
+		PrintFlags:          printFlags,
+		IOStreams:           ioStreams,
+		FieldManager:        "kubectl-client-side-apply",
+		ValidationDirective: metav1.FieldValidationStrict,
 	}
 
 	for i, arg := range opt.ExtraArgs {

@@ -22,12 +22,6 @@ Accept: application/json, */*
 
 ---
 
-GET http://kube-apiserver/openapi/v2?timeout=32s
-Accept: application/com.github.proto-openapi.spec.v2@v1.0+protobuf
-
-
----
-
 GET http://kube-apiserver/api/v1/namespaces/ns1
 Accept: application/json
 
