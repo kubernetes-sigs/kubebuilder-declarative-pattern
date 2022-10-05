@@ -107,6 +107,9 @@ func TestKubectlApply(t *testing.T) {
 			}
 
 			stdinBytes, err := io.ReadAll(cmd.Stdin)
+			if err != nil {
+				t.Fatalf("error reading manifest from stdin: %v", err)
+			}
 			if stdin := string(stdinBytes); stdin != test.manifest {
 				t.Errorf("manifest mismatch, expected: %v, got: %v", test.manifest, stdin)
 			}
