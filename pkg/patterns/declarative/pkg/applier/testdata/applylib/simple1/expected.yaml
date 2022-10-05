@@ -1,0 +1,37 @@
+GET http://kube-apiserver/api?timeout=32s
+Accept: application/json, */*
+
+
+---
+
+GET http://kube-apiserver/apis?timeout=32s
+Accept: application/json, */*
+
+
+---
+
+GET http://kube-apiserver/api/v1?timeout=32s
+Accept: application/json, */*
+
+
+---
+
+GET http://kube-apiserver/api/v1?timeout=32s
+Accept: application/json, */*
+
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kdp-test
+Accept: application/json
+Content-Type: application/apply-patch+yaml
+
+{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns1"}}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kdp-test
+Accept: application/json
+Content-Type: application/apply-patch+yaml
+
+{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns2"}}
