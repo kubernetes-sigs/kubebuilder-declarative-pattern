@@ -90,7 +90,17 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+
+		if tokens[0] == "openapi" && tokens[1] == "v2" {
+			matchedPath = true
+
+			switch r.Method {
+			case http.MethodGet:
+				req = &openapiRequest{}
+			}
+		}
 	}
+
 	if len(tokens) == 1 {
 		if tokens[0] == "api" {
 			matchedPath = true

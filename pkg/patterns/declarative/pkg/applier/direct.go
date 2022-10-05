@@ -31,7 +31,7 @@ type directApplier struct {
 type directApplierSite interface {
 	Run(a *apply.ApplyOptions) error
 	NewBuilder(opt ApplierOptions) *resource.Builder
-	NewFactory() cmdutil.Factory
+	NewFactory(opt ApplierOptions) cmdutil.Factory
 }
 
 func (d *directApplier) Run(a *apply.ApplyOptions) error {
@@ -46,8 +46,14 @@ func (d *directApplier) NewBuilder(opt ApplierOptions) *resource.Builder {
 	return resource.NewBuilder(restClientGetter)
 }
 
-func (d *directApplier) NewFactory() cmdutil.Factory {
-	return cmdutil.NewFactory(&genericclioptions.ConfigFlags{})
+func (d *directApplier) NewFactory(opt ApplierOptions) cmdutil.Factory {
+	var configFlags genericclioptions.ConfigFlags
+	if opt.RESTConfig != nil {
+		configFlags.WrapConfigFn = func(inner *rest.Config) *rest.Config {
+			return opt.RESTConfig
+		}
+	}
+	return cmdutil.NewFactory(&configFlags)
 }
 
 func NewDirectApplier() Applier {
@@ -65,7 +71,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	ioReader := strings.NewReader(opt.Manifest)
 
 	b := d.inner.NewBuilder(opt)
-	f := d.inner.NewFactory()
+	f := d.inner.NewFactory(opt)
 
 	if opt.Validate {
 		// This potentially causes redundant work, but validation isn't the common path
@@ -76,7 +82,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		}
 		nqpv := resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamFieldValidation)
 
-		v, err := d.inner.NewFactory().Validator(metav1.FieldValidationStrict, nqpv)
+		v, err := d.inner.NewFactory(opt).Validator(metav1.FieldValidationStrict, nqpv)
 
 		if err != nil {
 			return err

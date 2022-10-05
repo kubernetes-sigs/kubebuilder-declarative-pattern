@@ -66,7 +66,7 @@ func (d *directApplierTestSite) NewBuilder(opt ApplierOptions) *resource.Builder
 		})
 }
 
-func (d *directApplierTestSite) NewFactory() cmdutil.Factory {
+func (d *directApplierTestSite) NewFactory(opt ApplierOptions) cmdutil.Factory {
 	return kubectltesting.NewTestFactory()
 }
 
