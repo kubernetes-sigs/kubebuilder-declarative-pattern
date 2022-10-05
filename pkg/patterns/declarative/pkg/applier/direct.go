@@ -20,12 +20,40 @@ import (
 )
 
 type DirectApplier struct {
+	inner directApplierSite
 }
 
 var _ Applier = &DirectApplier{}
 
-func NewDirectApplier() *DirectApplier {
-	return &DirectApplier{}
+type directApplier struct {
+}
+
+type directApplierSite interface {
+	Run(a *apply.ApplyOptions) error
+	NewBuilder(opt ApplierOptions) *resource.Builder
+	NewFactory() cmdutil.Factory
+}
+
+func (d *directApplier) Run(a *apply.ApplyOptions) error {
+	return a.Run()
+}
+
+func (d *directApplier) NewBuilder(opt ApplierOptions) *resource.Builder {
+	restClientGetter := &staticRESTClientGetter{
+		RESTMapper: opt.RESTMapper,
+		RESTConfig: opt.RESTConfig,
+	}
+	return resource.NewBuilder(restClientGetter)
+}
+
+func (d *directApplier) NewFactory() cmdutil.Factory {
+	return cmdutil.NewFactory(&genericclioptions.ConfigFlags{})
+}
+
+func NewDirectApplier() Applier {
+	return &DirectApplier{
+		inner: &directApplier{},
+	}
 }
 
 func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
@@ -36,12 +64,8 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	}
 	ioReader := strings.NewReader(opt.Manifest)
 
-	restClientGetter := &staticRESTClientGetter{
-		RESTMapper: opt.RESTMapper,
-		RESTConfig: opt.RESTConfig,
-	}
-	b := resource.NewBuilder(restClientGetter)
-	f := cmdutil.NewFactory(&genericclioptions.ConfigFlags{})
+	b := d.inner.NewBuilder(opt)
+	f := d.inner.NewFactory()
 
 	if opt.Validate {
 		// This potentially causes redundant work, but validation isn't the common path
@@ -52,7 +76,8 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		}
 		nqpv := resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamFieldValidation)
 
-		v, err := cmdutil.NewFactory(&genericclioptions.ConfigFlags{}).Validator(metav1.FieldValidationStrict, nqpv)
+		v, err := d.inner.NewFactory().Validator(metav1.FieldValidationStrict, nqpv)
+
 		if err != nil {
 			return err
 		}
@@ -113,7 +138,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		IOStreams: ioStreams,
 	}
 
-	if err := applyOpts.Run(); err != nil {
+	if err := d.inner.Run(applyOpts); err != nil {
 		return utilerrors.NewAggregate(append(errs, fmt.Errorf("error from apply yamls: %w", err)))
 	}
 	return utilerrors.NewAggregate(errs)
