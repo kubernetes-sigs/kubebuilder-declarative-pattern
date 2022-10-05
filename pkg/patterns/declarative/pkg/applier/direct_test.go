@@ -19,6 +19,7 @@ package applier
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"testing"
 	"time"
@@ -37,6 +38,7 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/mocks/mockkubeapiserver"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
 
@@ -211,67 +213,66 @@ metadata:
 }
 
 func TestDirectApplier(t *testing.T) {
-	h := testharness.New(t)
+	testharness.RunGoldenTests(t, "testdata/direct", func(h *testharness.Harness, testdir string) {
+		ctx := context.Background()
 
-	ctx := context.Background()
-
-	k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
-	if err != nil {
-		t.Fatalf("error building mock kube-apiserver: %v", err)
-	}
-
-	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
-
-	defer func() {
-		if err := k8s.Stop(); err != nil {
-			t.Fatalf("error closing mock kube-apiserver: %v", err)
+		k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
+		if err != nil {
+			t.Fatalf("error building mock kube-apiserver: %v", err)
 		}
-	}()
 
-	addr, err := k8s.StartServing()
-	if err != nil {
-		t.Errorf("error starting mock kube-apiserver: %v", err)
-	}
+		k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
 
-	klog.Infof("mock kubeapiserver will listen on %v", addr)
+		defer func() {
+			if err := k8s.Stop(); err != nil {
+				t.Fatalf("error closing mock kube-apiserver: %v", err)
+			}
+		}()
 
-	restConfig := &rest.Config{
-		Host: addr.String(),
-	}
+		addr, err := k8s.StartServing()
+		if err != nil {
+			t.Errorf("error starting mock kube-apiserver: %v", err)
+		}
 
-	directApplier := NewDirectApplier()
+		klog.Infof("mock kubeapiserver will listen on %v", addr)
 
-	manifest := `
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: ns1
+		var requestLog httprecorder.RequestLog
+		wrapTransport := func(rt http.RoundTripper) http.RoundTripper {
+			return httprecorder.NewRecorder(rt, &requestLog)
+		}
+		restConfig := &rest.Config{
+			Host:          addr.String(),
+			WrapTransport: wrapTransport,
+		}
 
----
+		directApplier := NewDirectApplier()
 
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: ns2
-`
+		manifest := string(h.MustReadFile(filepath.Join(testdir, "manifest.yaml")))
 
-	tmpdir := h.TempDir()
-	discoveryCacheDir := filepath.Join(tmpdir, "discoverycache")
-	httpCacheDir := filepath.Join(tmpdir, "httpcache")
-	ttl := 10 * time.Minute
+		tmpdir := h.TempDir()
+		discoveryCacheDir := filepath.Join(tmpdir, "discoverycache")
+		httpCacheDir := filepath.Join(tmpdir, "httpcache")
+		ttl := 10 * time.Minute
 
-	cachedDiscoveryClient, err := disk.NewCachedDiscoveryClientForConfig(restConfig, discoveryCacheDir, httpCacheDir, ttl)
-	if err != nil {
-		h.Fatalf("error from NewCachedDiscoveryClientForConfig: %v", err)
-	}
-	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscoveryClient)
-	options := ApplierOptions{
-		Manifest:   manifest,
-		RESTConfig: restConfig,
-		RESTMapper: restMapper,
-	}
+		cachedDiscoveryClient, err := disk.NewCachedDiscoveryClientForConfig(restConfig, discoveryCacheDir, httpCacheDir, ttl)
+		if err != nil {
+			h.Fatalf("error from NewCachedDiscoveryClientForConfig: %v", err)
+		}
+		restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscoveryClient)
+		options := ApplierOptions{
+			Manifest:   manifest,
+			RESTConfig: restConfig,
+			RESTMapper: restMapper,
+		}
 
-	if err := directApplier.Apply(ctx, options); err != nil {
-		t.Fatalf("error from DirectApplier.Apply: %v", err)
-	}
+		if err := directApplier.Apply(ctx, options); err != nil {
+			t.Fatalf("error from DirectApplier.Apply: %v", err)
+		}
+
+		t.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
+		requestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
+		requests := requestLog.FormatYAML()
+
+		h.CompareGoldenFile(filepath.Join(testdir, "expected.yaml"), requests)
+	})
 }

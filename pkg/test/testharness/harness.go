@@ -31,3 +31,11 @@ func (h *Harness) TempDir() string {
 	})
 	return tmpdir
 }
+
+func (h *Harness) MustReadFile(p string) []byte {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		h.Fatalf("error from ReadFile(%q): %v", p, err)
+	}
+	return b
+}
