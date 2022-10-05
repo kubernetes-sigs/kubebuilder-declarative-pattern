@@ -247,6 +247,12 @@ func TestDirectApplier(t *testing.T) {
 
 		directApplier := NewDirectApplier()
 
+		if h.FileExists(filepath.Join(testdir, "before.yaml")) {
+			before := string(h.MustReadFile(filepath.Join(testdir, "before.yaml")))
+			if err := k8s.AddObjectsFromManifest(before); err != nil {
+				t.Fatalf("error precreating objects: %v", err)
+			}
+		}
 		manifest := string(h.MustReadFile(filepath.Join(testdir, "manifest.yaml")))
 
 		tmpdir := h.TempDir()

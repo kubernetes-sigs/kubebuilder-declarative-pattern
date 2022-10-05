@@ -39,3 +39,14 @@ func (h *Harness) MustReadFile(p string) []byte {
 	}
 	return b
 }
+
+func (h *Harness) FileExists(p string) bool {
+	_, err := os.Stat(p)
+	if err == nil {
+		return true
+	}
+	if !os.IsNotExist(err) {
+		h.Fatalf("error from os.Stat(%q): %v", p, err)
+	}
+	return false
+}

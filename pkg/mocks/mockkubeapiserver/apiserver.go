@@ -21,8 +21,6 @@ import (
 	"net/http"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 )
 
@@ -166,6 +164,7 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			matchedPath = true
 		}
 	}
+
 	if len(tokens) == 6 {
 		if tokens[0] == "api" && tokens[2] == "namespaces" {
 			buildObjectRequest(resourceRequestBase{
@@ -222,9 +221,4 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		klog.Warningf("internal error for %s %s: %v", r.Method, r.URL, err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
-}
-
-// RegisterType registers a type with the schema for the mock kubeapiserver
-func (s *MockKubeAPIServer) RegisterType(gvk schema.GroupVersionKind, resource string, scope meta.RESTScope) {
-	s.storage.RegisterType(gvk, resource, scope)
 }

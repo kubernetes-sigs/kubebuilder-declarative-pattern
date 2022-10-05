@@ -58,7 +58,7 @@ func (r *baseRequest) writeResponse(obj interface{}) error {
 }
 
 func (r *baseRequest) writeErrorResponse(statusCode int) error {
-	klog.Warningf("404 for %s %s", r.r.Method, r.r.URL)
+	klog.Warningf("%d for %s %s", statusCode, r.r.Method, r.r.URL)
 	http.Error(r.w, http.StatusText(statusCode), statusCode)
 
 	return nil

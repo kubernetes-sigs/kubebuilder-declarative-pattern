@@ -18,6 +18,7 @@ package mockkubeapiserver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -52,8 +53,9 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	}
 
 	body := &unstructured.Unstructured{}
-	if err := body.UnmarshalJSON(bodyBytes); err != nil {
-		return fmt.Errorf("failed to parse payload: %w", err)
+	// Can't use the MarshalJSON overload, it doesn't like missing kind etc
+	if err := json.Unmarshal(bodyBytes, &body.Object); err != nil {
+		return fmt.Errorf("failed to parse PATCH payload: %w", err)
 	}
 
 	// TODO: We need to implement patch properly
