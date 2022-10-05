@@ -19,18 +19,25 @@ package applier
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/discovery/cached/disk"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/cmd/apply"
 	kubectltesting "k8s.io/kubectl/pkg/cmd/testing"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/mocks/mockkubeapiserver"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
 
 type directApplierTestSite struct {
@@ -200,5 +207,71 @@ metadata:
 				t.Errorf("unexpected error on ApplyOptions: %v", err)
 			}
 		})
+	}
+}
+
+func TestDirectApplier(t *testing.T) {
+	h := testharness.New(t)
+
+	ctx := context.Background()
+
+	k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
+	if err != nil {
+		t.Fatalf("error building mock kube-apiserver: %v", err)
+	}
+
+	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
+
+	defer func() {
+		if err := k8s.Stop(); err != nil {
+			t.Fatalf("error closing mock kube-apiserver: %v", err)
+		}
+	}()
+
+	addr, err := k8s.StartServing()
+	if err != nil {
+		t.Errorf("error starting mock kube-apiserver: %v", err)
+	}
+
+	klog.Infof("mock kubeapiserver will listen on %v", addr)
+
+	restConfig := &rest.Config{
+		Host: addr.String(),
+	}
+
+	directApplier := NewDirectApplier()
+
+	manifest := `
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: ns1
+
+---
+
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: ns2
+`
+
+	tmpdir := h.TempDir()
+	discoveryCacheDir := filepath.Join(tmpdir, "discoverycache")
+	httpCacheDir := filepath.Join(tmpdir, "httpcache")
+	ttl := 10 * time.Minute
+
+	cachedDiscoveryClient, err := disk.NewCachedDiscoveryClientForConfig(restConfig, discoveryCacheDir, httpCacheDir, ttl)
+	if err != nil {
+		h.Fatalf("error from NewCachedDiscoveryClientForConfig: %v", err)
+	}
+	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscoveryClient)
+	options := ApplierOptions{
+		Manifest:   manifest,
+		RESTConfig: restConfig,
+		RESTMapper: restMapper,
+	}
+
+	if err := directApplier.Apply(ctx, options); err != nil {
+		t.Fatalf("error from DirectApplier.Apply: %v", err)
 	}
 }
