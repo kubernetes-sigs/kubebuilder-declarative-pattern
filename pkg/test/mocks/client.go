@@ -54,7 +54,7 @@ func (f FakeClient) List(ctx context.Context, list client.ObjectList, opts ...cl
 	// this will be a SomethingList kind, and we want to get the Something: remove `List` (last 4 chars) of this string
 	nonListKind := gvkUnprocessed.Kind
 	nonListKind = nonListKind[:len(nonListKind)-4]
-	gvk := schema.GroupVersionKind{gvkUnprocessed.Group, gvkUnprocessed.Version, nonListKind}
+	gvk := schema.GroupVersionKind{Group: gvkUnprocessed.Group, Version: gvkUnprocessed.Version, Kind: nonListKind}
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
 
 	listObject, err := f.tracker.List(gvr, gvk, "")
