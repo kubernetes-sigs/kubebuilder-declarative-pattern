@@ -1,9 +1,6 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 approvers:
-  - kubebuilder-admins
   - justinsb
   - johnsonj
   - atoato88
-labels:
-  - sig/api-machinery
