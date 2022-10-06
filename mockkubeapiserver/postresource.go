@@ -43,6 +43,11 @@ type postResource struct {
 func (req *postResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	gr := schema.GroupResource{Group: req.Group, Resource: req.Resource}
 
+	resource := s.storage.FindResource(gr)
+	if resource == nil {
+		return req.writeErrorResponse(http.StatusNotFound)
+	}
+
 	bodyBytes, err := ioutil.ReadAll(req.r.Body)
 	if err != nil {
 		return err
@@ -50,12 +55,12 @@ func (req *postResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 
 	klog.V(4).Infof("post request %#v", string(bodyBytes))
 
-	body := &unstructured.Unstructured{}
-	if err := body.UnmarshalJSON(bodyBytes); err != nil {
+	obj := &unstructured.Unstructured{}
+	if err := obj.UnmarshalJSON(bodyBytes); err != nil {
 		return fmt.Errorf("failed to parse payload: %w", err)
 	}
 
-	id := types.NamespacedName{Namespace: body.GetNamespace(), Name: body.GetName()}
+	id := types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}
 
 	if id.Namespace != req.Namespace {
 		return fmt.Errorf("namespace in payload did not match namespace in URL")
@@ -64,16 +69,8 @@ func (req *postResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return fmt.Errorf("name must be provided in payload")
 	}
 
-	_, found, err := s.storage.GetObject(ctx, gr, id)
-	if err != nil {
+	if err := s.storage.CreateObject(ctx, resource, id, obj); err != nil {
 		return err
 	}
-	if found {
-		return req.writeErrorResponse(http.StatusConflict)
-	}
-
-	if err := s.storage.PutObject(ctx, gr, id, body); err != nil {
-		return err
-	}
-	return req.writeResponse(body)
+	return req.writeResponse(obj)
 }

@@ -17,10 +17,9 @@ limitations under the License.
 package declarative
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"os"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -28,13 +27,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/yaml"
 )
 
@@ -230,61 +235,53 @@ func TestReconcileFailedWith(t *testing.T) {
 }
 
 // This test checks *ObjectTracker.addIfNotPresent method
-//
-// envtest package used in this test requires control
-// plane binaries (etcd & kube-apiserver & kubectl).
-// The default path these binaries reside in is set to
-// /usr/local/kubebuilder/bin .
-// This path can be set through environment variable
-// KUBEBUILDER_ASSETS .
-// It is recommended to download kubebuilder release binaries
-// and point that path.
 func TestAddIfNotPresent(t *testing.T) {
-	const defKubectlPath = "/usr/local/kubebuilder/bin"
-
-	// Run local kube-apiserver & etecd
-	testEnv := envtest.Environment{}
-
-	restConf, err := testEnv.Start()
+	k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
 	if err != nil {
-		t.Log("Maybe, you have to make sure control plane binaries" + " " +
-			"(kube-apiserver, etcd & kubectl) reside in" + " " +
-			"/usr/local/kubebuilder/bin" + " " +
-			"or have to set environment variable" + " " +
-			"KUBEBUILDER_ASSETS to the path these binaries reside in")
-		t.Error(err)
+		t.Fatalf("error building mock kube-apiserver: %v", err)
 	}
 
-	// Add user for test
-	user, err := testEnv.AddUser(envtest.User{Name: "default", Groups: []string{"system:masters"}}, &rest.Config{})
+	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
+	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Secret"}, "secrets", meta.RESTScopeNamespace)
+	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}, "configmaps", meta.RESTScopeNamespace)
+
+	defer func() {
+		if err := k8s.Stop(); err != nil {
+			t.Fatalf("error closing mock kube-apiserver: %v", err)
+		}
+	}()
+
+	addr, err := k8s.StartServing()
 	if err != nil {
-		t.Error(err)
+		t.Errorf("error starting mock kube-apiserver: %v", err)
+	}
+
+	klog.Infof("mock kubeapiserver will listen on %v", addr)
+
+	restConfig := &rest.Config{
+		Host: addr.String(),
+	}
+
+	restMapper, err := restmapper.NewControllerRESTMapper(restConfig)
+	if err != nil {
+		t.Fatalf("error getting rest mapper: %v", err)
 	}
 
 	// Create manager
-	mgrOpt := manager.Options{}
-	mgr, err := manager.New(restConf, mgrOpt)
+	mgrOpt := manager.Options{
+		MetricsBindAddress: "0", // Don't open unneeded ports
+	}
+	mgr, err := manager.New(restConfig, mgrOpt)
 	if err != nil {
 		t.Error(err)
 	}
 
 	ctx := context.TODO()
 	go func() {
-		_ = mgr.GetCache().Start(ctx)
+		if err := mgr.GetCache().Start(ctx); err != nil {
+			klog.Errorf("error starting cache: %v", err)
+		}
 	}()
-
-	ctl, err := user.Kubectl()
-	if err != nil {
-		t.Error(err)
-	}
-
-	// kubectl arg for "kubectl apply"
-	applyArgs := []string{"apply"}
-	applyArgs = append(applyArgs, "--server="+restConf.Host)
-
-	// kubectl arg for "kubectl delete"
-	deleteArgs := []string{"delete"}
-	deleteArgs = append(deleteArgs, "--server="+restConf.Host)
 
 	// Configure globalObjectTracker
 	globalObjectTracker.mgr = mgr
@@ -330,30 +327,27 @@ func TestAddIfNotPresent(t *testing.T) {
 						"apiVersion: v1\n" +
 						"metadata:\n" +
 						"   name: ns2\n",
-					"kind: Role\n" +
-						"apiVersion: rbac.authorization.k8s.io/v1\n" +
+					"kind: ConfigMap\n" +
+						"apiVersion: v1\n" +
 						"metadata:\n" +
-						"   name: r2\n" +
+						"   name: cm2\n" +
 						"   namespace: ns2\n" +
-						"rules:\n" +
-						`   - apiGroups: [""]` + "\n" +
-						`     resources: ["pods"]` + "\n" +
-						`     verbs: ["get"]`,
+						"data:\n" +
+						"  foo1: bar1\n",
 				},
 				{
 					"kind: Namespace\n" +
 						"apiVersion: v1\n" +
 						"metadata:\n" +
 						"   name: ns2\n",
-					"kind: Role\n" +
-						"apiVersion: rbac.authorization.k8s.io/v1\n" +
+					"kind: ConfigMap\n" +
+						"apiVersion: v1\n" +
 						"metadata:\n" +
-						"   name: r2\n" +
+						"   name: cm2\n" +
 						"   namespace: ns2\n" +
-						"rules:\n" +
-						`   - apiGroups: [""]` + "\n" +
-						`     resources: ["pods"]` + "\n" +
-						`     verbs: ["get", "list"]`,
+						"data:\n" +
+						"  foo1: bar1\n" +
+						"  foo2: bar2\n",
 				},
 			},
 			wants: []string{
@@ -361,13 +355,13 @@ func TestAddIfNotPresent(t *testing.T) {
 				# HELP declarative_reconciler_managed_objects_record Track the number of objects in manifest
 				# TYPE declarative_reconciler_managed_objects_record gauge
 				declarative_reconciler_managed_objects_record {group_version_kind = "v1/Namespace", name = "ns2", namespace = ""} 1
-				declarative_reconciler_managed_objects_record {group_version_kind = "rbac.authorization.k8s.io/v1/Role", name = "r2", namespace = "ns2"} 1
+				declarative_reconciler_managed_objects_record {group_version_kind = "v1/ConfigMap", name = "cm2", namespace = "ns2"} 1
 				`,
 				`
 				# HELP declarative_reconciler_managed_objects_record Track the number of objects in manifest
 				# TYPE declarative_reconciler_managed_objects_record gauge
 				declarative_reconciler_managed_objects_record {group_version_kind = "v1/Namespace", name = "ns2", namespace = ""} 1
-				declarative_reconciler_managed_objects_record {group_version_kind = "rbac.authorization.k8s.io/v1/Role", name = "r2", namespace = "ns2"} 1
+				declarative_reconciler_managed_objects_record {group_version_kind = "v1/ConfigMap", name = "cm2", namespace = "ns2"} 1
 				`,
 			},
 		},
@@ -491,10 +485,6 @@ func TestAddIfNotPresent(t *testing.T) {
 			globalObjectTracker.SetMetricsDuration(st.metricsDuration)
 
 			for i, yobjList := range st.objects {
-				var stdout bytes.Buffer
-				var stderr bytes.Buffer
-				var cmdArgs []string
-
 				var yobj string
 				var jobjList = [][]byte{}
 				var objList = []*manifest.Object{}
@@ -531,49 +521,37 @@ func TestAddIfNotPresent(t *testing.T) {
 					t.Error(err)
 				}
 
-				tmpManifests, err := os.CreateTemp(t.TempDir(), "tmp-manifests-*.yaml")
-				if err != nil {
-					t.Error(err)
-				}
-				_, err = tmpManifests.WriteString(yobj)
-				if err != nil {
-					tmpManifests.Close()
-					t.Error(err)
-				}
-				err = tmpManifests.Close()
-				if err != nil {
-					t.Error(err)
-				}
-
 				// Set up kubectl command
-				if st.actions[i] != "Delete" {
-					if len(st.defaultNamespace) != 0 {
-						cmdArgs = append(applyArgs, "-n", st.defaultNamespace, "-f", tmpManifests.Name())
-					} else {
-						cmdArgs = append(applyArgs, "-f", tmpManifests.Name())
+				if st.actions[i] == "Create" || st.actions[i] == "Update" {
+					var options applier.ApplierOptions
+					options.Namespace = st.defaultNamespace
+					options.Manifest = yobj
+					options.RESTMapper = restMapper
+					options.RESTConfig = restConfig
+					applier := applier.NewApplySetApplier(metav1.PatchOptions{FieldManager: "kdp-test"})
+					if err := applier.Apply(ctx, options); err != nil {
+						t.Fatalf("failed to apply objects: %v", err)
+					}
+				} else if st.actions[i] == "Delete" {
+					objects, err := manifest.ParseObjects(ctx, yobj)
+					if err != nil {
+						t.Fatalf("error parsing manifest: %v", err)
+					}
+
+					if err := deleteObjects(ctx, restConfig, restMapper, st.defaultNamespace, objects); err != nil {
+						t.Fatalf("error deleting objects: %v", err)
 					}
 				} else {
-					if len(st.defaultNamespace) != 0 {
-						cmdArgs = append(deleteArgs, "-n", st.defaultNamespace, "-f", tmpManifests.Name())
-					} else {
-						cmdArgs = append(deleteArgs, "-f", tmpManifests.Name())
-					}
-				}
-				stdOut, stdErr, err := ctl.Run(cmdArgs...)
-				if err != nil {
-					stdout.ReadFrom(stdOut)
-					stderr.ReadFrom(stdErr)
-					t.Logf("action: %v\n", st.actions[i])
-					t.Logf("stdout: %v\n", stdout.String())
-					t.Logf("stderr: %v\n", stderr.String())
-					t.Error(err)
+					t.Fatalf("unknown action %q", st.actions[i])
 				}
 
 				// Wait for reflector sees K8s object change in K8s API server & adds it to DeltaFIFO
 				// then controller pops it and eventhandler updates metrics
-				// If we ommit it, there is a chance call of testutil.CollectAndCompare is too fast & fails.
-				_ = mgr.GetCache().WaitForCacheSync(ctx)
-				time.Sleep(time.Second * 10)
+				// If we omit it, there is a chance call of testutil.CollectAndCompare is too fast & fails.
+				if !mgr.GetCache().WaitForCacheSync(ctx) {
+					t.Errorf("could not sync caches with WaitForCacheSync")
+				}
+				time.Sleep(time.Second * 2)
 
 				// Check for metrics
 				err = testutil.CollectAndCompare(managedObjectsRecord, strings.NewReader(st.wants[i]))
@@ -582,9 +560,47 @@ func TestAddIfNotPresent(t *testing.T) {
 					t.Error(err)
 				}
 			}
-
 		})
-
 		managedObjectsRecord.Reset()
 	}
+}
+
+// deleteObjects is a simple helper that deletes the specified objects
+func deleteObjects(ctx context.Context, restConfig *rest.Config, restMapper meta.RESTMapper, forceNamespace string, objects *manifest.Objects) error {
+	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return fmt.Errorf("error building dynamic client: %w", err)
+	}
+
+	for _, obj := range objects.Items {
+		gvk := obj.GroupVersionKind()
+		restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			return fmt.Errorf("error looking up RESTMapping for %v: %w", gvk, err)
+		}
+
+		var opt metav1.DeleteOptions
+		switch restMapping.Scope {
+		case meta.RESTScopeNamespace:
+			ns := forceNamespace
+			if ns == "" {
+				ns = obj.GetNamespace()
+			}
+			if ns == "" {
+				return fmt.Errorf("no namespace for %v", gvk)
+			}
+			if err := dynamicClient.Resource(restMapping.Resource).Namespace(ns).Delete(ctx, obj.GetName(), opt); err != nil {
+				return fmt.Errorf("error deleting object: %w", err)
+			}
+
+		case meta.RESTScopeRoot:
+			if err := dynamicClient.Resource(restMapping.Resource).Delete(ctx, obj.GetName(), opt); err != nil {
+				return fmt.Errorf("error deleting object: %w", err)
+			}
+		default:
+			return fmt.Errorf("unknown rest mapping scope %v", restMapping.Scope)
+		}
+
+	}
+	return nil
 }

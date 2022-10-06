@@ -36,10 +36,14 @@ type putResource struct {
 // Run serves the http request
 func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	gr := schema.GroupResource{Group: req.Group, Resource: req.Resource}
+	resource := s.storage.FindResource(gr)
+	if resource == nil {
+		return req.writeErrorResponse(http.StatusNotFound)
+	}
 
 	id := types.NamespacedName{Namespace: req.Namespace, Name: req.Name}
 
-	existingObj, found, err := s.storage.GetObject(ctx, gr, id)
+	existingObj, found, err := s.storage.GetObject(ctx, resource, id)
 	if err != nil {
 		return err
 	}
@@ -76,7 +80,7 @@ func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return fmt.Errorf("unknown subresource %q", req.SubResource)
 	}
 
-	if err := s.storage.PutObject(ctx, gr, id, updated); err != nil {
+	if err := s.storage.UpdateObject(ctx, resource, id, updated); err != nil {
 		return err
 	}
 	return req.writeResponse(updated)

@@ -18,32 +18,20 @@ package mockkubeapiserver
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// resourceRequestBase holds the common field for single-resource requests
-type resourceRequestBase struct {
-	baseRequest
-
-	Group     string
-	Version   string
-	Resource  string
-	Namespace string
-	Name      string
-
-	SubResource string
-}
-
-// getResource is a request to get a single resource
-type getResource struct {
+// deleteResource is a request to delete a single resource
+type deleteResource struct {
 	resourceRequestBase
 }
 
 // Run serves the http request
-func (req *getResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
+func (req *deleteResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	gr := schema.GroupResource{Group: req.Group, Resource: req.Resource}
 	resource := s.storage.FindResource(gr)
 	if resource == nil {
@@ -52,13 +40,13 @@ func (req *getResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 
 	id := types.NamespacedName{Namespace: req.Namespace, Name: req.Name}
 
-	object, found, err := s.storage.GetObject(ctx, resource, id)
+	if req.SubResource != "" {
+		return fmt.Errorf("unexpected subresource on delete %q", req.SubResource)
+	}
+
+	deletedObject, err := s.storage.DeleteObject(ctx, resource, id)
 	if err != nil {
 		return err
 	}
-	if !found {
-		return req.writeErrorResponse(http.StatusNotFound)
-	}
-
-	return req.writeResponse(object)
+	return req.writeResponse(deletedObject)
 }
