@@ -65,6 +65,9 @@ func (req *postResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	}
 
 	_, found, err := s.storage.GetObject(ctx, gr, id)
+	if err != nil {
+		return err
+	}
 	if found {
 		return req.writeErrorResponse(http.StatusConflict)
 	}

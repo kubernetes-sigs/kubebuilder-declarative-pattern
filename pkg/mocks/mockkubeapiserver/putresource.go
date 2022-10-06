@@ -39,7 +39,10 @@ func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 
 	id := types.NamespacedName{Namespace: req.Namespace, Name: req.Name}
 
-	existing, found, err := s.storage.GetObject(ctx, gr, id)
+	existingObj, found, err := s.storage.GetObject(ctx, gr, id)
+	if err != nil {
+		return err
+	}
 	if !found {
 		return req.writeErrorResponse(http.StatusNotFound)
 	}
@@ -61,7 +64,7 @@ func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	if req.SubResource == "" {
 		updated = body
 	} else if req.SubResource == "status" {
-		updated = existing.DeepCopyObject().(*unstructured.Unstructured)
+		updated = existingObj.DeepCopyObject().(*unstructured.Unstructured)
 		newStatus := body.Object["status"]
 		if newStatus == nil {
 			// TODO: This might be allowed?
