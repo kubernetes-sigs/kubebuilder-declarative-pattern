@@ -48,6 +48,8 @@ func (d *directApplier) NewBuilder(opt ApplierOptions) *resource.Builder {
 
 func (d *directApplier) NewFactory(opt ApplierOptions) cmdutil.Factory {
 	var configFlags genericclioptions.ConfigFlags
+	// We need to ensure the rest.Config is used here, otherwise fetching the OpenAPI uses a different config
+	// (We generally want to avoid fetching the OpenAPI, but if we do fetch we want to do so correctly)
 	if opt.RESTConfig != nil {
 		configFlags.WrapConfigFn = func(inner *rest.Config) *rest.Config {
 			return opt.RESTConfig

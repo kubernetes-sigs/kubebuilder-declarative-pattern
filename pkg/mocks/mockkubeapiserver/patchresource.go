@@ -39,12 +39,12 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	gr := schema.GroupResource{Group: req.Group, Resource: req.Resource}
 
 	id := types.NamespacedName{Namespace: req.Namespace, Name: req.Name}
-	existing, found, err := s.storage.GetObject(ctx, gr, id)
+	existingObj, found, err := s.storage.GetObject(ctx, gr, id)
 	if err != nil {
 		return err
 	}
 	if !found {
-		existing = nil
+		existingObj = nil
 	}
 
 	bodyBytes, err := ioutil.ReadAll(req.r.Body)
@@ -78,7 +78,7 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	}
 
 	if req.SubResource == "" {
-		if err := applyPatch(existing.Object, body.Object); err != nil {
+		if err := applyPatch(existingObj.Object, body.Object); err != nil {
 			klog.Warningf("error from patch: %v", err)
 			return err
 		}
@@ -87,10 +87,10 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return fmt.Errorf("unknown subresource %q", req.SubResource)
 	}
 
-	if err := s.storage.PutObject(ctx, gr, id, existing); err != nil {
+	if err := s.storage.PutObject(ctx, gr, id, existingObj); err != nil {
 		return err
 	}
-	return req.writeResponse(existing)
+	return req.writeResponse(existingObj)
 }
 
 func applyPatch(existing, patch map[string]interface{}) error {
