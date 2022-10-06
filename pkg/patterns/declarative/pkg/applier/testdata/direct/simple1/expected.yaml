@@ -1,21 +1,3 @@
-GET http://kube-apiserver/api?timeout=32s
-Accept: application/json, */*
-
-
----
-
-GET http://kube-apiserver/apis?timeout=32s
-Accept: application/json, */*
-
-
----
-
-GET http://kube-apiserver/api/v1?timeout=32s
-Accept: application/json, */*
-
-
----
-
 GET http://kube-apiserver/api/v1?timeout=32s
 Accept: application/json, */*
 

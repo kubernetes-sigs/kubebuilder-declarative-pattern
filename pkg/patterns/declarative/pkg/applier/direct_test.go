@@ -22,13 +22,11 @@ import (
 	"net/http"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/client-go/discovery/cached/disk"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/client-go/restmapper"
@@ -38,6 +36,7 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/mocks/mockkubeapiserver"
+	controllerrestmapper "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
@@ -255,16 +254,11 @@ func TestDirectApplier(t *testing.T) {
 		}
 		manifest := string(h.MustReadFile(filepath.Join(testdir, "manifest.yaml")))
 
-		tmpdir := h.TempDir()
-		discoveryCacheDir := filepath.Join(tmpdir, "discoverycache")
-		httpCacheDir := filepath.Join(tmpdir, "httpcache")
-		ttl := 10 * time.Minute
-
-		cachedDiscoveryClient, err := disk.NewCachedDiscoveryClientForConfig(restConfig, discoveryCacheDir, httpCacheDir, ttl)
+		restMapper, err := controllerrestmapper.NewControllerRESTMapper(restConfig)
 		if err != nil {
-			h.Fatalf("error from NewCachedDiscoveryClientForConfig: %v", err)
+			t.Fatalf("error from NewControllerRESTMapper: %v", err)
 		}
-		restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscoveryClient)
+
 		options := ApplierOptions{
 			Manifest:   manifest,
 			RESTConfig: restConfig,
