@@ -19,18 +19,27 @@ package applier
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/discovery/cached/disk"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/cmd/apply"
 	kubectltesting "k8s.io/kubectl/pkg/cmd/testing"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/mocks/mockkubeapiserver"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
 
 type directApplierTestSite struct {
@@ -57,7 +66,7 @@ func (d *directApplierTestSite) NewBuilder(opt ApplierOptions) *resource.Builder
 		})
 }
 
-func (d *directApplierTestSite) NewFactory() cmdutil.Factory {
+func (d *directApplierTestSite) NewFactory(opt ApplierOptions) cmdutil.Factory {
 	return kubectltesting.NewTestFactory()
 }
 
@@ -201,4 +210,75 @@ metadata:
 			}
 		})
 	}
+}
+
+func TestDirectApplier(t *testing.T) {
+	testharness.RunGoldenTests(t, "testdata/direct", func(h *testharness.Harness, testdir string) {
+		ctx := context.Background()
+
+		k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
+		if err != nil {
+			t.Fatalf("error building mock kube-apiserver: %v", err)
+		}
+
+		k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
+
+		defer func() {
+			if err := k8s.Stop(); err != nil {
+				t.Fatalf("error closing mock kube-apiserver: %v", err)
+			}
+		}()
+
+		addr, err := k8s.StartServing()
+		if err != nil {
+			t.Errorf("error starting mock kube-apiserver: %v", err)
+		}
+
+		klog.Infof("mock kubeapiserver will listen on %v", addr)
+
+		var requestLog httprecorder.RequestLog
+		wrapTransport := func(rt http.RoundTripper) http.RoundTripper {
+			return httprecorder.NewRecorder(rt, &requestLog)
+		}
+		restConfig := &rest.Config{
+			Host:          addr.String(),
+			WrapTransport: wrapTransport,
+		}
+
+		directApplier := NewDirectApplier()
+
+		if h.FileExists(filepath.Join(testdir, "before.yaml")) {
+			before := string(h.MustReadFile(filepath.Join(testdir, "before.yaml")))
+			if err := k8s.AddObjectsFromManifest(before); err != nil {
+				t.Fatalf("error precreating objects: %v", err)
+			}
+		}
+		manifest := string(h.MustReadFile(filepath.Join(testdir, "manifest.yaml")))
+
+		tmpdir := h.TempDir()
+		discoveryCacheDir := filepath.Join(tmpdir, "discoverycache")
+		httpCacheDir := filepath.Join(tmpdir, "httpcache")
+		ttl := 10 * time.Minute
+
+		cachedDiscoveryClient, err := disk.NewCachedDiscoveryClientForConfig(restConfig, discoveryCacheDir, httpCacheDir, ttl)
+		if err != nil {
+			h.Fatalf("error from NewCachedDiscoveryClientForConfig: %v", err)
+		}
+		restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscoveryClient)
+		options := ApplierOptions{
+			Manifest:   manifest,
+			RESTConfig: restConfig,
+			RESTMapper: restMapper,
+		}
+
+		if err := directApplier.Apply(ctx, options); err != nil {
+			t.Fatalf("error from DirectApplier.Apply: %v", err)
+		}
+
+		t.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
+		requestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
+		requests := requestLog.FormatYAML()
+
+		h.CompareGoldenFile(filepath.Join(testdir, "expected.yaml"), requests)
+	})
 }

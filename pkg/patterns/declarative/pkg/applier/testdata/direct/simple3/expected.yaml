@@ -1,0 +1,57 @@
+header:
+  Accept:
+  - application/json, */*
+  User-Agent:
+  - applier.test/v0.0.0 (linux/amd64) kubernetes/$Format
+method: GET
+url: http://kube-apiserver/api?timeout=32s
+
+---
+header:
+  Accept:
+  - application/json, */*
+  User-Agent:
+  - applier.test/v0.0.0 (linux/amd64) kubernetes/$Format
+method: GET
+url: http://kube-apiserver/apis?timeout=32s
+
+---
+header:
+  Accept:
+  - application/json, */*
+  User-Agent:
+  - applier.test/v0.0.0 (linux/amd64) kubernetes/$Format
+method: GET
+url: http://kube-apiserver/api/v1?timeout=32s
+
+---
+header:
+  Accept:
+  - application/json, */*
+  User-Agent:
+  - applier.test/v0.0.0 (linux/amd64) kubernetes/$Format
+method: GET
+url: http://kube-apiserver/api/v1?timeout=32s
+
+---
+header:
+  Accept:
+  - application/com.github.proto-openapi.spec.v2@v1.0+protobuf
+  User-Agent:
+  - applier.test/v0.0.0 (linux/amd64) kubernetes/$Format
+method: GET
+url: http://kube-apiserver/openapi/v2?timeout=32s
+
+---
+header:
+  Accept:
+  - application/json
+method: GET
+url: http://kube-apiserver/api/v1/namespaces/ns1
+
+---
+header:
+  Accept:
+  - application/json
+method: GET
+url: http://kube-apiserver/api/v1/namespaces/ns2

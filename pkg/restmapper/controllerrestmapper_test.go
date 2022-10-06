@@ -19,7 +19,7 @@ func TestRESTMapping(t *testing.T) {
 		t.Fatalf("error building mock kube-apiserver: %v", err)
 	}
 
-	k8s.Add(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
+	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
 
 	defer func() {
 		if err := k8s.Stop(); err != nil {
