@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/mocks/mockkubeapiserver"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 )
 
 func TestRESTMapping(t *testing.T) {

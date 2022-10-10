@@ -2,6 +2,10 @@ module sigs.k8s.io/kubebuilder-declarative-pattern
 
 go 1.19
 
+replace sigs.k8s.io/kubebuilder-declarative-pattern/applylib => ./applylib
+
+replace sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver => ./mockkubeapiserver
+
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/evanphx/json-patch/v5 v5.6.0
@@ -19,6 +23,8 @@ require (
 	k8s.io/kubectl v0.25.0
 	sigs.k8s.io/cli-utils v0.33.0
 	sigs.k8s.io/controller-runtime v0.13.0
+	sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kustomize/api v0.12.1
 	sigs.k8s.io/kustomize/kyaml v0.13.9
 	sigs.k8s.io/yaml v1.3.0
