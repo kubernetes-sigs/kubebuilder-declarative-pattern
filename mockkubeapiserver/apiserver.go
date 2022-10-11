@@ -142,6 +142,13 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					Resource:  tokens[2],
 					Namespace: "",
 				}
+			case http.MethodGet:
+				req = &listResource{
+					Group:     "",
+					Version:   tokens[1],
+					Resource:  tokens[2],
+					Namespace: "",
+				}
 			}
 		}
 	}
@@ -160,6 +167,10 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			req = &putResource{
 				resourceRequestBase: common,
 			}
+		case http.MethodDelete:
+			req = &deleteResource{
+				resourceRequestBase: common,
+			}
 		}
 	}
 
@@ -173,6 +184,48 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			})
 			matchedPath = true
 		}
+
+		if tokens[0] == "apis" {
+			matchedPath = true
+			switch r.Method {
+			case http.MethodPost:
+				req = &postResource{
+					Group:     tokens[1],
+					Version:   tokens[2],
+					Resource:  tokens[3],
+					Namespace: "",
+				}
+			case http.MethodGet:
+				req = &listResource{
+					Group:     tokens[1],
+					Version:   tokens[2],
+					Resource:  tokens[3],
+					Namespace: "",
+				}
+			}
+		}
+	}
+
+	if len(tokens) == 5 {
+		if tokens[0] == "api" && tokens[1] == "v1" && tokens[2] == "namespaces" {
+			matchedPath = true
+			switch r.Method {
+			case http.MethodPost:
+				req = &postResource{
+					Group:     "",
+					Version:   tokens[1],
+					Resource:  tokens[4],
+					Namespace: tokens[3],
+				}
+			case http.MethodGet:
+				req = &listResource{
+					Group:     "",
+					Version:   tokens[1],
+					Resource:  tokens[4],
+					Namespace: tokens[3],
+				}
+			}
+		}
 	}
 
 	if len(tokens) == 6 {
@@ -185,6 +238,26 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Name:      tokens[5],
 			})
 			matchedPath = true
+		}
+
+		if tokens[0] == "apis" && tokens[3] == "namespaces" {
+			matchedPath = true
+			switch r.Method {
+			case http.MethodPost:
+				req = &postResource{
+					Group:     tokens[1],
+					Version:   tokens[2],
+					Resource:  tokens[5],
+					Namespace: tokens[4],
+				}
+			case http.MethodGet:
+				req = &listResource{
+					Group:     tokens[1],
+					Version:   tokens[2],
+					Resource:  tokens[5],
+					Namespace: tokens[4],
+				}
+			}
 		}
 	}
 	if len(tokens) == 7 {

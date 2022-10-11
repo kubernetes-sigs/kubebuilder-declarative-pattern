@@ -18,39 +18,46 @@ package mockkubeapiserver
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
 type MemoryStorage struct {
-	mutex   sync.Mutex
-	schema  mockSchema
-	objects map[schema.GroupResource]*objectList
+	schemaMutex      sync.Mutex
+	schema           mockSchema
+	resourceStorages map[schema.GroupResource]*resourceStorage
+
+	resourceVersionClock int64
 }
 
 func NewMemoryStorage() *MemoryStorage {
 	s := &MemoryStorage{
-		objects: make(map[schema.GroupResource]*objectList),
+		resourceStorages:     make(map[schema.GroupResource]*resourceStorage),
+		resourceVersionClock: 1,
 	}
 	return s
 }
 
 type mockSchema struct {
-	resources []mockSchemaResource
+	resources []*ResourceInfo
 }
 
-type mockSchemaResource struct {
-	metav1.APIResource
-}
+type ResourceInfo struct {
+	API     metav1.APIResource
+	GVR     schema.GroupVersionResource
+	GVK     schema.GroupVersionKind
+	ListGVK schema.GroupVersionKind
 
-type objectList struct {
-	GroupResource schema.GroupResource
-	Objects       map[types.NamespacedName]*unstructured.Unstructured
+	storage *resourceStorage
 }
 
 // AddObject pre-creates an object
@@ -68,32 +75,21 @@ func (s *MemoryStorage) AddObject(obj *unstructured.Unstructured) error {
 		Name:      obj.GetName(),
 	}
 
-	for _, resource := range s.schema.resources {
-		if resource.Group != gv.Group || resource.Version != gv.Version {
-			continue
-		}
-		if resource.Kind != kind {
-			continue
-		}
-
-		gr := schema.GroupResource{Group: resource.Group, Resource: resource.Name}
-
-		return s.PutObject(ctx, gr, id, obj)
-	}
 	gvk := gv.WithKind(kind)
-	return fmt.Errorf("object group/version/kind %v not known", gvk)
+
+	resource := s.findResourceByGVK(gvk)
+	if resource == nil {
+		return fmt.Errorf("object group/version/kind %v not known", gvk)
+	}
+
+	return s.CreateObject(ctx, resource, id, obj)
 }
 
-func (s *MemoryStorage) GetObject(ctx context.Context, gr schema.GroupResource, id types.NamespacedName) (*unstructured.Unstructured, bool, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (s *MemoryStorage) GetObject(ctx context.Context, resource *ResourceInfo, id types.NamespacedName) (*unstructured.Unstructured, bool, error) {
+	resource.storage.mutex.Lock()
+	defer resource.storage.mutex.Unlock()
 
-	objects := s.objects[gr]
-	if objects == nil {
-		return nil, false, nil
-	}
-
-	object := objects.Objects[id]
+	object := resource.storage.objects[id]
 	if object == nil {
 		return nil, false, nil
 	}
@@ -101,45 +97,162 @@ func (s *MemoryStorage) GetObject(ctx context.Context, gr schema.GroupResource, 
 	return object, true, nil
 }
 
-func (s *MemoryStorage) PutObject(ctx context.Context, gr schema.GroupResource, id types.NamespacedName, u *unstructured.Unstructured) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+type ListFilter struct {
+	Namespace string
+}
 
-	objects := s.objects[gr]
-	if objects == nil {
-		objects = &objectList{
-			GroupResource: gr,
-			Objects:       make(map[types.NamespacedName]*unstructured.Unstructured),
+func (s *MemoryStorage) ListObjects(ctx context.Context, resource *ResourceInfo, filter ListFilter) (*unstructured.UnstructuredList, error) {
+	resource.storage.mutex.Lock()
+	defer resource.storage.mutex.Unlock()
+
+	ret := &unstructured.UnstructuredList{}
+
+	for _, obj := range resource.storage.objects {
+		if filter.Namespace != "" {
+			if obj.GetNamespace() != filter.Namespace {
+				continue
+			}
 		}
-		s.objects[gr] = objects
+		ret.Items = append(ret.Items, *obj)
 	}
 
-	objects.Objects[id] = u
+	rv := strconv.FormatInt(s.resourceVersionClock, 10)
+	ret.SetResourceVersion(rv)
+
+	return ret, nil
+}
+
+func (s *MemoryStorage) CreateObject(ctx context.Context, resource *ResourceInfo, id types.NamespacedName, u *unstructured.Unstructured) error {
+	resource.storage.mutex.Lock()
+	defer resource.storage.mutex.Unlock()
+
+	_, found := resource.storage.objects[id]
+	if found {
+		return apierrors.NewAlreadyExists(resource.GVR.GroupResource(), id.Name)
+	}
+
+	u.SetCreationTimestamp(v1.Now())
+
+	uid := uuid.NewUUID()
+	u.SetUID(uid)
+
+	rv := strconv.FormatInt(s.resourceVersionClock, 10)
+	s.resourceVersionClock++
+	u.SetResourceVersion(rv)
+
+	resource.storage.objects[id] = u
 	s.objectChanged(u)
+
+	resource.storage.broadcastEventHoldingLock(ctx, "ADDED", u)
+
 	return nil
+}
+
+func (s *MemoryStorage) UpdateObject(ctx context.Context, resource *ResourceInfo, id types.NamespacedName, u *unstructured.Unstructured) error {
+	resource.storage.mutex.Lock()
+	defer resource.storage.mutex.Unlock()
+
+	_, found := resource.storage.objects[id]
+	if !found {
+		return apierrors.NewAlreadyExists(resource.GVR.GroupResource(), id.Name)
+	}
+
+	rv := strconv.FormatInt(s.resourceVersionClock, 10)
+	s.resourceVersionClock++
+	u.SetResourceVersion(rv)
+
+	resource.storage.objects[id] = u
+	s.objectChanged(u)
+
+	resource.storage.broadcastEventHoldingLock(ctx, "MODIFIED", u)
+
+	return nil
+}
+
+func (s *MemoryStorage) DeleteObject(ctx context.Context, resource *ResourceInfo, id types.NamespacedName) (*unstructured.Unstructured, error) {
+	resource.storage.mutex.Lock()
+	defer resource.storage.mutex.Unlock()
+
+	deletedObj, found := resource.storage.objects[id]
+	if !found {
+		// TODO: return apierrors something?
+		return nil, apierrors.NewNotFound(resource.GVR.GroupResource(), id.Name)
+	}
+	delete(resource.storage.objects, id)
+	s.objectChanged(deletedObj)
+
+	resource.storage.broadcastEventHoldingLock(ctx, "DELETED", deletedObj)
+
+	return deletedObj, nil
 }
 
 // RegisterType registers a type with the schema for the mock kubeapiserver
 func (s *MemoryStorage) RegisterType(gvk schema.GroupVersionKind, resource string, scope meta.RESTScope) {
-	r := mockSchemaResource{
-		APIResource: metav1.APIResource{
+	s.schemaMutex.Lock()
+	defer s.schemaMutex.Unlock()
+
+	gvr := gvk.GroupVersion().WithResource(resource)
+	gr := gvr.GroupResource()
+
+	storage := &resourceStorage{
+		GroupResource: gr,
+		objects:       make(map[types.NamespacedName]*unstructured.Unstructured),
+	}
+
+	// TODO: share storage across different versions
+	s.resourceStorages[gr] = storage
+
+	r := &ResourceInfo{
+		API: metav1.APIResource{
 			Name:    resource,
 			Group:   gvk.Group,
 			Version: gvk.Version,
 			Kind:    gvk.Kind,
 		},
+		GVK:     gvk,
+		GVR:     gvr,
+		storage: storage,
 	}
+	r.ListGVK = gvk.GroupVersion().WithKind(gvk.Kind + "List")
+
 	if scope.Name() == meta.RESTScopeNameNamespace {
-		r.Namespaced = true
+		r.API.Namespaced = true
 	}
 
 	s.schema.resources = append(s.schema.resources, r)
 }
 
 func (s *MemoryStorage) AllResources() []metav1.APIResource {
+	s.schemaMutex.Lock()
+	defer s.schemaMutex.Unlock()
+
 	var ret []metav1.APIResource
 	for _, resource := range s.schema.resources {
-		ret = append(ret, resource.APIResource)
+		ret = append(ret, resource.API)
 	}
 	return ret
+}
+
+func (s *MemoryStorage) FindResource(gr schema.GroupResource) *ResourceInfo {
+	s.schemaMutex.Lock()
+	defer s.schemaMutex.Unlock()
+
+	for _, resource := range s.schema.resources {
+		if resource.GVR.GroupResource() == gr {
+			return resource
+		}
+	}
+	return nil
+}
+
+func (s *MemoryStorage) findResourceByGVK(gvk schema.GroupVersionKind) *ResourceInfo {
+	s.schemaMutex.Lock()
+	defer s.schemaMutex.Unlock()
+
+	for _, resource := range s.schema.resources {
+		if resource.GVK == gvk {
+			return resource
+		}
+	}
+	return nil
 }

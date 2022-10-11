@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 
@@ -54,12 +55,23 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	// Populate the namespace on any namespace-scoped objects
 	if opt.Namespace != "" {
-		// for _, obj := range objects.Items {
-		// 	if obj.GetNamespace() != "" {
-		// 		obj.SetNamespace(opt.Namespace)
-		// 	}
-		// }
-		return fmt.Errorf("namespace override not (yet) supported on ApplySetapplier")
+		for _, obj := range objects.Items {
+			gvk := obj.GroupVersionKind()
+			restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				return fmt.Errorf("error getting rest mapping for %v: %w", gvk, err)
+			}
+
+			switch restMapping.Scope {
+			case meta.RESTScopeNamespace:
+				obj.SetNamespace(opt.Namespace)
+
+			case meta.RESTScopeRoot:
+				// Don't set namespace
+			default:
+				return fmt.Errorf("unknown rest mapping scope %v", restMapping.Scope)
+			}
+		}
 	}
 
 	var applyableObjects []applyset.ApplyableObject
