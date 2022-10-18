@@ -45,11 +45,15 @@ type aggregator struct {
 	client client.Client
 }
 
-func (a *aggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject, objs *manifest.Objects, _ error) error {
+func (a *aggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject, objs *manifest.Objects, reconcileErr error) error {
 	log := log.FromContext(ctx)
 
 	statusHealthy := true
 	statusErrors := []string{}
+
+	if reconcileErr != nil {
+		statusHealthy = false
+	}
 
 	for _, o := range objs.GetItems() {
 		gk := o.Group + "/" + o.Kind
