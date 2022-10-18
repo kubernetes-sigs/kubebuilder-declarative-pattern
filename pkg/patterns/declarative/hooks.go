@@ -5,6 +5,7 @@ import (
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/target"
 )
 
 // Hook is the base interface implemented by a hook
@@ -21,6 +22,9 @@ type ApplyOperation struct {
 
 	// ApplierOptions is the set of options passed to the applier
 	ApplierOptions *applier.ApplierOptions
+
+	// Target allows us to apply to a different cluster from the local one
+	RemoteTarget *target.CachedTarget
 }
 
 // AfterApply is implemented by hooks that want to be called after every apply operation

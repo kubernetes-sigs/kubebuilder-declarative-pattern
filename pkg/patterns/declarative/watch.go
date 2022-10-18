@@ -84,13 +84,18 @@ func WatchAll(config *rest.Config, ctrl controller.Controller, reconciler hookab
 
 // WatchChildren sets up watching of the objects applied by a controller.
 func WatchChildren(options WatchChildrenOptions) (chan struct{}, error) {
+	// Inject a stop channel that will never close. The controller does not have a concept of
+	// shutdown, so there is no opportunity to stop the watch.
+	stopChannel := make(chan struct{})
+
 	if options.LabelMaker == nil {
 		return nil, fmt.Errorf("labelMaker is required to scope watches")
 	}
 
-	if options.RESTConfig == nil {
+	restConfig := options.RESTConfig
+	if restConfig == nil {
 		if options.Manager != nil {
-			options.RESTConfig = options.Manager.GetConfig()
+			restConfig = options.Manager.GetConfig()
 		} else {
 			return nil, fmt.Errorf("RESTConfig or Manager should be set")
 		}
@@ -100,33 +105,35 @@ func WatchChildren(options WatchChildrenOptions) (chan struct{}, error) {
 	if options.Manager != nil {
 		restMapper = options.Manager.GetRESTMapper()
 	} else {
-		rm, err := apiutil.NewDiscoveryRESTMapper(options.RESTConfig)
+		rm, err := apiutil.NewDiscoveryRESTMapper(restConfig)
 		if err != nil {
 			return nil, err
 		}
 		restMapper = rm
 	}
 
-	client, err := dynamic.NewForConfig(options.RESTConfig)
+	afterApplyHook := &afterApplyHook{
+		controller:              options.Controller,
+		scopeWatchesToNamespace: options.ScopeWatchesToNamespace,
+		labelMaker:              options.LabelMaker,
+	}
+
+	client, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error building dynamic kubernetes client: %w", err)
 	}
 
 	dw, events, err := watch.NewDynamicWatch(restMapper, client)
 	if err != nil {
 		return nil, fmt.Errorf("creating dynamic watch: %v", err)
 	}
-
 	src := &source.Channel{Source: events}
-	// Inject a stop channel that will never close. The controller does not have a concept of
-	// shutdown, so there is no oppritunity to stop the watch.
-	stopCh := make(chan struct{})
-	src.InjectStopChannel(stopCh)
+	src.InjectStopChannel(stopChannel)
 	if err := options.Controller.Watch(src, &handler.EnqueueRequestForObject{}); err != nil {
 		return nil, fmt.Errorf("setting up dynamic watch on the controller: %w", err)
 	}
 
-	afterApplyHook := &clusterWatch{
+	afterApplyHook.local = &clusterWatch{
 		dw:                      dw,
 		scopeWatchesToNamespace: options.ScopeWatchesToNamespace,
 		labelMaker:              options.LabelMaker,
@@ -135,7 +142,25 @@ func WatchChildren(options WatchChildrenOptions) (chan struct{}, error) {
 
 	options.Reconciler.AddHook(afterApplyHook)
 
-	return stopCh, nil
+	return stopChannel, nil
+}
+
+// afterApplyHookk implements the after-apply hook to add watches to our objects
+type afterApplyHook struct {
+	local *clusterWatch
+
+	// LabelMaker is used to build the labels we should watch on.
+	labelMaker LabelMaker
+
+	// Controller contains the controller itself
+	controller controller.Controller
+
+	// ScopeWatchesToNamespace controls whether watches are per-namespace.
+	// This allows for more narrowly scoped RBAC permissions, at the cost of more watches.
+	scopeWatchesToNamespace bool
+
+	mutex         sync.Mutex
+	remoteTargets map[string]*clusterWatch
 }
 
 // clusterWatch watches the objects in one cluster
@@ -147,12 +172,60 @@ type clusterWatch struct {
 
 	mutex sync.Mutex
 
-	// registered tracks the objects we are currently watching, avoid duplicate watches.
+	// registered tracks the objects we are currently watching, avoiding duplicate watches.
 	registered map[string]struct{}
 }
 
-// AfterApply is called by the controller after an apply. We establish any new watches.
-func (w *clusterWatch) AfterApply(ctx context.Context, op *ApplyOperation) error {
+var _ AfterApply = &afterApplyHook{}
+
+// AfterApply is called by the controller after an apply.  We establish any new watches.
+func (w *afterApplyHook) AfterApply(ctx context.Context, op *ApplyOperation) error {
+	if op.RemoteTarget == nil {
+		return w.local.applyApply(ctx, op)
+	}
+
+	remoteTargetKey := op.RemoteTarget.ClusterKey()
+
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	remoteClusterWatch := w.remoteTargets[remoteTargetKey]
+	if remoteClusterWatch == nil {
+		// Inject a stop channel that will never close. The controller does not have a concept of
+		// shutdown, so there is no opportunity to stop the watch.
+		stopChannel := make(chan struct{})
+
+		restConfig := op.RemoteTarget.RESTConfig()
+		restMapper := op.RemoteTarget.RESTMapper()
+
+		client, err := dynamic.NewForConfig(restConfig)
+		if err != nil {
+			return fmt.Errorf("error building dynamic kubernetes client: %w", err)
+		}
+
+		dw, events, err := watch.NewDynamicWatch(restMapper, client)
+		if err != nil {
+			return fmt.Errorf("creating dynamic watch: %v", err)
+		}
+		src := &source.Channel{Source: events}
+		src.InjectStopChannel(stopChannel)
+		if err := w.controller.Watch(src, &handler.EnqueueRequestForObject{}); err != nil {
+			return fmt.Errorf("setting up dynamic watch on the controller: %w", err)
+		}
+
+		remoteClusterWatch := &clusterWatch{
+			dw:                      dw,
+			scopeWatchesToNamespace: w.scopeWatchesToNamespace,
+			labelMaker:              w.labelMaker,
+			registered:              make(map[string]struct{}),
+		}
+
+		w.remoteTargets[remoteTargetKey] = remoteClusterWatch
+	}
+	return remoteClusterWatch.applyApply(ctx, op)
+}
+
+func (w *clusterWatch) applyApply(ctx context.Context, op *ApplyOperation) error {
 	log := log.FromContext(ctx)
 
 	labelSelector, err := labels.ValidatedSelectorFromSet(w.labelMaker(ctx, op.Subject))

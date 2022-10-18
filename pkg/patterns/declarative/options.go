@@ -48,13 +48,17 @@ type reconcilerParams struct {
 
 	applier applier.Applier
 
+	// // overrideTargetCluster allows the controller to specify a different target cluster
+	// overrideTargetCluster OverrideTargetClusterFunc
+
 	prune             bool
 	preserveNamespace bool
 	kustomize         bool
 	validate          bool
 	metrics           bool
 
-	sink       Sink
+	sink Sink
+
 	ownerFn    OwnerSelector
 	labelMaker LabelMaker
 	status     Status
@@ -62,6 +66,9 @@ type reconcilerParams struct {
 	// hooks allow for interception of events during the reconciliation lifecycle
 	hooks []Hook
 }
+
+// // OverrideTargetClusterFunc is the signature for functions that map objects to remote clusters
+// type OverrideTargetClusterFunc func(ctx context.Context, instance DeclarativeObject) (*rest.Config, error)
 
 type ManifestController interface {
 	// ResolveManifest returns a raw manifest as a map[string]string for a given CR object

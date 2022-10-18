@@ -332,7 +332,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}
 
-	applierOpt := applier.ApplierOptions{
+	applierOptions := applier.ApplierOptions{
 		RESTConfig: r.config,
 		RESTMapper: r.restMapper,
 		Namespace:  ns,
@@ -347,7 +347,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	applyOperation := &ApplyOperation{
 		Subject:        instance,
 		Objects:        objects,
-		ApplierOptions: &applierOpt,
+		ApplierOptions: &applierOptions,
 	}
 
 	applier := r.options.applier
@@ -360,7 +360,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}
 
-	if err := applier.Apply(ctx, applierOpt); err != nil {
+	if err := applier.Apply(ctx, *applyOperation.ApplierOptions); err != nil {
 		log.Error(err, "applying manifest")
 		statusInfo.KnownError = KnownErrorApplyFailed
 		return statusInfo, fmt.Errorf("error applying manifest: %v", err)
