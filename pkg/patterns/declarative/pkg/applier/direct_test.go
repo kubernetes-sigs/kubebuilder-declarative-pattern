@@ -205,5 +205,5 @@ metadata:
 
 func TestDirectApplier(t *testing.T) {
 	applier := NewDirectApplier()
-	runApplierGoldenTests(t, "testdata/direct", applier)
+	runApplierGoldenTests(t, "testdata/direct", false, applier)
 }
