@@ -12,13 +12,19 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
+	controllerrestmapper "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
 
 func TestApplySetApplier(t *testing.T) {
-	testharness.RunGoldenTests(t, "testdata/applylib", func(h *testharness.Harness, testdir string) {
+	patchOptions := metav1.PatchOptions{FieldManager: "kdp-test"}
+	applier := NewApplySetApplier(patchOptions)
+	runApplierGoldenTests(t, "testdata/applylib", applier)
+}
+
+func runApplierGoldenTests(t *testing.T, testDir string, applier Applier) {
+	testharness.RunGoldenTests(t, testDir, func(h *testharness.Harness, testdir string) {
 		ctx := context.Background()
 
 		k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
@@ -50,9 +56,6 @@ func TestApplySetApplier(t *testing.T) {
 			WrapTransport: wrapTransport,
 		}
 
-		patchOptions := metav1.PatchOptions{FieldManager: "kdp-test"}
-		applier := NewApplySetApplier(patchOptions)
-
 		if h.FileExists(filepath.Join(testdir, "before.yaml")) {
 			before := string(h.MustReadFile(filepath.Join(testdir, "before.yaml")))
 			if err := k8s.AddObjectsFromManifest(before); err != nil {
@@ -61,10 +64,11 @@ func TestApplySetApplier(t *testing.T) {
 		}
 		manifest := string(h.MustReadFile(filepath.Join(testdir, "manifest.yaml")))
 
-		restMapper, err := restmapper.NewControllerRESTMapper(restConfig)
+		restMapper, err := controllerrestmapper.NewControllerRESTMapper(restConfig)
 		if err != nil {
-			t.Fatalf("error building controller RESTMapper: %v", err)
+			t.Fatalf("error from controllerrestmapper.NewControllerRESTMapper: %v", err)
 		}
+
 		options := ApplierOptions{
 			Manifest:   manifest,
 			RESTConfig: restConfig,
