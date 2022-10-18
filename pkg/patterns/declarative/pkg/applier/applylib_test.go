@@ -1,7 +1,9 @@
 package applier
 
 import (
+	"bytes"
 	"context"
+	"io/ioutil"
 	"net/http"
 	"path/filepath"
 	"testing"
@@ -12,13 +14,19 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
+	controllerrestmapper "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
 
 func TestApplySetApplier(t *testing.T) {
-	testharness.RunGoldenTests(t, "testdata/applylib", func(h *testharness.Harness, testdir string) {
+	patchOptions := metav1.PatchOptions{FieldManager: "kdp-test"}
+	applier := NewApplySetApplier(patchOptions)
+	runApplierGoldenTests(t, "testdata/applylib", false, applier)
+}
+
+func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer bool, applier Applier) {
+	testharness.RunGoldenTests(t, testDir, func(h *testharness.Harness, testdir string) {
 		ctx := context.Background()
 
 		k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
@@ -50,8 +58,10 @@ func TestApplySetApplier(t *testing.T) {
 			WrapTransport: wrapTransport,
 		}
 
-		patchOptions := metav1.PatchOptions{FieldManager: "kdp-test"}
-		applier := NewApplySetApplier(patchOptions)
+		var apiserverRequestLog httprecorder.RequestLog
+		if interceptHTTPServer {
+			k8s.AddHook(&logKubeRequestsHook{log: &apiserverRequestLog})
+		}
 
 		if h.FileExists(filepath.Join(testdir, "before.yaml")) {
 			before := string(h.MustReadFile(filepath.Join(testdir, "before.yaml")))
@@ -61,16 +71,16 @@ func TestApplySetApplier(t *testing.T) {
 		}
 		manifest := string(h.MustReadFile(filepath.Join(testdir, "manifest.yaml")))
 
-		restMapper, err := restmapper.NewControllerRESTMapper(restConfig)
+		restMapper, err := controllerrestmapper.NewControllerRESTMapper(restConfig)
 		if err != nil {
-			t.Fatalf("error building controller RESTMapper: %v", err)
+			t.Fatalf("error from controllerrestmapper.NewControllerRESTMapper: %v", err)
 		}
+
 		options := ApplierOptions{
 			Manifest:   manifest,
 			RESTConfig: restConfig,
 			RESTMapper: restMapper,
 		}
-
 		if err := applier.Apply(ctx, options); err != nil {
 			t.Fatalf("error from applier.Apply: %v", err)
 		}
@@ -79,7 +89,41 @@ func TestApplySetApplier(t *testing.T) {
 		requestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
 		requestLog.RemoveUserAgent()
 		requests := requestLog.FormatHTTP()
-
 		h.CompareGoldenFile(filepath.Join(testdir, "expected.yaml"), requests)
+
+		if interceptHTTPServer {
+			t.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
+			apiserverRequestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
+			apiserverRequestLog.RemoveUserAgent()
+			apiserverRequestLog.RemoveHeader("Kubectl-Session")
+			apiserverRequests := apiserverRequestLog.FormatHTTP()
+			h.CompareGoldenFile(filepath.Join(testdir, "expected-apiserver.yaml"), apiserverRequests)
+		}
 	})
+}
+
+// logKubeRequestsHook is a hook to record mock-kubeapiserver requests to a RequestLog
+type logKubeRequestsHook struct {
+	log *httprecorder.RequestLog
+}
+
+var _ mockkubeapiserver.BeforeHTTPOperation = &logKubeRequestsHook{}
+
+func (h *logKubeRequestsHook) BeforeHTTPOperation(op *mockkubeapiserver.HTTPOperation) {
+	req := op.Request
+	c := httprecorder.Request{
+		Method: req.Method,
+		URL:    req.URL.String(),
+		Header: req.Header,
+	}
+
+	if req.Body != nil {
+		requestBody, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			panic("failed to read request body")
+		}
+		c.Body = string(requestBody)
+		req.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
+	}
+	h.log.Requests = append(h.log.Requests, c)
 }

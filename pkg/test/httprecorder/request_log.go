@@ -72,9 +72,13 @@ func (l *RequestLog) ReplaceURLPrefix(old, new string) {
 	}
 }
 
-func (l *RequestLog) RemoveUserAgent() {
+func (l *RequestLog) RemoveHeader(k string) {
 	for i := range l.Requests {
 		r := &l.Requests[i]
-		r.Header.Del("user-agent")
+		r.Header.Del(k)
 	}
+}
+
+func (l *RequestLog) RemoveUserAgent() {
+	l.RemoveHeader("user-agent")
 }

@@ -17,7 +17,6 @@ func NewRecorder(inner http.RoundTripper, log *RequestLog) *HTTPRecorder {
 }
 
 func (m *HTTPRecorder) RoundTrip(req *http.Request) (*http.Response, error) {
-
 	c := Request{
 		Method: req.Method,
 		URL:    req.URL.String(),

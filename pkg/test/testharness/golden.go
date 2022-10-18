@@ -15,13 +15,19 @@ func RunGoldenTests(t *testing.T, basedir string, fn func(h *Harness, dir string
 	if err != nil {
 		t.Fatalf("ReadDir(%q) failed: %v", basedir, err)
 	}
+	count := 0
 	for _, file := range files {
 		name := file.Name()
 		absPath := filepath.Join(basedir, name)
+		count++
 		t.Run(name, func(t *testing.T) {
 			h := New(t)
 			fn(h, absPath)
 		})
+	}
+	// Likely a typo in basedir (?)
+	if count == 0 {
+		t.Errorf("no golden tests found in %q", basedir)
 	}
 }
 
