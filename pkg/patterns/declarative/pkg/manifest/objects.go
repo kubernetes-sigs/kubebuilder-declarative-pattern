@@ -38,6 +38,14 @@ type Objects struct {
 	Path  string
 }
 
+// GetItems is a nil-safe wrapper around
+func (o *Objects) GetItems() []*Object {
+	if o == nil {
+		return nil
+	}
+	return o.Items
+}
+
 type Object struct {
 	object *unstructured.Unstructured
 

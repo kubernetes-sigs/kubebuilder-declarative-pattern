@@ -51,7 +51,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 	statusHealthy := true
 	statusErrors := []string{}
 
-	for _, o := range objs.Items {
+	for _, o := range objs.GetItems() {
 		gk := o.Group + "/" + o.Kind
 		healthy := true
 		objKey := client.ObjectKey{
