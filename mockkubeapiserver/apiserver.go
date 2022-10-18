@@ -32,7 +32,7 @@ func NewMockKubeAPIServer(addr string) (*MockKubeAPIServer, error) {
 
 	s.httpServer = &http.Server{Addr: addr, Handler: s}
 
-	s.storage = NewMemoryStorage()
+	s.storage = NewMemoryStorage(NewTestClock(), NewTestUIDGenerator())
 
 	return s, nil
 }
