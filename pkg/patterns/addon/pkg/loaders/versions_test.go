@@ -17,10 +17,13 @@ limitations under the License.
 package loaders
 
 import (
+	"context"
 	"testing"
 )
 
 func TestCompareVersions(t *testing.T) {
+	ctx := context.TODO()
+
 	grid := []struct {
 		Bigger  Version
 		Smaller Version
@@ -51,7 +54,7 @@ func TestCompareVersions(t *testing.T) {
 		{
 			l := &g.Bigger
 			r := &g.Smaller
-			v := l.Compare(r)
+			v := l.Compare(ctx, r)
 
 			if v <= 0 {
 				t.Errorf("comparison failed: %+v vs %+v was %d", l, r, v)
@@ -61,7 +64,7 @@ func TestCompareVersions(t *testing.T) {
 		{
 			l := &g.Smaller
 			r := &g.Bigger
-			v := l.Compare(r)
+			v := l.Compare(ctx, r)
 
 			if v >= 0 {
 				t.Errorf("comparison failed: %+v vs %+v was %d", l, r, v)
@@ -71,7 +74,7 @@ func TestCompareVersions(t *testing.T) {
 		{
 			l := &g.Bigger
 			r := &g.Bigger
-			v := l.Compare(r)
+			v := l.Compare(ctx, r)
 
 			if v != 0 {
 				t.Errorf("comparison failed: %+v vs %+v was %d", l, r, v)
@@ -81,7 +84,7 @@ func TestCompareVersions(t *testing.T) {
 		{
 			l := &g.Smaller
 			r := &g.Smaller
-			v := l.Compare(r)
+			v := l.Compare(ctx, r)
 
 			if v != 0 {
 				t.Errorf("comparison failed: %+v vs %+v was %d", l, r, v)

@@ -336,7 +336,7 @@ func (o *Objects) Sort(score func(o *Object) int) {
 }
 
 func ParseObjects(ctx context.Context, manifest string) (*Objects, error) {
-	log := log.Log
+	log := log.FromContext(ctx)
 
 	objects := &Objects{}
 	reader := k8syaml.NewYAMLReader(bufio.NewReader(strings.NewReader(manifest)))

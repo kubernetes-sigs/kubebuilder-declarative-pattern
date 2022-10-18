@@ -1,6 +1,7 @@
 package restmapper
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -40,7 +41,7 @@ type cachedGVR struct {
 }
 
 // findRESTMapping returns the RESTMapping for the specified GVK, querying discovery if not cached.
-func (c *cache) findRESTMapping(discovery discovery.DiscoveryInterface, gv schema.GroupVersion, kind string) (*meta.RESTMapping, error) {
+func (c *cache) findRESTMapping(ctx context.Context, discovery discovery.DiscoveryInterface, gv schema.GroupVersion, kind string) (*meta.RESTMapping, error) {
 	c.mutex.Lock()
 	cached := c.groupVersions[gv]
 	if cached == nil {
@@ -48,12 +49,12 @@ func (c *cache) findRESTMapping(discovery discovery.DiscoveryInterface, gv schem
 		c.groupVersions[gv] = cached
 	}
 	c.mutex.Unlock()
-	return cached.findRESTMapping(discovery, kind)
+	return cached.findRESTMapping(ctx, discovery, kind)
 }
 
 // findRESTMapping returns the RESTMapping for the specified GVK, querying discovery if not cached.
-func (c *cachedGroupVersion) findRESTMapping(discovery discovery.DiscoveryInterface, kind string) (*meta.RESTMapping, error) {
-	kinds, err := c.fetch(discovery)
+func (c *cachedGroupVersion) findRESTMapping(ctx context.Context, discovery discovery.DiscoveryInterface, kind string) (*meta.RESTMapping, error) {
+	kinds, err := c.fetch(ctx, discovery)
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +71,8 @@ func (c *cachedGroupVersion) findRESTMapping(discovery discovery.DiscoveryInterf
 }
 
 // fetch returns the metadata, fetching it if not cached.
-func (c *cachedGroupVersion) fetch(discovery discovery.DiscoveryInterface) (map[string]cachedGVR, error) {
-	log := log.Log
+func (c *cachedGroupVersion) fetch(ctx context.Context, discovery discovery.DiscoveryInterface) (map[string]cachedGVR, error) {
+	log := log.FromContext(ctx)
 
 	c.mutex.Lock()
 	defer c.mutex.Unlock()

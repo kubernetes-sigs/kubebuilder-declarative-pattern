@@ -46,7 +46,7 @@ type aggregator struct {
 }
 
 func (a *aggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject, objs *manifest.Objects, _ error) error {
-	log := log.Log
+	log := log.FromContext(ctx)
 
 	statusHealthy := true
 	statusErrors := []string{}

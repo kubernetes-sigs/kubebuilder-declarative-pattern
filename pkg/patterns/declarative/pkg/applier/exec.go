@@ -91,7 +91,7 @@ func buildKubeconfig(restConfig *rest.Config) ([]byte, error) {
 
 // Apply runs the kubectl apply with the provided manifest argument
 func (c *ExecKubectl) Apply(ctx context.Context, opt ApplierOptions) error {
-	log := log.Log
+	log := log.FromContext(ctx)
 
 	log.Info("applying manifest")
 

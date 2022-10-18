@@ -1,6 +1,7 @@
 package restmapper
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -54,9 +55,11 @@ func (m *ControllerRESTMapper) ResourcesFor(input schema.GroupVersionResource) (
 
 // RESTMapping identifies a preferred resource mapping for the provided group kind.
 func (m *ControllerRESTMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
+	ctx := context.TODO()
+
 	for _, version := range versions {
 		gv := schema.GroupVersion{Group: gk.Group, Version: version}
-		mapping, err := m.cache.findRESTMapping(m.uncached, gv, gk.Kind)
+		mapping, err := m.cache.findRESTMapping(ctx, m.uncached, gv, gk.Kind)
 		if err != nil {
 			return nil, err
 		}

@@ -24,7 +24,7 @@ func NewKstatusAgregator(c client.Client, reconciler *declarative.Reconciler) *k
 
 func (k *kstatusAggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject,
 	objs *manifest.Objects, _ error) error {
-	log := log.Log
+	log := log.FromContext(ctx)
 
 	statusMap := make(map[status.Status]bool)
 	for _, object := range objs.Items {
