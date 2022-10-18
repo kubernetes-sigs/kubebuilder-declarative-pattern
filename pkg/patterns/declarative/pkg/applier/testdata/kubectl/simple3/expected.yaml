@@ -1,0 +1,15 @@
+GET http://kube-apiserver/api/v1?timeout=32s
+Accept: application/json, */*
+
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1
+Accept: application/json
+
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns2
+Accept: application/json
+

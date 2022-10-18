@@ -1,0 +1,33 @@
+GET http://kube-apiserver/api/v1?timeout=32s
+Accept: application/json, */*
+
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1
+Accept: application/json
+
+
+---
+
+POST http://kube-apiserver/api/v1/namespaces?fieldManager=kubectl-client-side-apply&fieldValidation=Strict
+Accept: application/json
+Content-Type: application/json
+
+{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"},"name":"ns1"}}
+
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns2
+Accept: application/json
+
+
+---
+
+POST http://kube-apiserver/api/v1/namespaces?fieldManager=kubectl-client-side-apply&fieldValidation=Strict
+Accept: application/json
+Content-Type: application/json
+
+{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"},"name":"ns2"}}
+

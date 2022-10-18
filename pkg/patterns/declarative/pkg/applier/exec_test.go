@@ -115,5 +115,9 @@ func TestKubectlApply(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestKubectlApplier(t *testing.T) {
+	applier := NewExec()
+	runApplierGoldenTests(t, "testdata/kubectl", applier)
 }
