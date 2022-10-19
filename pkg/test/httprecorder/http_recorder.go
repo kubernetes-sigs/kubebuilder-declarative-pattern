@@ -2,8 +2,10 @@ package httprecorder
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type HTTPRecorder struct {
@@ -16,22 +18,53 @@ func NewRecorder(inner http.RoundTripper, log *RequestLog) *HTTPRecorder {
 	return rt
 }
 
-func (m *HTTPRecorder) RoundTrip(req *http.Request) (*http.Response, error) {
-	c := Request{
-		Method: req.Method,
-		URL:    req.URL.String(),
-		Header: req.Header,
+func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) {
+	entry := LogEntry{}
+	entry.Request = Request{
+		Method: request.Method,
+		URL:    request.URL.String(),
+		Header: request.Header,
 	}
 
-	if req.Body != nil {
-		requestBody, err := ioutil.ReadAll(req.Body)
+	if request.Body != nil {
+		requestBody, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			panic("failed to read request body")
 		}
-		c.Body = string(requestBody)
-		req.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
+		entry.Request.Body = string(requestBody)
+		request.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
 	}
-	m.log.Requests = append(m.log.Requests, c)
 
-	return m.inner.RoundTrip(req)
+	response, err := m.inner.RoundTrip(request)
+
+	if response != nil {
+		entry.Response.Status = response.Status
+		entry.Response.StatusCode = response.StatusCode
+
+		entry.Response.Header = make(http.Header)
+		for k, values := range response.Header {
+			switch strings.ToLower(k) {
+			case "authorization":
+				entry.Response.Header[k] = []string{"(redacted)"}
+			case "date":
+				entry.Response.Header[k] = []string{"(removed)"}
+			default:
+				entry.Response.Header[k] = values
+			}
+		}
+
+		if response.Body != nil {
+			requestBody, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				entry.Response.Body = fmt.Sprintf("<error reading response:%v>", err)
+			} else {
+				entry.Response.Body = string(requestBody)
+				response.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
+			}
+		}
+	}
+
+	m.log.Entries = append(m.log.Entries, entry)
+
+	return response, err
 }

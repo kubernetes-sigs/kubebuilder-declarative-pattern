@@ -111,7 +111,8 @@ var _ mockkubeapiserver.BeforeHTTPOperation = &logKubeRequestsHook{}
 
 func (h *logKubeRequestsHook) BeforeHTTPOperation(op *mockkubeapiserver.HTTPOperation) {
 	req := op.Request
-	c := httprecorder.Request{
+	entry := httprecorder.LogEntry{}
+	entry.Request = httprecorder.Request{
 		Method: req.Method,
 		URL:    req.URL.String(),
 		Header: req.Header,
@@ -122,8 +123,8 @@ func (h *logKubeRequestsHook) BeforeHTTPOperation(op *mockkubeapiserver.HTTPOper
 		if err != nil {
 			panic("failed to read request body")
 		}
-		c.Body = string(requestBody)
+		entry.Request.Body = string(requestBody)
 		req.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
 	}
-	h.log.Requests = append(h.log.Requests, c)
+	h.log.Entries = append(h.log.Entries, entry)
 }
