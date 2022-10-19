@@ -132,6 +132,9 @@ func (c *ExecKubectl) Apply(ctx context.Context, opt ApplierOptions) error {
 		args = append(args, "--kubeconfig", f.Name())
 	}
 
+	if opt.Force {
+		args = append(args, "--force")
+	}
 	args = append(args, opt.ExtraArgs...)
 	args = append(args, "-f", "-")
 

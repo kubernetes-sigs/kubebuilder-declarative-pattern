@@ -18,5 +18,13 @@ type ApplierOptions struct {
 	RESTMapper meta.RESTMapper
 	Namespace  string
 	Validate   bool
-	ExtraArgs  []string
+
+	// Force is set if we should "force" the apply.
+	// For server-side-apply, this corresponds to setting the force option, which ensures we take ownership
+	// even when another field manager owns a field.
+	Force bool
+
+	// ExtraArgs holds additional arguments that should be passed to kubectl.
+	// @deprecated: prefer using explicit arguments (Force etc)
+	ExtraArgs []string
 }
