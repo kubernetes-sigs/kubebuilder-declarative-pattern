@@ -573,6 +573,10 @@ func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObj
 		}
 
 		gvk, err := apiutil.GVKForObject(owner, r.mgr.GetScheme())
+		if err != nil {
+			log.WithValues("object", o).Error(err, "unable to get GVK for object")
+			continue
+		}
 		if gvk.Group == "" || gvk.Version == "" {
 			log.WithValues("object", o).WithValues("GroupVersionKind", gvk).Info("is not valid")
 			continue
