@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -81,8 +82,10 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return req.writeResponse(patched)
 	}
 
+	original := existingObj.DeepCopy()
+
 	if req.SubResource == "" {
-		if err := applyPatch(existingObj.Object, body.Object); err != nil {
+		if err := applyPatch(existingObj.Object, body.Object, resource.TypeInfo); err != nil {
 			klog.Warningf("error from patch: %v", err)
 			return err
 		}
@@ -91,33 +94,14 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return fmt.Errorf("unknown subresource %q", req.SubResource)
 	}
 
+	// We dont' want to change the resourceVersion (and trigger watches) when the change is a no-op
+	if reflect.DeepEqual(original, existingObj) {
+		klog.Infof("patch did not change object")
+		return req.writeResponse(original)
+	}
+
 	if err := s.storage.UpdateObject(ctx, resource, id, existingObj); err != nil {
 		return err
 	}
 	return req.writeResponse(existingObj)
-}
-
-func applyPatch(existing, patch map[string]interface{}) error {
-	for k, patchValue := range patch {
-		existingValue := existing[k]
-		switch patchValue := patchValue.(type) {
-		case string, int64:
-			existing[k] = patchValue
-		case map[string]interface{}:
-			if existingValue == nil {
-				existing[k] = patchValue
-			} else {
-				existingMap, ok := existingValue.(map[string]interface{})
-				if !ok {
-					return fmt.Errorf("unexpected type mismatch, expected map got %T", existingValue)
-				}
-				if err := applyPatch(existingMap, patchValue); err != nil {
-					return err
-				}
-			}
-		default:
-			return fmt.Errorf("type %T not handled in patch", patchValue)
-		}
-	}
-	return nil
 }

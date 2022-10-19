@@ -58,6 +58,9 @@ type ResourceInfo struct {
 	ListGVK schema.GroupVersionKind
 
 	storage *resourceStorage
+
+	// TypeInfo holds the schema information for this type
+	TypeInfo typeInfo
 }
 
 // AddObject pre-creates an object
@@ -218,6 +221,8 @@ func (s *MemoryStorage) RegisterType(gvk schema.GroupVersionKind, resource strin
 	if scope.Name() == meta.RESTScopeNameNamespace {
 		r.API.Namespaced = true
 	}
+
+	r.TypeInfo = buildTypeInfo(gvk)
 
 	s.schema.resources = append(s.schema.resources, r)
 }
