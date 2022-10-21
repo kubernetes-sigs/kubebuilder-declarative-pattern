@@ -24,11 +24,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
 type MemoryStorage struct {
@@ -37,12 +35,17 @@ type MemoryStorage struct {
 	resourceStorages map[schema.GroupResource]*resourceStorage
 
 	resourceVersionClock int64
+
+	clock        Clock
+	uidGenerator UIDGenerator
 }
 
-func NewMemoryStorage() *MemoryStorage {
+func NewMemoryStorage(clock Clock, uidGenerator UIDGenerator) *MemoryStorage {
 	s := &MemoryStorage{
 		resourceStorages:     make(map[schema.GroupResource]*resourceStorage),
 		resourceVersionClock: 1,
+		clock:                clock,
+		uidGenerator:         uidGenerator,
 	}
 	return s
 }
@@ -131,9 +134,9 @@ func (s *MemoryStorage) CreateObject(ctx context.Context, resource *ResourceInfo
 		return apierrors.NewAlreadyExists(resource.GVR.GroupResource(), id.Name)
 	}
 
-	u.SetCreationTimestamp(v1.Now())
+	u.SetCreationTimestamp(s.clock.Now())
 
-	uid := uuid.NewUUID()
+	uid := s.uidGenerator.NewUID()
 	u.SetUID(uid)
 
 	rv := strconv.FormatInt(s.resourceVersionClock, 10)
