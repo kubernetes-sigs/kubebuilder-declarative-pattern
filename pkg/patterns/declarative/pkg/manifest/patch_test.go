@@ -187,7 +187,7 @@ spec:
 				patches = append(patches, p.UnstructuredObject())
 			}
 
-			err = base.Patch(patches)
+			err = base.Patch(ctx, patches)
 			if err != nil {
 				t.Fatalf("unexpected err: %v", err)
 			}

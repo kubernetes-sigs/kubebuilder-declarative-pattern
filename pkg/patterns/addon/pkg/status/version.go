@@ -34,7 +34,7 @@ func (p *versionCheck) VersionCheck(
 	src declarative.DeclarativeObject,
 	objs *manifest.Objects,
 ) (bool, error) {
-	log := log.Log
+	log := log.FromContext(ctx)
 	var minOperatorVersion semver.Version
 
 	// Look for annotation from any resource with the max version

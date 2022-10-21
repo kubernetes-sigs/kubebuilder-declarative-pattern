@@ -195,6 +195,8 @@ manifests:
 
 	for _, test := range testcases {
 		t.Run(test.description, func(t *testing.T) {
+			ctx := context.TODO()
+
 			fSys := filesys.MakeFsOnDisk()
 			baseDir := "/tmp/packages/"
 			err := fSys.MkdirAll(baseDir)
@@ -209,11 +211,16 @@ manifests:
 				t.Fatalf("writing channel file: %v", err)
 			}
 
-			ctx := context.Background()
 			var fs = NewFSRepository("/tmp/packages/")
 
 			channel, err := fs.LoadChannel(ctx, test.name)
-			actual, err := channel.Latest("nginx")
+			if err != nil {
+				t.Fatalf("error from fs.LoadChannel: %v", err)
+			}
+			actual, err := channel.Latest(ctx, "nginx")
+			if err != nil {
+				t.Fatalf("error from channel.Latest: %v", err)
+			}
 
 			if actual.Version != test.expected {
 				t.Fatalf("expected %+v but got %+v", test.expected, actual.Version)

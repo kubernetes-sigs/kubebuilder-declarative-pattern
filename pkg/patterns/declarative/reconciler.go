@@ -144,7 +144,7 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 // +rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (result reconcile.Result, err error) {
 	var objects *manifest.Objects
-	log := log.Log
+	log := log.FromContext(ctx)
 	defer r.collectMetrics(request, result, err)
 
 	// Fetch the object
@@ -189,7 +189,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (*manifest.Objects, error) {
-	log := log.Log
+	log := log.FromContext(ctx)
 	log.WithValues("object", name.String()).Info("reconciling")
 
 	var fs filesys.FileSystem
@@ -335,7 +335,7 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 // BuildDeploymentObjectsWithFs is the implementation of BuildDeploymentObjects, supporting saving to a filesystem for kustomize
 // If fs is provided, the transformed manifests will be saved to that filesystem
 func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name types.NamespacedName, instance DeclarativeObject, fs filesys.FileSystem) (*manifest.Objects, error) {
-	log := log.Log
+	log := log.FromContext(ctx)
 
 	// 1. Load the manifest
 	manifestFiles, err := r.loadRawManifest(ctx, instance)
@@ -433,7 +433,7 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 
 // parseManifest parses the manifest into objects
 func (r *Reconciler) parseManifest(ctx context.Context, instance DeclarativeObject, manifestStr string) (*manifest.Objects, error) {
-	log := log.Log
+	log := log.FromContext(ctx)
 
 	objects, err := manifest.ParseObjects(ctx, manifestStr)
 	if err != nil {
@@ -524,7 +524,7 @@ func (r *Reconciler) setNamespaces(ctx context.Context, instance DeclarativeObje
 		return nil
 	}
 
-	log := log.Log
+	log := log.FromContext(ctx)
 	log.WithValues("namespace", ns).Info("setting namespace")
 
 	for _, o := range objects.Items {
@@ -550,7 +550,7 @@ func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObj
 		return nil
 	}
 
-	log := log.Log
+	log := log.FromContext(ctx)
 	log.WithValues("object", fmt.Sprintf("%s/%s", instance.GetName(), instance.GetNamespace())).Info("injecting owner references")
 
 	for _, o := range objects.Items {
