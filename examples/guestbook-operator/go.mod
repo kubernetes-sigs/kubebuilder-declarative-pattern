@@ -118,7 +118,7 @@ require (
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	sigs.k8s.io/cli-utils v0.33.0 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
-	sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-00010101000000-000000000000 // indirect
+	sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20221021151406-9bd3fb842119 // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
