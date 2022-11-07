@@ -84,8 +84,8 @@ func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	}
 
 	// We don't want to change the resourceVersion (and trigger watches) when the change is a no-op
-	if reflect.DeepEqual(original, existingObj) {
-		klog.Infof("patch did not change object")
+	if reflect.DeepEqual(original, updated) {
+		klog.Infof("update did not change object")
 		return req.writeResponse(original)
 	}
 
