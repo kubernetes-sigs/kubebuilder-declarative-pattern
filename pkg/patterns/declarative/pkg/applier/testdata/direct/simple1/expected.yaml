@@ -1,11 +1,26 @@
 GET http://kube-apiserver/api/v1?timeout=32s
 Accept: application/json, */*
 
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 184
+Content-Type: application/json
+Date: (removed)
+
+{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"v1","resources":[{"name":"namespaces","singularName":"","namespaced":false,"version":"v1","kind":"Namespace","verbs":null}]}
 
 ---
 
 GET http://kube-apiserver/api/v1/namespaces/ns1
 Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
 
 
 ---
@@ -17,10 +32,26 @@ Content-Type: application/json
 {"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"},"name":"ns1"}}
 
 
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 455
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"},"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"kubernetes.io/metadata.name":"ns1"},"name":"ns1","resourceVersion":"1","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+
 ---
 
 GET http://kube-apiserver/api/v1/namespaces/ns2
 Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
 
 
 ---
@@ -31,3 +62,11 @@ Content-Type: application/json
 
 {"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"},"name":"ns2"}}
 
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 455
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"kubernetes.io/metadata.name":"ns2"},"name":"ns2","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
