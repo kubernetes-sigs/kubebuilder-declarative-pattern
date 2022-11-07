@@ -101,7 +101,7 @@ func applyPatch(existing, patch map[string]interface{}) error {
 	for k, patchValue := range patch {
 		existingValue := existing[k]
 		switch patchValue := patchValue.(type) {
-		case string, int64:
+		case string, int64, float64:
 			existing[k] = patchValue
 		case map[string]interface{}:
 			if existingValue == nil {

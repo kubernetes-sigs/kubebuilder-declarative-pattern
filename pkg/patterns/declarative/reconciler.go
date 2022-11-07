@@ -179,6 +179,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	objects, err = r.reconcileExists(ctx, request.NamespacedName, instance)
 
+	if err != nil {
+		r.recorder.Eventf(instance, "Warning", "InternalError", "internal error: %v", err)
+	}
+
 	return result, err
 }
 
