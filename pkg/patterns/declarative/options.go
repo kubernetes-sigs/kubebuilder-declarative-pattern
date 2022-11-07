@@ -21,6 +21,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
@@ -41,6 +42,8 @@ type reconcilerParams struct {
 	rawManifestOperations []ManifestOperation
 	objectTransformations []ObjectTransform
 	manifestController    ManifestController
+
+	applier applier.Applier
 
 	prune             bool
 	preserveNamespace bool
@@ -169,6 +172,14 @@ func WithManagedApplication(labelMaker LabelMaker) reconcilerOption {
 func WithApplyValidation() reconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.validate = true
+		return p
+	}
+}
+
+// WithApplier allows us to select a different applier strategy
+func WithApplier(applier applier.Applier) reconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.applier = applier
 		return p
 	}
 }

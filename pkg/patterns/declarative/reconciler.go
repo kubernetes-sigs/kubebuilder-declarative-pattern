@@ -52,7 +52,6 @@ type Reconciler struct {
 	prototype DeclarativeObject
 	client    client.Client
 	config    *rest.Config
-	kubectl   kubectlClient
 
 	metrics reconcileMetrics
 	mgr     manager.Manager
@@ -63,10 +62,6 @@ type Reconciler struct {
 
 	restMapper meta.RESTMapper
 	options    reconcilerParams
-}
-
-type kubectlClient interface {
-	applier.Applier
 }
 
 type DeclarativeObject interface {
@@ -99,11 +94,10 @@ func (e *ErrorResult) Error() string {
 }
 
 // For mocking
-var kubectl = applier.NewDirectApplier()
+var defaultApplier = applier.NewDirectApplier()
 
 func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts ...reconcilerOption) error {
 	r.prototype = prototype
-	r.kubectl = kubectl
 
 	// TODO: Can we derive the name from prototype?
 	controllerName := "addon-controller"
@@ -314,7 +308,8 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		Force:      true,
 	}
 
-	if err := r.kubectl.Apply(ctx, applyOpt); err != nil {
+	applier := r.options.applier
+	if err := applier.Apply(ctx, applyOpt); err != nil {
 		log.Error(err, "applying manifest")
 		return objects, fmt.Errorf("error applying manifest: %v", err)
 	}
@@ -473,6 +468,8 @@ func (r *Reconciler) loadRawManifest(ctx context.Context, o DeclarativeObject) (
 
 func (r *Reconciler) applyOptions(opts ...reconcilerOption) error {
 	params := reconcilerParams{}
+
+	params.applier = defaultApplier
 
 	opts = append(Options.Begin, opts...)
 	opts = append(opts, Options.End...)
