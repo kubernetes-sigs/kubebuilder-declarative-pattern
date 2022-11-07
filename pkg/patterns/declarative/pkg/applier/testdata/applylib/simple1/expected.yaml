@@ -4,7 +4,7 @@ Accept: application/json, */*
 
 ---
 
-PATCH http://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kdp-test
+PATCH http://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kdp-test&force=false
 Accept: application/json
 Content-Type: application/apply-patch+yaml
 
@@ -12,7 +12,7 @@ Content-Type: application/apply-patch+yaml
 
 ---
 
-PATCH http://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kdp-test
+PATCH http://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kdp-test&force=false
 Accept: application/json
 Content-Type: application/apply-patch+yaml
 

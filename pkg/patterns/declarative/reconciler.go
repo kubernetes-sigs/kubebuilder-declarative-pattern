@@ -266,7 +266,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 	manifestStr = m
 
-	extraArgs := []string{"--force"}
+	extraArgs := []string{}
 
 	// allow user disable prune in CR
 	if p, ok := instance.(Pruner); (!ok && r.options.prune) || (ok && r.options.prune && p.Prune()) {
@@ -311,6 +311,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		Manifest:   manifestStr,
 		Validate:   r.options.validate,
 		ExtraArgs:  extraArgs,
+		Force:      true,
 	}
 
 	if err := r.kubectl.Apply(ctx, applyOpt); err != nil {
