@@ -4,12 +4,16 @@ Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
 
+
+
 ---
 
 GET /api?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
+
+
 
 
 ---
@@ -20,12 +24,6 @@ Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
 
----
-
-GET /api/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 ---
@@ -34,6 +32,18 @@ GET /api/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /api/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
 
 
 ---
@@ -44,10 +54,14 @@ Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
 
+
+
 ---
 
 GET /api/v1/namespaces/ns2
 Accept: application/json
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
+
+
 

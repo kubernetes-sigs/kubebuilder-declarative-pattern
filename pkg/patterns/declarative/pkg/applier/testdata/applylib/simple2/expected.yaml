@@ -1,6 +1,13 @@
 GET http://kube-apiserver/api/v1?timeout=32s
 Accept: application/json, */*
 
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 184
+Content-Type: application/json
+Date: (removed)
+
+{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"v1","resources":[{"name":"namespaces","singularName":"","namespaced":false,"version":"v1","kind":"Namespace","verbs":null}]}
 
 ---
 
@@ -10,6 +17,14 @@ Content-Type: application/apply-patch+yaml
 
 {"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns1"}}
 
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 286
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"kubernetes.io/metadata.name":"ns1"},"name":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+
 ---
 
 PATCH http://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kdp-test&force=false
@@ -17,3 +32,11 @@ Accept: application/json
 Content-Type: application/apply-patch+yaml
 
 {"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns2"}}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 286
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"kubernetes.io/metadata.name":"ns2"},"name":"ns2","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
