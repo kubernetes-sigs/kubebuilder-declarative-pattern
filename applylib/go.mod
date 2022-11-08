@@ -2,7 +2,9 @@ module sigs.k8s.io/kubebuilder-declarative-pattern/applylib
 
 go 1.19
 
-replace sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver => ../mockkubeapiserver
+// Sometimes handy for development, but breaks usage as a library
+// Instead, please break apart commits to this module
+// replace sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver => ../mockkubeapiserver
 
 require (
 	github.com/google/go-cmp v0.5.8
@@ -11,7 +13,7 @@ require (
 	k8s.io/client-go v0.25.0
 	k8s.io/klog/v2 v2.70.1
 	sigs.k8s.io/controller-runtime v0.13.0
-	sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20221021151406-9bd3fb842119
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -30,6 +32,7 @@ require (
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
+	github.com/google/uuid v1.1.2 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
