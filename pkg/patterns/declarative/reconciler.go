@@ -144,8 +144,6 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 
 // +rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (result reconcile.Result, err error) {
-	var objects *manifest.Objects
-
 	log := log.FromContext(ctx)
 	defer r.collectMetrics(request, result, err)
 
@@ -162,6 +160,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
+	statusInfo := &StatusInfo{}
+
 	// status.Reconciled should catch all error
 	defer func() {
 		// error is data
@@ -172,7 +172,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 
 		if r.options.status != nil {
-			if statusErr := r.options.status.Reconciled(ctx, instance, objects, err); statusErr != nil {
+			if statusErr := r.options.status.Reconciled(ctx, instance, statusInfo.Manifest, statusInfo.LiveObjects, err); statusErr != nil {
 				log.Error(statusErr, "failed to reconcile status")
 			}
 		}
@@ -181,15 +181,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	original := instance.DeepCopyObject().(DeclarativeObject)
 
 	if r.options.status != nil {
-		if err := r.options.status.Preflight(ctx, instance); err != nil {
+		if err = r.options.status.Preflight(ctx, instance); err != nil {
 			log.Error(err, "preflight check failed, not reconciling")
 			return reconcile.Result{}, err
 		}
 	}
 
-	var statusInfo *StatusInfo
 	statusInfo, err = r.reconcileExists(ctx, request.NamespacedName, instance)
-	objects = statusInfo.Manifest // for the defer block
 	if err != nil {
 		statusInfo.Err = err
 	}
