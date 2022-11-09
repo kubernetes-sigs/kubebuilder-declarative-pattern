@@ -24,7 +24,7 @@ type ApplyOperation struct {
 	ApplierOptions *applier.ApplierOptions
 
 	// Target allows us to apply to a different cluster from the local one
-	RemoteTarget *target.CachedTarget
+	Target *target.Cluster
 }
 
 // AfterApply is implemented by hooks that want to be called after every apply operation

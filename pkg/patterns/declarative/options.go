@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/target"
 )
 
 type ManifestLoaderFunc func() (ManifestController, error)
@@ -65,6 +66,9 @@ type reconcilerParams struct {
 
 	// hooks allow for interception of events during the reconciliation lifecycle
 	hooks []Hook
+
+	// cache is a cache of our targeted clusters
+	cache *target.Cache
 }
 
 // // OverrideTargetClusterFunc is the signature for functions that map objects to remote clusters

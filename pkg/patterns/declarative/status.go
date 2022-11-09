@@ -30,9 +30,7 @@ type Status interface {
 	Reconciled
 	Preflight
 	VersionCheck
-
-	// BuildStatus computes the new status after a reconcile operation.
-	BuildStatus(ctx context.Context, statusInfo *StatusInfo) error
+	BuildStatus
 }
 
 // LiveObjectReader exposes the state of objects on the cluster after the apply operation.
@@ -45,7 +43,7 @@ type Reconciled interface {
 	// on the DeclarativeObject.
 	//
 	// Deprecated: Prefer the BuildStatus method
-	Reconciled(ctx context.Context, subject DeclarativeObject, manifest *manifest.Objects, err error) error
+	Reconciled(ctx context.Context, subject DeclarativeObject, manifest *manifest.Objects, liveObjects LiveObjectReader, err error) error
 }
 
 // BuildStatus computes the new status after a reconcile operation.
@@ -82,9 +80,9 @@ type StatusBuilder struct {
 	BuildStatusImpl BuildStatus
 }
 
-func (s *StatusBuilder) Reconciled(ctx context.Context, src DeclarativeObject, objs *manifest.Objects, err error) error {
+func (s *StatusBuilder) Reconciled(ctx context.Context, src DeclarativeObject, objs *manifest.Objects, liveObjects LiveObjectReader, err error) error {
 	if s.ReconciledImpl != nil {
-		return s.ReconciledImpl.Reconciled(ctx, src, objs, err)
+		return s.ReconciledImpl.Reconciled(ctx, src, objs, liveObjects, err)
 	}
 	return nil
 }
@@ -103,9 +101,9 @@ func (s *StatusBuilder) VersionCheck(ctx context.Context, src DeclarativeObject,
 	return true, nil
 }
 
-func (s *StatusBuilder) BuildStatus(ctx context.Context, statusInfo *StatusInfo) error {
+func (s *StatusBuilder) BuildStatus(ctx context.Context, info *StatusInfo) error {
 	if s.BuildStatusImpl != nil {
-		return s.BuildStatusImpl.BuildStatus(ctx, statusInfo)
+		return s.BuildStatusImpl.BuildStatus(ctx, info)
 	}
 	return nil
 }

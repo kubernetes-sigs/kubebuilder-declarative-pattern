@@ -44,7 +44,7 @@ func (h *RemoteTargetHook) BeforeApply(ctx context.Context, op *declarative.Appl
 	}
 	op.ApplierOptions.RESTConfig = target.RESTConfig()
 	op.ApplierOptions.RESTMapper = target.RESTMapper()
-	op.RemoteTarget = target
+	op.Target = target
 
 	return nil
 }

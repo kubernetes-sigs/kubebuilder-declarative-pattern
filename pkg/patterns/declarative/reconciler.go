@@ -34,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
 	recorder "k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -47,24 +46,28 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/target"
 )
 
 var _ reconcile.Reconciler = &Reconciler{}
 
 type Reconciler struct {
 	prototype DeclarativeObject
-	client    client.Client
-	config    *rest.Config
+
+	localClusterTarget *target.Cluster
+
+	client client.Client
+	// config *rest.Config
 
 	metrics reconcileMetrics
 	mgr     manager.Manager
 
 	// recorder is the EventRecorder for creating k8s events
-	recorder      recorder.EventRecorder
-	dynamicClient dynamic.Interface
+	recorder recorder.EventRecorder
+	// dynamicClient dynamic.Interface
 
-	restMapper meta.RESTMapper
-	options    reconcilerParams
+	// restMapper meta.RESTMapper
+	options reconcilerParams
 }
 
 type DeclarativeObject interface {
@@ -107,21 +110,22 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 	r.recorder = mgr.GetEventRecorderFor(controllerName)
 
 	r.client = mgr.GetClient()
-	r.config = mgr.GetConfig()
+
 	r.mgr = mgr
 	globalObjectTracker.mgr = mgr
-
-	d, err := dynamic.NewForConfig(r.config)
-	if err != nil {
-		return err
-	}
-	r.dynamicClient = d
-
-	r.restMapper = mgr.GetRESTMapper()
 
 	if err := r.applyOptions(opts...); err != nil {
 		return err
 	}
+
+	if r.options.cache == nil {
+		cache, err := target.NewCache(mgr.GetConfig(), mgr.GetRESTMapper())
+		if err != nil {
+			return err
+		}
+		r.options.cache = cache
+	}
+	r.localClusterTarget = r.options.cache.LocalCluster()
 
 	if err := r.validateOptions(); err != nil {
 		return err
@@ -192,6 +196,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	if err != nil {
 		r.recorder.Eventf(instance, "Warning", "InternalError", "internal error: %v", err)
+	}
+	if err != nil {
+		statusInfo.Err = err
+	}
+
+	// error includes result (for example a retry)
+	resultErr, ok := err.(*ErrorResult)
+	if ok {
+		result = resultErr.Result
+		err = resultErr.Err
 	}
 
 	if r.options.status != nil {
@@ -265,7 +279,9 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 	statusInfo.Manifest = objects
 
-	err = r.setNamespaces(ctx, instance, objects)
+	target := r.localClusterTarget
+
+	err = r.setNamespaces(ctx, target, instance, objects)
 	if err != nil {
 		return statusInfo, err
 	}
@@ -278,7 +294,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	var newItems []*manifest.Object
 	for _, obj := range objects.Items {
 
-		unstruct, err := GetObjectFromCluster(obj, r)
+		unstruct, err := GetObjectFromCluster(ctx, target, obj, r)
 		if err != nil && !apierrors.IsNotFound(errors.Unwrap(err)) {
 			log.WithValues("name", obj.GetName()).Error(err, "Unable to get resource")
 		}
@@ -333,8 +349,8 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 
 	applierOptions := applier.ApplierOptions{
-		RESTConfig: r.config,
-		RESTMapper: r.restMapper,
+		RESTConfig: target.RESTConfig(),
+		RESTMapper: target.RESTMapper(),
 		Namespace:  ns,
 		Objects:    objects.GetItems(),
 		Validate:   r.options.validate,
@@ -368,8 +384,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 
 	statusInfo.LiveObjects = func(ctx context.Context, gvk schema.GroupVersionKind, nn types.NamespacedName) (*unstructured.Unstructured, error) {
 		// TODO: Applier should return the objects in their post-apply state, so we don't have to requery
-
-		mapping, err := r.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		mapping, err := target.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get mapping for resource %v: %w", gvk, err)
 		}
@@ -377,9 +392,9 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		var resource dynamic.ResourceInterface
 		switch mapping.Scope {
 		case meta.RESTScopeNamespace:
-			resource = r.dynamicClient.Resource(mapping.Resource).Namespace(nn.Namespace)
+			resource = target.DynamicClient().Resource(mapping.Resource).Namespace(nn.Namespace)
 		case meta.RESTScopeRoot:
-			resource = r.dynamicClient.Resource(mapping.Resource)
+			resource = target.DynamicClient().Resource(mapping.Resource)
 		default:
 			return nil, fmt.Errorf("unknown scope %v", mapping.Scope)
 		}
@@ -598,7 +613,7 @@ func (r *Reconciler) validateOptions() error {
 }
 
 // setNamespaces will set the object on all namespace-scoped objects, unless the preserveNamespace option is set
-func (r *Reconciler) setNamespaces(ctx context.Context, instance DeclarativeObject, objects *manifest.Objects) error {
+func (r *Reconciler) setNamespaces(ctx context.Context, cluster *target.Cluster, instance DeclarativeObject, objects *manifest.Objects) error {
 	if r.options.preserveNamespace {
 		return nil
 	}
@@ -618,7 +633,7 @@ func (r *Reconciler) setNamespaces(ctx context.Context, instance DeclarativeObje
 		}
 
 		gvk := o.GroupVersionKind()
-		mapping, err := r.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		mapping, err := cluster.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
 			log.Error(err, "error getting scope for gvk", "gvk", gvk)
 			continue
@@ -761,11 +776,11 @@ func (r *Reconciler) CollectMetrics() bool {
 // GetObjectFromCluster gets the current state of the object from the cluster.
 //
 // deprecated: use LiveObjectsFunc instead when computing status
-func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Unstructured, error) {
+func GetObjectFromCluster(ctx context.Context, cluster *target.Cluster, obj *manifest.Object, r *Reconciler) (*unstructured.Unstructured, error) {
 	getOptions := metav1.GetOptions{}
 	gvk := obj.GroupVersionKind()
 
-	mapping, err := r.restMapper.RESTMapping(obj.GroupKind(), gvk.Version)
+	mapping, err := cluster.RESTMapper().RESTMapping(obj.GroupKind(), gvk.Version)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get mapping for resource %v: %w", gvk, err)
 	}
@@ -774,7 +789,7 @@ func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Un
 	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
 		ns = obj.GetNamespace()
 	}
-	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.TODO(), name, getOptions)
+	unstruct, err := cluster.DynamicClient().Resource(mapping.Resource).Namespace(ns).Get(ctx, name, getOptions)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get object: %w", err)
 	}

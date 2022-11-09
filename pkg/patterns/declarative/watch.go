@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/watch"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/target"
 )
 
 // hookableReconciler is implemented by a reconciler that we can hook
@@ -180,11 +181,11 @@ var _ AfterApply = &afterApplyHook{}
 
 // AfterApply is called by the controller after an apply.  We establish any new watches.
 func (w *afterApplyHook) AfterApply(ctx context.Context, op *ApplyOperation) error {
-	if op.RemoteTarget == nil {
+	if op.Target == nil || op.Target.ClusterKey() == target.LocalClusterKey {
 		return w.local.applyApply(ctx, op)
 	}
 
-	remoteTargetKey := op.RemoteTarget.ClusterKey()
+	remoteTargetKey := op.Target.ClusterKey()
 
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
@@ -195,8 +196,8 @@ func (w *afterApplyHook) AfterApply(ctx context.Context, op *ApplyOperation) err
 		// shutdown, so there is no opportunity to stop the watch.
 		stopChannel := make(chan struct{})
 
-		restConfig := op.RemoteTarget.RESTConfig()
-		restMapper := op.RemoteTarget.RESTMapper()
+		restConfig := op.Target.RESTConfig()
+		restMapper := op.Target.RESTMapper()
 
 		client, err := dynamic.NewForConfig(restConfig)
 		if err != nil {

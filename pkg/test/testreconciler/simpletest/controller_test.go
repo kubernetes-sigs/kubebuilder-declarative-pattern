@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -150,7 +151,7 @@ func testOverrideTarget(h *testharness.Harness, testdir string, applier applier.
 	primaryWrapTransport := func(rt http.RoundTripper) http.RoundTripper {
 		return httprecorder.NewRecorder(rt, &primaryRequestLog)
 	}
-	primaryRestConfig := &rest.Config{
+	primaryRESTConfig := &rest.Config{
 		Host:          primary.ListenerAddress().String(),
 		WrapTransport: primaryWrapTransport,
 	}
@@ -159,12 +160,12 @@ func testOverrideTarget(h *testharness.Harness, testdir string, applier applier.
 	targetWrapTransport := func(rt http.RoundTripper) http.RoundTripper {
 		return httprecorder.NewRecorder(rt, &targetRequestLog)
 	}
-	targetRestConfig := &rest.Config{
+	targetRESTConfig := &rest.Config{
 		Host:          targetK8s.ListenerAddress().String(),
 		WrapTransport: targetWrapTransport,
 	}
 
-	mgr := h.NewControllerManager(primaryRestConfig, api.AddToScheme)
+	mgr := h.NewControllerManager(primaryRESTConfig, api.AddToScheme)
 
 	reconciler := &SimpleTestReconciler{
 		Client:  mgr.GetClient(),
@@ -178,17 +179,25 @@ func testOverrideTarget(h *testharness.Harness, testdir string, applier applier.
 	}
 	reconciler.manifestController = mc
 
-	targetCache := target.NewCache()
+	primaryRESTMapper, err := restmapper.NewControllerRESTMapper(primaryRESTConfig)
+	if err != nil {
+		h.Fatalf("error from restmapper.NewControllerRESTMapper: %v", err)
+	}
+	targetCache, err := target.NewCache(primaryRESTConfig, primaryRESTMapper)
+	if err != nil {
+		h.Fatalf("error from target.NewCache: %v", err)
+	}
 
-	targetRestMapper, err := restmapper.NewControllerRESTMapper(targetRestConfig)
+	targetRESTMapper, err := restmapper.NewControllerRESTMapper(targetRESTConfig)
 	if err != nil {
 		h.Fatalf("error from restmapper.NewControllerRESTMapper: %v", err)
 	}
 	targetResolver := &testTargetResolver{
 		key: "remote1",
 		restInfo: target.RESTInfo{
-			RESTConfig: targetRestConfig,
-			RESTMapper: targetRestMapper,
+			RESTConfig:    targetRESTConfig,
+			RESTMapper:    targetRESTMapper,
+			DynamicClient: dynamic.NewForConfigOrDie(targetRESTConfig),
 		},
 	}
 	remoteTargetHook := remotetargethook.NewRemoteTargetHook(targetResolver, targetCache)
@@ -214,8 +223,8 @@ func testOverrideTarget(h *testharness.Harness, testdir string, applier applier.
 		h.Fatalf("error starting manager: %v", err)
 	}
 
-	h.CompareHTTPLog(filepath.Join(testdir, "expected-primary-http.yaml"), primaryRequestLog, primaryRestConfig)
-	h.CompareHTTPLog(filepath.Join(testdir, "expected-target-http.yaml"), targetRequestLog, targetRestConfig)
+	h.CompareHTTPLog(filepath.Join(testdir, "expected-primary-http.yaml"), primaryRequestLog, primaryRESTConfig)
+	h.CompareHTTPLog(filepath.Join(testdir, "expected-target-http.yaml"), targetRequestLog, targetRESTConfig)
 }
 
 type testTargetResolver struct {
