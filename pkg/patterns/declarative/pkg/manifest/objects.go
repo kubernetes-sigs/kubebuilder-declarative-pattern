@@ -27,6 +27,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -318,6 +319,16 @@ func (o *Object) GroupKind() schema.GroupKind {
 
 func (o *Object) GroupVersionKind() schema.GroupVersionKind {
 	return o.object.GroupVersionKind()
+}
+
+// NamespacedName returns the name and namespace of the object in a types.NamespacedName.
+// Note that this reflects the state of the object; if the namespace is not yet set,
+// it will returned as "" here, even though it would likely be defaulted before apply.
+func (o *Object) NamespacedName() types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: o.GetNamespace(),
+		Name:      o.GetName(),
+	}
 }
 
 func (o *Objects) JSONManifest() (string, error) {
