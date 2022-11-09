@@ -192,17 +192,31 @@ func testOverrideTarget(h *testharness.Harness, testdir string, applier applier.
 	if err != nil {
 		h.Fatalf("error from restmapper.NewControllerRESTMapper: %v", err)
 	}
-	targetResolver := &testTargetResolver{
-		key: "remote1",
-		restInfo: target.RESTInfo{
+	// targetResolver := &testTargetResolver{
+	// 	key: "remote1",
+	// 	restInfo: target.RESTInfo{
+	// 		RESTConfig:    targetRESTConfig,
+	// 		RESTMapper:    targetRESTMapper,
+	// 		DynamicClient: dynamic.NewForConfigOrDie(targetRESTConfig),
+	// 	},
+	// }
+	// remoteTargetHook := remotetargethook.NewRemoteTargetHook(targetResolver, targetCache)
+
+	targetTarget, err := targetCache.Get(ctx, "remote1", func(ctx context.Context) (*target.RESTInfo, error) {
+		return &target.RESTInfo{
 			RESTConfig:    targetRESTConfig,
 			RESTMapper:    targetRESTMapper,
 			DynamicClient: dynamic.NewForConfigOrDie(targetRESTConfig),
-		},
+		}, nil
+	})
+	if err != nil {
+		h.Fatalf("error from targetCache.Get: %v", err)
 	}
-	remoteTargetHook := remotetargethook.NewRemoteTargetHook(targetResolver, targetCache)
-
-	if err = reconciler.SetupWithManager(mgr, declarative.WithHook(remoteTargetHook)); err != nil {
+	testOverrideTargetCluster := &testOverrideTargetCluster{
+		target: targetTarget,
+	}
+	//	if err = reconciler.SetupWithManager(mgr, declarative.WithHook(remoteTargetHook)); err != nil {
+	if err = reconciler.SetupWithManager(mgr, declarative.WithOverrideTargetCluster(testOverrideTargetCluster.OverrideTargetCluster)); err != nil {
 		h.Fatalf("error from SetupWithManager: %v", err)
 	}
 
@@ -243,3 +257,11 @@ func (r *testTargetResolver) Resolve(ctx context.Context, subject client.Object,
 }
 
 var _ remotetargethook.RemoteTargetResolver = &testTargetResolver{}
+
+type testOverrideTargetCluster struct {
+	target *target.Cluster
+}
+
+func (r *testOverrideTargetCluster) OverrideTargetCluster(ctx context.Context, subject declarative.DeclarativeObject) (*target.Cluster, error) {
+	return r.target, nil
+}

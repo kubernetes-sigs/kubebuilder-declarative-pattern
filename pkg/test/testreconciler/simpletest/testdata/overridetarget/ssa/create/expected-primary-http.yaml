@@ -37,34 +37,6 @@ Date: (removed)
 
 ---
 
-GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
-Accept: application/json
-
-404 Not Found
-Content-Length: 10
-Content-Type: text/plain; charset=utf-8
-Date: (removed)
-X-Content-Type-Options: nosniff
-
-Not Found
-
-
----
-
-GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
-Accept: application/json
-
-404 Not Found
-Content-Length: 10
-Content-Type: text/plain; charset=utf-8
-Date: (removed)
-X-Content-Type-Options: nosniff
-
-Not Found
-
-
----
-
 PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
 Accept: application/json, */*
 Content-Type: application/json

@@ -49,8 +49,8 @@ type reconcilerParams struct {
 
 	applier applier.Applier
 
-	// // overrideTargetCluster allows the controller to specify a different target cluster
-	// overrideTargetCluster OverrideTargetClusterFunc
+	// overrideTargetCluster allows the controller to specify a different target cluster
+	overrideTargetCluster OverrideTargetClusterFunc
 
 	prune             bool
 	preserveNamespace bool
@@ -71,8 +71,8 @@ type reconcilerParams struct {
 	cache *target.Cache
 }
 
-// // OverrideTargetClusterFunc is the signature for functions that map objects to remote clusters
-// type OverrideTargetClusterFunc func(ctx context.Context, instance DeclarativeObject) (*rest.Config, error)
+// OverrideTargetClusterFunc is the signature for functions that map objects to remote clusters
+type OverrideTargetClusterFunc func(ctx context.Context, instance DeclarativeObject) (*target.Cluster, error)
 
 type ManifestController interface {
 	// ResolveManifest returns a raw manifest as a map[string]string for a given CR object
@@ -249,6 +249,14 @@ func WithReconcileMetrics(metricsDuration int, ot *ObjectTracker) ReconcilerOpti
 func WithHook(hook Hook) ReconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.hooks = append(p.hooks, hook)
+		return p
+	}
+}
+
+// WithOverrideTargetCluster allows for actuation against a remote cluster
+func WithOverrideTargetCluster(overrideTargetCluster OverrideTargetClusterFunc) ReconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.overrideTargetCluster = overrideTargetCluster
 		return p
 	}
 }

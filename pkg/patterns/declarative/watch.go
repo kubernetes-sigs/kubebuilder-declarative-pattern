@@ -182,7 +182,7 @@ var _ AfterApply = &afterApplyHook{}
 // AfterApply is called by the controller after an apply.  We establish any new watches.
 func (w *afterApplyHook) AfterApply(ctx context.Context, op *ApplyOperation) error {
 	if op.Target == nil || op.Target.ClusterKey() == target.LocalClusterKey {
-		return w.local.applyApply(ctx, op)
+		return w.local.afterApply(ctx, op)
 	}
 
 	remoteTargetKey := op.Target.ClusterKey()
@@ -226,10 +226,10 @@ func (w *afterApplyHook) AfterApply(ctx context.Context, op *ApplyOperation) err
 		}
 		w.remoteTargets[remoteTargetKey] = remoteClusterWatch
 	}
-	return remoteClusterWatch.applyApply(ctx, op)
+	return remoteClusterWatch.afterApply(ctx, op)
 }
 
-func (w *clusterWatch) applyApply(ctx context.Context, op *ApplyOperation) error {
+func (w *clusterWatch) afterApply(ctx context.Context, op *ApplyOperation) error {
 	log := log.FromContext(ctx)
 
 	labelSelector, err := labels.ValidatedSelectorFromSet(w.labelMaker(ctx, op.Subject))

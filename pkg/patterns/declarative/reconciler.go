@@ -280,6 +280,13 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	statusInfo.Manifest = objects
 
 	target := r.localClusterTarget
+	if r.options.overrideTargetCluster != nil {
+		newTarget, err := r.options.overrideTargetCluster(ctx, instance)
+		if err != nil {
+			return statusInfo, err
+		}
+		target = newTarget
+	}
 
 	err = r.setNamespaces(ctx, target, instance, objects)
 	if err != nil {
@@ -364,6 +371,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		Subject:        instance,
 		Objects:        objects,
 		ApplierOptions: &applierOptions,
+		Target:         target,
 	}
 
 	applier := r.options.applier
