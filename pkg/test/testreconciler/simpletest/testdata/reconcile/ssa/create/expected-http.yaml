@@ -24,6 +24,18 @@ Date: (removed)
 
 ---
 
+GET http://kube-apiserver/apis/addons.example.org/v1alpha1/simpletests?allowWatchBookmarks=true&resourceVersion=3&timeoutSeconds=<replaced>&watch=true
+Accept: application/json, */*
+
+200 OK
+Cache-Control: no-cache, private
+Content-Type: application/json
+Date: (removed)
+
+<streaming response not included>
+
+---
+
 GET http://kube-apiserver/api/v1?timeout=32s
 Accept: application/json, */*
 
@@ -72,6 +84,110 @@ Accept: application/json, */*
 Content-Type: application/json
 
 {"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 276
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+
+---
+
+GET http://kube-apiserver/api/v1/configmaps?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Type: application/json
+Date: (removed)
+
+<streaming response not included>
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 492
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo?fieldManager=kdp-test&force=true
+Accept: application/json
+Content-Type: application/apply-patch+yaml
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]}}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 492
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
+
+---
+
+PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
+Accept: application/json, */*
+Content-Type: application/json
+
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"4","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 276
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 492
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo?fieldManager=kdp-test&force=true
+Accept: application/json
+Content-Type: application/apply-patch+yaml
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]}}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 492
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
+
+---
+
+PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
+Accept: application/json, */*
+Content-Type: application/json
+
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"4","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":true}}
 
 
 200 OK

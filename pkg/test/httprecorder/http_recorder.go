@@ -19,7 +19,7 @@ func NewRecorder(inner http.RoundTripper, log *RequestLog) *HTTPRecorder {
 }
 
 func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) {
-	entry := LogEntry{}
+	entry := &LogEntry{}
 	entry.Request = Request{
 		Method: request.Method,
 		URL:    request.URL.String(),
@@ -34,6 +34,14 @@ func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) 
 		entry.Request.Body = string(requestBody)
 		request.Body = io.NopCloser(bytes.NewReader(requestBody))
 	}
+
+	streaming := false
+	if request.URL.Query().Get("watch") == "true" {
+		streaming = true
+	}
+
+	// We log the request here, because otherwise we miss long-running requests (watches)
+	m.log.Entries = append(m.log.Entries, entry)
 
 	response, err := m.inner.RoundTrip(request)
 
@@ -53,7 +61,9 @@ func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) 
 			}
 		}
 
-		if response.Body != nil {
+		if streaming {
+			entry.Response.Body = "<streaming response not included>"
+		} else if response.Body != nil {
 			requestBody, err := io.ReadAll(response.Body)
 			if err != nil {
 				entry.Response.Body = fmt.Sprintf("<error reading response:%v>", err)
@@ -63,8 +73,6 @@ func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) 
 			}
 		}
 	}
-
-	m.log.Entries = append(m.log.Entries, entry)
 
 	return response, err
 }

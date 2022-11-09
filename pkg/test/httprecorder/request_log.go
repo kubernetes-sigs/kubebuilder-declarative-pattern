@@ -80,7 +80,7 @@ func (r *Response) FormatHTTP() string {
 }
 
 type RequestLog struct {
-	Entries []LogEntry
+	Entries []*LogEntry
 }
 
 func (l *RequestLog) FormatHTTP() string {
