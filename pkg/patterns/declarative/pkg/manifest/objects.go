@@ -27,6 +27,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -318,6 +319,13 @@ func (o *Object) GroupKind() schema.GroupKind {
 
 func (o *Object) GroupVersionKind() schema.GroupVersionKind {
 	return o.object.GroupVersionKind()
+}
+
+func (o *Object) NamespacedName() types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: o.GetNamespace(),
+		Name:      o.GetName(),
+	}
 }
 
 func (o *Objects) JSONManifest() (string, error) {

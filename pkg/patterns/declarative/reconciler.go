@@ -21,9 +21,11 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -42,6 +44,7 @@ import (
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
@@ -116,7 +119,7 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 
 	r.restMapper = mgr.GetRESTMapper()
 
-	if err = r.applyOptions(opts...); err != nil {
+	if err := r.applyOptions(opts...); err != nil {
 		return err
 	}
 
@@ -138,6 +141,7 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 // +rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (result reconcile.Result, err error) {
 	var objects *manifest.Objects
+
 	log := log.FromContext(ctx)
 	defer r.collectMetrics(request, result, err)
 
@@ -170,6 +174,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}()
 
+	original := instance.DeepCopyObject().(DeclarativeObject)
+
 	if r.options.status != nil {
 		if err := r.options.status.Preflight(ctx, instance); err != nil {
 			log.Error(err, "preflight check failed, not reconciling")
@@ -177,18 +183,52 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	objects, err = r.reconcileExists(ctx, request.NamespacedName, instance)
+	var statusInfo *StatusInfo
+	statusInfo, err = r.reconcileExists(ctx, request.NamespacedName, instance)
+	objects = statusInfo.Manifest // for the defer block
+	if err != nil {
+		statusInfo.Err = err
+	}
 
 	if err != nil {
 		r.recorder.Eventf(instance, "Warning", "InternalError", "internal error: %v", err)
 	}
 
+	if r.options.status != nil {
+		if err := r.options.status.BuildStatus(ctx, statusInfo); err != nil {
+			log.Error(err, "error building status")
+			return result, err
+		}
+	}
+
+	// Write the status if it has changed
+	oldStatus, err := utils.GetCommonStatus(original)
+	if err != nil {
+		log.Error(err, "error getting status")
+		return result, err
+	}
+	newStatus, err := utils.GetCommonStatus(instance)
+	if err != nil {
+		log.Error(err, "error getting status")
+		return result, err
+	}
+	if !reflect.DeepEqual(oldStatus, newStatus) {
+		if err := r.client.Status().Update(ctx, instance); err != nil {
+			log.Error(err, "error updating status")
+			return result, err
+		}
+	}
+
 	return result, err
 }
 
-func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (*manifest.Objects, error) {
+func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (*StatusInfo, error) {
 	log := log.FromContext(ctx)
 	log.WithValues("object", name.String()).Info("reconciling")
+
+	statusInfo := &StatusInfo{
+		Subject: instance,
+	}
 
 	var fs filesys.FileSystem
 	if r.IsKustomizeOptionUsed() {
@@ -198,42 +238,41 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	objects, err := r.BuildDeploymentObjectsWithFs(ctx, name, instance, fs)
 	if err != nil {
 		log.Error(err, "building deployment objects")
-		return nil, fmt.Errorf("error building deployment objects: %v", err)
+		return statusInfo, fmt.Errorf("error building deployment objects: %v", err)
 	}
+	statusInfo.Manifest = objects
 	log.WithValues("objects", fmt.Sprintf("%d", len(objects.Items))).Info("built deployment objects")
 
 	if r.options.status != nil {
 		isValidVersion, err := r.options.status.VersionCheck(ctx, instance, objects)
 		if err != nil {
 			if !isValidVersion {
-				// r.client isn't exported so can't be updated in version check function
-				if err := r.client.Status().Update(ctx, instance); err != nil {
-					return objects, err
-				}
+				statusInfo.KnownError = KnownErrorVersionCheckFailed
 				r.recorder.Event(instance, "Warning", "Failed version check", err.Error())
 				log.Error(err, "Version check failed, not reconciling")
-				return objects, nil
+				return statusInfo, nil
+			} else {
+				log.Error(err, "Version check failed")
+				return statusInfo, err
 			}
-			log.Error(err, "Version check failed, trying to reconcile")
-			return objects, err
 		}
 	}
 
 	objects, err = parseListKind(objects)
-
 	if err != nil {
 		log.Error(err, "Parsing list kind")
-		return objects, fmt.Errorf("error parsing list kind: %v", err)
+		return statusInfo, fmt.Errorf("error parsing list kind: %v", err)
 	}
+	statusInfo.Manifest = objects
 
 	err = r.setNamespaces(ctx, instance, objects)
 	if err != nil {
-		return objects, err
+		return statusInfo, err
 	}
 
 	err = r.injectOwnerRef(ctx, instance, objects)
 	if err != nil {
-		return objects, err
+		return statusInfo, err
 	}
 
 	var newItems []*manifest.Object
@@ -316,20 +355,46 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		if beforeApply, ok := hook.(BeforeApply); ok {
 			if err := beforeApply.BeforeApply(ctx, applyOperation); err != nil {
 				log.Error(err, "calling BeforeApply hook")
-				return objects, fmt.Errorf("error calling BeforeApply hook: %v", err)
+				return statusInfo, fmt.Errorf("error calling BeforeApply hook: %v", err)
 			}
 		}
 	}
 
 	if err := applier.Apply(ctx, applierOpt); err != nil {
 		log.Error(err, "applying manifest")
-		return objects, fmt.Errorf("error applying manifest: %v", err)
+		statusInfo.KnownError = KnownErrorApplyFailed
+		return statusInfo, fmt.Errorf("error applying manifest: %v", err)
+	}
+
+	statusInfo.LiveObjects = func(ctx context.Context, gvk schema.GroupVersionKind, nn types.NamespacedName) (*unstructured.Unstructured, error) {
+		// TODO: Applier should return the objects in their post-apply state, so we don't have to requery
+
+		mapping, err := r.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get mapping for resource %v: %w", gvk, err)
+		}
+
+		var resource dynamic.ResourceInterface
+		switch mapping.Scope {
+		case meta.RESTScopeNamespace:
+			resource = r.dynamicClient.Resource(mapping.Resource).Namespace(nn.Namespace)
+		case meta.RESTScopeRoot:
+			resource = r.dynamicClient.Resource(mapping.Resource)
+		default:
+			return nil, fmt.Errorf("unknown scope %v", mapping.Scope)
+		}
+		u, err := resource.Get(ctx, nn.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("error getting object: %w", err)
+		}
+		return u, nil
+
 	}
 
 	if r.options.sink != nil {
 		if err := r.options.sink.Notify(ctx, instance, objects); err != nil {
 			log.Error(err, "notifying sink")
-			return objects, err
+			return statusInfo, err
 		}
 	}
 
@@ -337,12 +402,12 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		if afterApply, ok := hook.(AfterApply); ok {
 			if err := afterApply.AfterApply(ctx, applyOperation); err != nil {
 				log.Error(err, "calling AfterApply hook")
-				return objects, fmt.Errorf("error calling AfterApply hook: %w", err)
+				return statusInfo, fmt.Errorf("error calling AfterApply hook: %w", err)
 			}
 		}
 	}
 
-	return objects, nil
+	return statusInfo, nil
 }
 
 // BuildDeploymentObjects performs all manifest operations to build a final set of objects for deployment
@@ -693,6 +758,9 @@ func (r *Reconciler) CollectMetrics() bool {
 	return r.options.metrics
 }
 
+// GetObjectFromCluster gets the current state of the object from the cluster.
+//
+// deprecated: use LiveObjectsFunc instead when computing status
 func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Unstructured, error) {
 	getOptions := metav1.GetOptions{}
 	gvk := obj.GroupVersionKind()
@@ -706,7 +774,7 @@ func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Un
 	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
 		ns = obj.GetNamespace()
 	}
-	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(), name, getOptions)
+	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.TODO(), name, getOptions)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get object: %w", err)
 	}

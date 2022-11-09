@@ -2,7 +2,6 @@ package status
 
 import (
 	"context"
-	"fmt"
 
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -10,62 +9,78 @@ import (
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 type kstatusAggregator struct {
-	client     client.Client
-	reconciler *declarative.Reconciler
 }
 
-func NewKstatusAgregator(c client.Client, reconciler *declarative.Reconciler) *kstatusAggregator {
-	return &kstatusAggregator{client: c, reconciler: reconciler}
+// TODO: Create a version that doesn't need reconciler or client?
+func NewKstatusAgregator(_ client.Client, _ *declarative.Reconciler) *kstatusAggregator {
+	return &kstatusAggregator{}
 }
 
-func (k *kstatusAggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject,
-	objs *manifest.Objects, _ error) error {
+func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.StatusInfo) error {
 	log := log.FromContext(ctx)
 
-	statusMap := make(map[status.Status]bool)
-	for _, object := range objs.Items {
-
-		unstruct, err := declarative.GetObjectFromCluster(object, k.reconciler)
-		if err != nil {
-			log.WithValues("object", object.Kind+"/"+object.GetName()).Error(err, "Unable to get status of object")
-			return err
-		}
-
-		res, err := status.Compute(unstruct)
-		if err != nil {
-			log.WithValues("kind", object.Kind).WithValues("name", object.GetName()).WithValues("status", res.Status).WithValues(
-				"message", res.Message).Info("Got status of resource:")
-			statusMap[status.NotFoundStatus] = true
-		}
-		if res != nil {
-			log.WithValues("kind", object.Kind).WithValues("name", object.GetName()).WithValues("status", res.Status).WithValues("message", res.Message).Info("Got status of resource:")
-			statusMap[res.Status] = true
-		}
-	}
-
-	aggregatedPhase := string(aggregateStatus(statusMap))
-
-	currentStatus, err := utils.GetCommonStatus(src)
+	currentStatus, err := utils.GetCommonStatus(info.Subject)
 	if err != nil {
 		log.Error(err, "error retrieving status")
 		return err
 	}
-	if currentStatus.Phase != aggregatedPhase {
-		currentStatus.Phase = aggregatedPhase
-		err := utils.SetCommonStatus(src, currentStatus)
-		if err != nil {
-			return err
+
+	shouldComputeHealthFromObjects := info.Manifest != nil && info.LiveObjects != nil
+	if info.Err != nil {
+		currentStatus.Healthy = false
+		switch info.KnownError {
+		case declarative.KnownErrorApplyFailed:
+			currentStatus.Phase = "Applying"
+			// computeHealthFromObjects if we can (leave unchanged)
+		case declarative.KnownErrorVersionCheckFailed:
+			currentStatus.Phase = "VersionMismatch"
+			shouldComputeHealthFromObjects = false
+		default:
+			currentStatus.Phase = "InternalError"
+			shouldComputeHealthFromObjects = false
 		}
-		log.WithValues("name", src.GetName()).WithValues("phase", aggregatedPhase).Info("updating status")
-		err = k.client.Status().Update(ctx, src)
-		if err != nil {
-			log.Error(err, "error updating status")
-			return fmt.Errorf("error error status: %v", err)
+	}
+
+	if shouldComputeHealthFromObjects {
+		statusMap := make(map[status.Status]bool)
+		for _, object := range info.Manifest.Items {
+			gvk := object.GroupVersionKind()
+			nn := object.NamespacedName()
+
+			log := log.WithValues("kind", gvk.Kind).WithValues("name", nn.Name).WithValues("namespace", nn.Namespace)
+
+			unstruct, err := info.LiveObjects(ctx, gvk, nn)
+			if err != nil {
+				log.Error(err, "Unable to get status of object")
+				statusMap[status.UnknownStatus] = true
+				continue
+			}
+
+			res, err := status.Compute(unstruct)
+			if err != nil {
+				log.Error(err, "error getting status of resource")
+				statusMap[status.UnknownStatus] = true
+			} else if res != nil {
+				log.WithValues("status", res.Status).WithValues("message", res.Message).Info("Got status of resource:")
+				statusMap[res.Status] = true
+			} else {
+				log.Info("resource status was nil")
+				statusMap[status.UnknownStatus] = true
+			}
 		}
+
+		aggregatedPhase := string(aggregateStatus(statusMap))
+
+		if currentStatus.Phase != aggregatedPhase {
+			currentStatus.Phase = aggregatedPhase
+		}
+	}
+
+	if err := utils.SetCommonStatus(info.Subject, currentStatus); err != nil {
+		return err
 	}
 
 	return nil
