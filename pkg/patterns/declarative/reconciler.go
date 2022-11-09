@@ -96,7 +96,7 @@ func (e *ErrorResult) Error() string {
 // For mocking
 var defaultApplier = applier.NewDirectApplier()
 
-func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts ...reconcilerOption) error {
+func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts ...ReconcilerOption) error {
 	r.prototype = prototype
 
 	// TODO: Can we derive the name from prototype?
@@ -470,7 +470,7 @@ func (r *Reconciler) loadRawManifest(ctx context.Context, o DeclarativeObject) (
 	return s, nil
 }
 
-func (r *Reconciler) applyOptions(opts ...reconcilerOption) error {
+func (r *Reconciler) applyOptions(opts ...ReconcilerOption) error {
 	params := reconcilerParams{}
 
 	params.applier = defaultApplier
