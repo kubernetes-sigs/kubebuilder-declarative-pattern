@@ -106,6 +106,7 @@ Date: (removed)
 
 ---
 
+<<<<<<< HEAD
 PATCH http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment?fieldManager=kdp-test&force=true
 Accept: application/json
 Content-Type: application/apply-patch+yaml
@@ -122,6 +123,8 @@ Date: (removed)
 
 ---
 
+=======
+>>>>>>> 2a32e5c (Switch to new kstatus function in example controller tests)
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
 Accept: application/json
 
@@ -135,6 +138,7 @@ Date: (removed)
 
 ---
 
+<<<<<<< HEAD
 GET http://kube-apiserver/api/v1/configmaps?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
 Accept: application/json
 
@@ -159,6 +163,9 @@ Date: (removed)
 
 ---
 
+=======
+<<<<<<< HEAD
+>>>>>>> b950ecd (Switch to new kstatus function in example controller tests)
 GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
 
@@ -172,20 +179,28 @@ Date: (removed)
 
 ---
 
+=======
+>>>>>>> 2a32e5c (Switch to new kstatus function in example controller tests)
 PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
 Accept: application/json, */*
 Content-Type: application/json
 
+<<<<<<< HEAD
 {"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"InProgress"}}
+=======
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Current"}}
+>>>>>>> 2a32e5c (Switch to new kstatus function in example controller tests)
 
 
 200 OK
 Cache-Control: no-cache, private
+<<<<<<< HEAD
 Content-Length: 298
 Content-Type: application/json
 Date: (removed)
 
 {"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"InProgress"}}
+<<<<<<< HEAD
 
 ---
 
@@ -354,3 +369,12 @@ Content-Type: application/json
 Date: (removed)
 
 {"apiVersion":"v1","count":2,"eventTime":null,"firstTimestamp":"2022-11-16T13:04:10Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2022-11-16T13:04:10Z","message":"internal error: error applying manifest: not all objects applied","metadata":{"creationTimestamp":"2022-01-01T00:00:04Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.1728125c7d4d89fc","namespace":"ns1","resourceVersion":"8","uid":"00000000-0000-0000-0000-000000000005"},"reason":"InternalError","reportingComponent":"","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+=======
+=======
+Content-Length: 295
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Current"}}
+>>>>>>> 2a32e5c (Switch to new kstatus function in example controller tests)
+>>>>>>> b950ecd (Switch to new kstatus function in example controller tests)

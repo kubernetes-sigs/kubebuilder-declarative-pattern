@@ -51,17 +51,31 @@ Not Found
 
 ---
 
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
 PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
 Accept: application/json, */*
 Content-Type: application/json
 
-{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Current"}}
 
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 276
+Content-Length: 295
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Current"}}
