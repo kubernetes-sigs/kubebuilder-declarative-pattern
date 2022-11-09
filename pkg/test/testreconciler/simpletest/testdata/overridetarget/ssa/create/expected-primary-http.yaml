@@ -24,16 +24,14 @@ Date: (removed)
 
 ---
 
-GET http://kube-apiserver/api/v1?timeout=32s
+GET http://kube-apiserver/apis/addons.example.org/v1alpha1/simpletests?allowWatchBookmarks=true&resourceVersion=3&timeoutSeconds=<replaced>&watch=true
 Accept: application/json, */*
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 386
 Content-Type: application/json
 Date: (removed)
 
-{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"v1","resources":[{"name":"namespaces","singularName":"","namespaced":false,"version":"v1","kind":"Namespace","verbs":null},{"name":"configmaps","singularName":"","namespaced":true,"version":"v1","kind":"ConfigMap","verbs":null},{"name":"events","singularName":"","namespaced":true,"version":"v1","kind":"Event","verbs":null}]}
 
 ---
 

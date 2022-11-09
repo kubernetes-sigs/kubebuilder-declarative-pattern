@@ -32,7 +32,10 @@ Cache-Control: no-cache, private
 Content-Type: application/json
 Date: (removed)
 
+<<<<<<< HEAD
 <streaming response not included>
+=======
+>>>>>>> 4a7d123 (testing: Record watch requests)
 
 ---
 
@@ -139,6 +142,7 @@ Date: (removed)
 ---
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 GET http://kube-apiserver/api/v1/configmaps?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
 Accept: application/json
 
@@ -166,11 +170,18 @@ Date: (removed)
 =======
 <<<<<<< HEAD
 >>>>>>> b950ecd (Switch to new kstatus function in example controller tests)
+=======
+<<<<<<< HEAD
+>>>>>>> 4a7d123 (testing: Record watch requests)
 GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+=======
+GET http://kube-apiserver/api/v1/configmaps?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
+>>>>>>> 405ef91 (testing: Record watch requests)
 Accept: application/json
 
 200 OK
 Cache-Control: no-cache, private
+<<<<<<< HEAD
 Content-Length: 666
 Content-Type: application/json
 Date: (removed)
@@ -181,6 +192,14 @@ Date: (removed)
 
 =======
 >>>>>>> 2a32e5c (Switch to new kstatus function in example controller tests)
+=======
+Content-Type: application/json
+Date: (removed)
+
+
+---
+
+>>>>>>> 405ef91 (testing: Record watch requests)
 PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
 Accept: application/json, */*
 Content-Type: application/json
