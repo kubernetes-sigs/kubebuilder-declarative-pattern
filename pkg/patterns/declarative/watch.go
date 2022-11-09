@@ -213,13 +213,16 @@ func (w *afterApplyHook) AfterApply(ctx context.Context, op *ApplyOperation) err
 			return fmt.Errorf("setting up dynamic watch on the controller: %w", err)
 		}
 
-		remoteClusterWatch := &clusterWatch{
+		remoteClusterWatch = &clusterWatch{
 			dw:                      dw,
 			scopeWatchesToNamespace: w.scopeWatchesToNamespace,
 			labelMaker:              w.labelMaker,
 			registered:              make(map[string]struct{}),
 		}
 
+		if w.remoteTargets == nil {
+			w.remoteTargets = make(map[string]*clusterWatch)
+		}
 		w.remoteTargets[remoteTargetKey] = remoteClusterWatch
 	}
 	return remoteClusterWatch.applyApply(ctx, op)

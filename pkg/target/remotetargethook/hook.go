@@ -4,13 +4,23 @@ import (
 	"context"
 	"fmt"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/target"
 )
 
 type RemoteTargetHook struct {
-	resolver target.RemoteTargetResolver
+	resolver RemoteTargetResolver
 	cache    *target.Cache
+}
+
+func NewRemoteTargetHook(resolver RemoteTargetResolver, cache *target.Cache) *RemoteTargetHook {
+	return &RemoteTargetHook{resolver: resolver, cache: cache}
+}
+
+type RemoteTargetResolver interface {
+	ResolveKey(ctx context.Context, subject client.Object) (string, bool, error)
+	Resolve(ctx context.Context, subject client.Object, key string) (*target.RESTInfo, error)
 }
 
 var _ declarative.BeforeApply = &RemoteTargetHook{}

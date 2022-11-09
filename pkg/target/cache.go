@@ -10,6 +10,12 @@ type Cache struct {
 	targets map[string]*cacheLine
 }
 
+func NewCache() *Cache {
+	return &Cache{
+		targets: make(map[string]*cacheLine),
+	}
+}
+
 type cacheLine struct {
 	mutex  sync.Mutex
 	target *CachedTarget

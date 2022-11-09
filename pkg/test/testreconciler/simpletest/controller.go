@@ -50,14 +50,14 @@ type SimpleTestReconciler struct {
 	status  declarative.Status
 }
 
-func (r *SimpleTestReconciler) setupReconciler(mgr ctrl.Manager) error {
+func (r *SimpleTestReconciler) setupReconciler(mgr ctrl.Manager, testOptions ...declarative.ReconcilerOption) error {
 	labels := map[string]string{
 		"example-app": "simpletest",
 	}
 
 	r.watchLabels = declarative.SourceLabel(mgr.GetScheme())
 
-	return r.Reconciler.Init(mgr, &api.SimpleTest{},
+	options := []declarative.ReconcilerOption{
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(r.watchLabels),
@@ -76,11 +76,13 @@ func (r *SimpleTestReconciler) setupReconciler(mgr ctrl.Manager) error {
 
 		declarative.WithManifestController(r.manifestController),
 		declarative.WithApplier(r.applier),
-	)
+	}
+	options = append(options, testOptions...)
+	return r.Reconciler.Init(mgr, &api.SimpleTest{}, options...)
 }
 
-func (r *SimpleTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := r.setupReconciler(mgr); err != nil {
+func (r *SimpleTestReconciler) SetupWithManager(mgr ctrl.Manager, testOptions ...declarative.ReconcilerOption) error {
+	if err := r.setupReconciler(mgr, testOptions...); err != nil {
 		return err
 	}
 
