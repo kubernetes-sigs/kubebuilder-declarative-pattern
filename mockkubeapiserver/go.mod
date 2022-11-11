@@ -3,15 +3,16 @@ module sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver
 go 1.19
 
 require (
+	github.com/google/go-cmp v0.5.8
 	k8s.io/apimachinery v0.23.0
 	k8s.io/klog/v2 v2.70.1
+	sigs.k8s.io/structured-merge-diff/v4 v4.2.3
 	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -23,5 +24,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
