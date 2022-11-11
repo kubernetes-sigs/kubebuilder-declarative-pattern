@@ -23,7 +23,7 @@ Content-Length: 455
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"},"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"kubernetes.io/metadata.name":"ns1"},"name":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"},"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"kubernetes.io/metadata.name":"ns1"},"name":"ns1","resourceVersion":"1","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
 
 ---
 
@@ -39,4 +39,4 @@ Content-Length: 455
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"kubernetes.io/metadata.name":"ns2"},"name":"ns2","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"kubernetes.io/metadata.name":"ns2"},"name":"ns2","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}

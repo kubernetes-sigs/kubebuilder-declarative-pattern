@@ -104,8 +104,8 @@ Content-Type: application/json
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 250
+Content-Length: 276
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":true}}
