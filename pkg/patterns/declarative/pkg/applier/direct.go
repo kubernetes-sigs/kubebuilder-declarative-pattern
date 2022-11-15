@@ -125,52 +125,22 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		ValidationDirective: metav1.FieldValidationStrict,
 	}
 
-	var pruneWhitelist []string
 	for i, arg := range opt.ExtraArgs {
 		switch arg {
 		case "--force":
+			// TODO Does this do anything? It seems like opt (aka ApplierOptions) is not used anymore
 			opt.Force = true
 		case "--prune":
 			applyOpts.Prune = true
 		case "--selector":
 			applyOpts.Selector = opt.ExtraArgs[i+1]
 		case "--prune-whitelist":
-			{
-
-				pruneWhitelist = append(pruneWhitelist, opt.ExtraArgs[i+1])
-
-				// restMapper, err := f.ToRESTMapper()
-				// if err != nil {
-				// 	return err
-				// }
-				// pr, err := prune.ParseResources(restMapper, []string{opt.ExtraArgs[i+1]})
-				// if err != nil {
-				// 	return err
-				// }
-				// pruneResources = append(pruneResources, pr...)
-			}
+			applyOpts.PruneWhitelist = append(applyOpts.PruneWhitelist, opt.ExtraArgs[i+1])
 		default:
 			continue
 		}
 	}
-
-	// TODO problem if empty?
-	applyOpts.PruneWhitelist = pruneWhitelist
-
-	// if len(pruneWhitelist) > 0 {
-	// 	applyOpts.PruneResources = pruneWhitelist
-	// }
-
-	// restMapper, err := f.ToRESTMapper()
-	// if err != nil {
-	// 	return err
-	// }
-	// pruneResources, err = prune.ParseResources(restMapper, []string{"core/v1/Namespace"})
-	// if err != nil {
-	// 	return err
-	// }
-	// applyOpts.PruneResources = pruneResources
-
+	
 	applyOpts.ForceConflicts = opt.Force
 	applyOpts.Namespace = opt.Namespace
 	applyOpts.SetObjects(infos)

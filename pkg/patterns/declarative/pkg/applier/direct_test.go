@@ -153,7 +153,7 @@ metadata:
 			},
 		},
 				{
-					name:      "manifest with prune and prune-whitelist",
+					name:      "manifest with prune, prune-whitelist and selector",
 					namespace: "",
 					manifest: `---
 apiVersion: v1
@@ -161,7 +161,7 @@ kind: ServiceAccount
 metadata:
   name: foo-operator
   namespace: kube-system`,
-					args: []string{"--prune", "--prune-whitelist=core/v1/Namespace"},
+					args: []string{"--prune", "--selector", "label=true", "--prune-whitelist", "core/v1/Namespace"},
 					// TODO is this used somewhere?
 					expectApplyOptions: &apply.ApplyOptions{
 						Prune: true,
@@ -173,6 +173,9 @@ metadata:
 						}
 						if len(opt.PruneWhitelist) != 1 || opt.PruneWhitelist[0] != "core/v1/Namespace" {
 							return fmt.Errorf("prune whitelist is not set correctly, found %s", opt.PruneWhitelist)
+						}
+						if opt.Selector != "label=true" {
+							return fmt.Errorf("selector is not set as expected, found %s", opt.Selector)
 						}
 						return nil
 					},
