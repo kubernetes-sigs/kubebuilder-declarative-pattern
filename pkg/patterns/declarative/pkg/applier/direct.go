@@ -125,6 +125,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		ValidationDirective: metav1.FieldValidationStrict,
 	}
 
+	var pruneWhitelist []string
 	for i, arg := range opt.ExtraArgs {
 		switch arg {
 		case "--force":
@@ -133,10 +134,42 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 			applyOpts.Prune = true
 		case "--selector":
 			applyOpts.Selector = opt.ExtraArgs[i+1]
+		case "--prune-whitelist":
+			{
+
+				pruneWhitelist = append(pruneWhitelist, opt.ExtraArgs[i+1])
+
+				// restMapper, err := f.ToRESTMapper()
+				// if err != nil {
+				// 	return err
+				// }
+				// pr, err := prune.ParseResources(restMapper, []string{opt.ExtraArgs[i+1]})
+				// if err != nil {
+				// 	return err
+				// }
+				// pruneResources = append(pruneResources, pr...)
+			}
 		default:
 			continue
 		}
 	}
+
+	// TODO problem if empty?
+	applyOpts.PruneWhitelist = pruneWhitelist
+
+	// if len(pruneWhitelist) > 0 {
+	// 	applyOpts.PruneResources = pruneWhitelist
+	// }
+
+	// restMapper, err := f.ToRESTMapper()
+	// if err != nil {
+	// 	return err
+	// }
+	// pruneResources, err = prune.ParseResources(restMapper, []string{"core/v1/Namespace"})
+	// if err != nil {
+	// 	return err
+	// }
+	// applyOpts.PruneResources = pruneResources
 
 	applyOpts.ForceConflicts = opt.Force
 	applyOpts.Namespace = opt.Namespace
