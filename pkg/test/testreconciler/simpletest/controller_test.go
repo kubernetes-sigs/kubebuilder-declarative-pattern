@@ -18,6 +18,8 @@ import (
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
@@ -30,26 +32,29 @@ func TestSimpleReconciler(t *testing.T) {
 	appliers := []struct {
 		Key     string
 		Applier applier.Applier
+		Status  declarative.Status
 	}{
 		{
 			Key:     "direct",
 			Applier: applier.NewDirectApplier(),
+			Status:  status.NewBasic(nil),
 		},
 		{
 			Key:     "ssa",
 			Applier: applier.NewApplySetApplier(metav1.PatchOptions{FieldManager: "kdp-test"}),
+			Status:  status.NewKstatusCheck(nil, nil),
 		},
 	}
 	for _, applier := range appliers {
 		t.Run(applier.Key, func(t *testing.T) {
 			testharness.RunGoldenTests(t, "testdata/reconcile/"+applier.Key+"/", func(h *testharness.Harness, testdir string) {
-				testSimpleReconciler(h, testdir, applier.Applier)
+				testSimpleReconciler(h, testdir, applier.Applier, applier.Status)
 			})
 		})
 	}
 }
 
-func testSimpleReconciler(h *testharness.Harness, testdir string, applier applier.Applier) {
+func testSimpleReconciler(h *testharness.Harness, testdir string, applier applier.Applier, status declarative.Status) {
 	ctx := context.Background()
 
 	k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
@@ -60,6 +65,7 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
 	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}, "configmaps", meta.RESTScopeNamespace)
 	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Event"}, "events", meta.RESTScopeNamespace)
+	k8s.RegisterType(schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"}, "deployments", meta.RESTScopeNamespace)
 	k8s.RegisterType(schema.GroupVersionKind{Group: "addons.example.org", Version: "v1alpha1", Kind: "SimpleTest"}, "simpletests", meta.RESTScopeNamespace)
 
 	defer func() {
@@ -110,6 +116,7 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 		Client:  mgr.GetClient(),
 		Scheme:  mgr.GetScheme(),
 		applier: applier,
+		status:  status,
 	}
 
 	mc, err := loaders.NewManifestLoader("testdata/channels")
