@@ -49,7 +49,34 @@ Date: (removed)
 
 ---
 
+GET http://kube-apiserver/apis/apps/v1?timeout=32s
+Accept: application/json, */*
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 205
+Content-Type: application/json
+Date: (removed)
+
+{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"apps/v1","resources":[{"name":"deployments","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"Deployment","verbs":null}]}
+
+---
+
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
 
 404 Not Found
@@ -79,20 +106,32 @@ Date: (removed)
 
 ---
 
-PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
-Accept: application/json, */*
-Content-Type: application/json
+PATCH http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment?fieldManager=kdp-test&force=true
+Accept: application/json
+Content-Type: application/apply-patch+yaml
 
-{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":true}}
-
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 276
+Content-Length: 666
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 492
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
 
 ---
 
@@ -108,6 +147,48 @@ Date: (removed)
 
 ---
 
+GET http://kube-apiserver/apis/apps/v1/deployments?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Type: application/json
+Date: (removed)
+
+<streaming response not included>
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 666
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
+Accept: application/json, */*
+Content-Type: application/json
+
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"InProgress"}}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 298
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"InProgress"}}
+
+---
+
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
 Accept: application/json
 
@@ -118,6 +199,19 @@ Content-Type: application/json
 Date: (removed)
 
 {"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 666
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
 
 ---
 
@@ -137,20 +231,54 @@ Date: (removed)
 
 ---
 
+PATCH http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment?fieldManager=kdp-test&force=true
+Accept: application/json
+Content-Type: application/apply-patch+yaml
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+500 Internal Server Error
+Content-Length: 22
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Internal Server Error
+
+
+---
+
 PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
 Accept: application/json, */*
 Content-Type: application/json
 
-{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"4","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"5","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Applying"}}
 
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 276
+Content-Length: 296
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"6","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Applying"}}
+
+---
+
+POST http://kube-apiserver/api/v1/namespaces/ns1/events
+Accept: application/json, */*
+Content-Type: application/json
+
+{"kind":"Event","apiVersion":"v1","metadata":{"name":"simple1.1728125c7d4d89fc","namespace":"ns1","creationTimestamp":null},"involvedObject":{"kind":"SimpleTest","namespace":"ns1","name":"simple1","uid":"00000000-0000-0000-0000-000000000002","apiVersion":"addons.example.org/v1alpha1","resourceVersion":"5"},"reason":"InternalError","message":"internal error: error applying manifest: not all objects applied","source":{"component":"addon-controller"},"firstTimestamp":"2022-11-16T13:04:10Z","lastTimestamp":"2022-11-16T13:04:10Z","count":1,"type":"Warning","eventTime":null,"reportingComponent":"","reportingInstance":""}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 707
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":1,"eventTime":null,"firstTimestamp":"2022-11-16T13:04:10Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2022-11-16T13:04:10Z","message":"internal error: error applying manifest: not all objects applied","metadata":{"creationTimestamp":"2022-01-01T00:00:04Z","name":"simple1.1728125c7d4d89fc","namespace":"ns1","resourceVersion":"7","uid":"00000000-0000-0000-0000-000000000005"},"reason":"InternalError","reportingComponent":"","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
 
 ---
 
@@ -164,6 +292,19 @@ Content-Type: application/json
 Date: (removed)
 
 {"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 666
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
 
 ---
 
@@ -183,17 +324,33 @@ Date: (removed)
 
 ---
 
-PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
+PATCH http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment?fieldManager=kdp-test&force=true
+Accept: application/json
+Content-Type: application/apply-patch+yaml
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+500 Internal Server Error
+Content-Length: 22
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Internal Server Error
+
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.1728125c7d4d89fc
 Accept: application/json, */*
-Content-Type: application/json
+Content-Type: application/strategic-merge-patch+json
 
-{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"4","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":true}}
-
+{"count":2,"lastTimestamp":"2022-11-16T13:04:10Z","message":"internal error: error applying manifest: not all objects applied"}
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 276
+Content-Length: 851
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"apiVersion":"v1","count":2,"eventTime":null,"firstTimestamp":"2022-11-16T13:04:10Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2022-11-16T13:04:10Z","message":"internal error: error applying manifest: not all objects applied","metadata":{"creationTimestamp":"2022-01-01T00:00:04Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.1728125c7d4d89fc","namespace":"ns1","resourceVersion":"8","uid":"00000000-0000-0000-0000-000000000005"},"reason":"InternalError","reportingComponent":"","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
