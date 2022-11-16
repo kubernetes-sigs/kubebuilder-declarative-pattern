@@ -161,18 +161,17 @@ kind: ServiceAccount
 metadata:
   name: foo-operator
   namespace: kube-system`,
-					args: []string{"--prune", "--selector", "label=true", "--prune-whitelist", "core/v1/Namespace"},
+					args: []string{"--prune", "--selector", "label=true", "--prune-whitelist", "core/v1/Namespace", "--prune-whitelist", "core/v1/Service"},
 					// TODO is this used somewhere?
 					expectApplyOptions: &apply.ApplyOptions{
 						Prune: true,
-						PruneWhitelist: []string{"core/v1/Namespace"},
 					},
 					expectCheckFunc: func(opt *apply.ApplyOptions) error {
 						if opt.Prune != true {
 							return fmt.Errorf("prune is not set")
 						}
-						if len(opt.PruneWhitelist) != 1 || opt.PruneWhitelist[0] != "core/v1/Namespace" {
-							return fmt.Errorf("prune whitelist is not set correctly, found %s", opt.PruneWhitelist)
+						if len(opt.PruneResources) != 2 {
+							return fmt.Errorf("prune resources are not set correctly, found %s", opt.PruneResources)
 						}
 						if opt.Selector != "label=true" {
 							return fmt.Errorf("selector is not set as expected, found %s", opt.Selector)

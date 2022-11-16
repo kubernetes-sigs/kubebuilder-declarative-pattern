@@ -18,6 +18,7 @@ import (
 	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdDelete "k8s.io/kubectl/pkg/cmd/delete"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"k8s.io/kubectl/pkg/util/prune"
 )
 
 type DirectApplier struct {
@@ -124,7 +125,11 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		FieldManager:        "kubectl-client-side-apply",
 		ValidationDirective: metav1.FieldValidationStrict,
 	}
+	// TODO this will add the print part at all times.
+	applyOpts.PostProcessorFn = applyOpts.PrintAndPrunePostProcessor()
 
+
+	whiteListResources := []string{}
 	for i, arg := range opt.ExtraArgs {
 		switch arg {
 		case "--force":
@@ -135,12 +140,25 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		case "--selector":
 			applyOpts.Selector = opt.ExtraArgs[i+1]
 		case "--prune-whitelist":
-			applyOpts.PruneWhitelist = append(applyOpts.PruneWhitelist, opt.ExtraArgs[i+1])
+			whiteListResources = append(whiteListResources, opt.ExtraArgs[i+1])
 		default:
 			continue
 		}
 	}
-	
+
+	if len(whiteListResources) > 0 {
+		rm, err := f.ToRESTMapper()
+		if err != nil {
+			return err
+		}
+		r, err := prune.ParseResources(rm, whiteListResources)
+		if err != nil {
+			return err
+		}
+		applyOpts.PruneResources = append(applyOpts.PruneResources, r...)	
+	}
+
+
 	applyOpts.ForceConflicts = opt.Force
 	applyOpts.Namespace = opt.Namespace
 	applyOpts.SetObjects(infos)
