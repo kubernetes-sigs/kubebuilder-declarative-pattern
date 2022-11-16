@@ -31,6 +31,7 @@ import (
 	kubectltesting "k8s.io/kubectl/pkg/cmd/testing"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 type directApplierTestSite struct {
@@ -176,18 +177,24 @@ metadata:
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.TODO()
+
 			d := &directApplierTestSite{}
 			testApplier := newDirectApplierTest(d)
 
+			objects, err := manifest.ParseObjects(ctx, test.manifest)
+			if err != nil {
+				t.Errorf("error parsing manifest: %v", err)
+			}
+
 			opts := ApplierOptions{
 				Namespace: test.namespace,
-				Manifest:  test.manifest,
+				Objects:   objects.GetItems(),
 				Validate:  test.validate,
 				ExtraArgs: test.args,
 			}
 
-			err := testApplier.Apply(context.Background(), opts)
-			if err != nil {
+			if err := testApplier.Apply(ctx, opts); err != nil {
 				t.Errorf("unexpected error on call Apply: %v", err)
 			}
 

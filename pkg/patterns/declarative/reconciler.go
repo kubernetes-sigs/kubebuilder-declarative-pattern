@@ -255,15 +255,6 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 	objects.Items = newItems
 
-	var manifestStr string
-
-	m, err := objects.JSONManifest()
-	if err != nil {
-		log.Error(err, "creating final manifest")
-		return objects, fmt.Errorf("error creating manifest: %v", err)
-	}
-	manifestStr = m
-
 	extraArgs := []string{}
 
 	// allow user disable prune in CR
@@ -306,7 +297,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		RESTConfig: r.config,
 		RESTMapper: r.restMapper,
 		Namespace:  ns,
-		Manifest:   manifestStr,
+		Objects:    objects.GetItems(),
 		Validate:   r.options.validate,
 		ExtraArgs:  extraArgs,
 		Force:      true,

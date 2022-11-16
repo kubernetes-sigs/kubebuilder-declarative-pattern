@@ -22,7 +22,11 @@ import (
 	"io"
 	"os/exec"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 // collector is a commandSite implementation that stubs cmd.Run() calls for tests
@@ -37,33 +41,45 @@ func (s *collector) Run(c *exec.Cmd) error {
 }
 
 func TestKubectlApply(t *testing.T) {
+	configMapYAML := `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: foo
+`
+	configMapJSON := `{"apiVersion":"v1","kind":"ConfigMap","metadata":{"name":"foo"}}`
+
 	tests := []struct {
-		name       string
-		namespace  string
-		manifest   string
-		validate   bool
-		args       []string
-		err        error
-		expectArgs []string
+		name        string
+		namespace   string
+		manifest    string
+		validate    bool
+		args        []string
+		err         error
+		expectStdin string
+		expectArgs  []string
 	}{
 		{
-			name:       "manifest",
-			namespace:  "",
-			manifest:   "foo",
-			expectArgs: []string{"kubectl", "apply", "--validate=false", "-f", "-"},
+			name:        "manifest",
+			namespace:   "",
+			manifest:    configMapYAML,
+			expectStdin: configMapJSON,
+			expectArgs:  []string{"kubectl", "apply", "--validate=false", "-f", "-"},
 		},
 		{
-			name:       "manifest with apply",
-			namespace:  "kube-system",
-			manifest:   "heynow",
-			expectArgs: []string{"kubectl", "apply", "-n", "kube-system", "--validate=false", "-f", "-"},
+			name:        "manifest with apply",
+			namespace:   "kube-system",
+			manifest:    configMapYAML,
+			expectStdin: configMapJSON,
+			expectArgs:  []string{"kubectl", "apply", "-n", "kube-system", "--validate=false", "-f", "-"},
 		},
 		{
-			name:       "manifest with validate",
-			namespace:  "",
-			manifest:   "foo",
-			validate:   true,
-			expectArgs: []string{"kubectl", "apply", "--validate=true", "-f", "-"},
+			name:        "manifest with validate",
+			namespace:   "",
+			manifest:    configMapYAML,
+			expectStdin: configMapJSON,
+			validate:    true,
+			expectArgs:  []string{"kubectl", "apply", "--validate=true", "-f", "-"},
 		},
 		{
 			name:       "error propagation",
@@ -71,25 +87,34 @@ func TestKubectlApply(t *testing.T) {
 			err:        errors.New("error"),
 		},
 		{
-			name:       "manifest with prune",
-			namespace:  "kube-system",
-			manifest:   "heynow",
-			args:       []string{"--prune=true", "--prune-whitelist=hello-world"},
-			expectArgs: []string{"kubectl", "apply", "-n", "kube-system", "--validate=false", "--prune=true", "--prune-whitelist=hello-world", "-f", "-"},
+			name:        "manifest with prune",
+			namespace:   "kube-system",
+			manifest:    configMapYAML,
+			expectStdin: configMapJSON,
+			args:        []string{"--prune=true", "--prune-whitelist=hello-world"},
+			expectArgs:  []string{"kubectl", "apply", "-n", "kube-system", "--validate=false", "--prune=true", "--prune-whitelist=hello-world", "-f", "-"},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.TODO()
+
 			cs := collector{Error: test.err}
 			kubectl := &ExecKubectl{cmdSite: &cs}
+
+			objects, err := manifest.ParseObjects(ctx, test.manifest)
+			if err != nil {
+				t.Fatalf("error parsing manifest: %v", err)
+			}
+
 			opts := ApplierOptions{
 				Namespace: test.namespace,
-				Manifest:  test.manifest,
+				Objects:   objects.GetItems(),
 				Validate:  test.validate,
 				ExtraArgs: test.args,
 			}
-			err := kubectl.Apply(context.Background(), opts)
+			err = kubectl.Apply(ctx, opts)
 
 			if test.err != nil && err == nil {
 				t.Error("expected error to occur")
@@ -110,8 +135,9 @@ func TestKubectlApply(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error reading manifest from stdin: %v", err)
 			}
-			if stdin := string(stdinBytes); stdin != test.manifest {
-				t.Errorf("manifest mismatch, expected: %v, got: %v", test.manifest, stdin)
+			if got, want := strings.TrimSpace(string(stdinBytes)), test.expectStdin; got != want {
+				t.Errorf("manifest mismatch: got: %v, want: %v", got, want)
+				t.Errorf("diff=%v", cmp.Diff(got, want))
 			}
 		})
 	}

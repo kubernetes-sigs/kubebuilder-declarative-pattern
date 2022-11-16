@@ -9,7 +9,6 @@ import (
 	"k8s.io/client-go/dynamic"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 type ApplySetApplier struct {
@@ -23,10 +22,6 @@ func NewApplySetApplier(patchOptions metav1.PatchOptions) *ApplySetApplier {
 }
 
 func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
-	objects, err := manifest.ParseObjects(ctx, opt.Manifest)
-	if err != nil {
-		return fmt.Errorf("error parsing manifest: %w", err)
-	}
 
 	patchOptions := a.patchOptions
 
@@ -61,7 +56,7 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	// Populate the namespace on any namespace-scoped objects
 	if opt.Namespace != "" {
-		for _, obj := range objects.Items {
+		for _, obj := range opt.Objects {
 			gvk := obj.GroupVersionKind()
 			restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
@@ -81,7 +76,7 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	}
 
 	var applyableObjects []applyset.ApplyableObject
-	for _, obj := range objects.Items {
+	for _, obj := range opt.Objects {
 		applyableObject := obj.UnstructuredObject()
 		applyableObjects = append(applyableObjects, applyableObject)
 	}

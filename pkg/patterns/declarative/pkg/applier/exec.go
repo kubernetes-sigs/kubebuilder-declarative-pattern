@@ -31,6 +31,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 // New creates a Client that runs kubectl avaliable on the path
@@ -93,6 +94,12 @@ func buildKubeconfig(restConfig *rest.Config) ([]byte, error) {
 func (c *ExecKubectl) Apply(ctx context.Context, opt ApplierOptions) error {
 	log := log.FromContext(ctx)
 
+	objects := manifest.Objects{Items: opt.Objects}
+	manifestStr, err := objects.JSONManifest()
+	if err != nil {
+		return fmt.Errorf("error creating JSON manifest: %w", err)
+	}
+
 	log.Info("applying manifest")
 
 	args := []string{"apply"}
@@ -141,7 +148,7 @@ func (c *ExecKubectl) Apply(ctx context.Context, opt ApplierOptions) error {
 	log.Info("applying manifest with kubectl %s", strings.Join(args, " "))
 
 	cmd := exec.Command("kubectl", args...)
-	cmd.Stdin = strings.NewReader(opt.Manifest)
+	cmd.Stdin = strings.NewReader(manifestStr)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -150,10 +157,9 @@ func (c *ExecKubectl) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	log.WithValues("command", "kubectl").WithValues("args", args).Info("executing kubectl")
 
-	err := c.cmdSite.Run(cmd)
-	if err != nil {
+	if err := c.cmdSite.Run(cmd); err != nil {
 		log.WithValues("stdout", stdout.String()).WithValues("stderr", stderr.String()).Error(err, "error from running kubectl apply")
-		log.Info(fmt.Sprintf("manifest:\n%v", opt.Manifest))
+		log.Info(fmt.Sprintf("manifest:\n%v", manifestStr))
 		return fmt.Errorf("error from running kubectl apply: %v", err)
 	}
 

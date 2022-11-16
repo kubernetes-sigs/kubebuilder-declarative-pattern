@@ -5,6 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 type Applier interface {
@@ -12,7 +13,7 @@ type Applier interface {
 }
 
 type ApplierOptions struct {
-	Manifest string
+	Objects []*manifest.Object
 
 	RESTConfig *rest.Config
 	RESTMapper meta.RESTMapper
