@@ -4,9 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -66,11 +64,6 @@ func (h *Harness) StartKube() *mockkubeapiserver.MockKubeAPIServer {
 	if err != nil {
 		h.Fatalf("error building mock kube-apiserver: %v", err)
 	}
-
-	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
-	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}, "configmaps", meta.RESTScopeNamespace)
-	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Event"}, "events", meta.RESTScopeNamespace)
-	k8s.RegisterType(schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"}, "deployments", meta.RESTScopeNamespace)
 
 	h.T.Cleanup(func() {
 		if err := k8s.Stop(); err != nil {
