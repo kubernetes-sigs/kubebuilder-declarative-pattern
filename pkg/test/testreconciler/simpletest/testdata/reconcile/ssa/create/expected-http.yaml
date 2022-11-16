@@ -269,7 +269,7 @@ POST http://kube-apiserver/api/v1/namespaces/ns1/events
 Accept: application/json, */*
 Content-Type: application/json
 
-{"kind":"Event","apiVersion":"v1","metadata":{"name":"simple1.1728128f78b53dcd","namespace":"ns1","creationTimestamp":null},"involvedObject":{"kind":"SimpleTest","namespace":"ns1","name":"simple1","uid":"00000000-0000-0000-0000-000000000002","apiVersion":"addons.example.org/v1alpha1","resourceVersion":"5"},"reason":"InternalError","message":"internal error: error applying manifest: not all objects applied","source":{"component":"addon-controller"},"firstTimestamp":"2022-11-16T13:07:49Z","lastTimestamp":"2022-11-16T13:07:49Z","count":1,"type":"Warning","eventTime":null,"reportingComponent":"","reportingInstance":""}
+{"kind":"Event","apiVersion":"v1","metadata":{"name":"simple1.172813dc123d970a","namespace":"ns1","creationTimestamp":null},"involvedObject":{"kind":"SimpleTest","namespace":"ns1","name":"simple1","uid":"00000000-0000-0000-0000-000000000002","apiVersion":"addons.example.org/v1alpha1","resourceVersion":"5"},"reason":"InternalError","message":"internal error: error applying manifest: not all objects applied","source":{"component":"addon-controller"},"firstTimestamp":"2022-11-16T13:31:37Z","lastTimestamp":"2022-11-16T13:31:37Z","count":1,"type":"Warning","eventTime":null,"reportingComponent":"","reportingInstance":""}
 
 
 200 OK
@@ -278,7 +278,7 @@ Content-Length: 707
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","count":1,"eventTime":null,"firstTimestamp":"2022-11-16T13:07:49Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2022-11-16T13:07:49Z","message":"internal error: error applying manifest: not all objects applied","metadata":{"creationTimestamp":"2022-01-01T00:00:04Z","name":"simple1.1728128f78b53dcd","namespace":"ns1","resourceVersion":"7","uid":"00000000-0000-0000-0000-000000000005"},"reason":"InternalError","reportingComponent":"","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+{"apiVersion":"v1","count":1,"eventTime":null,"firstTimestamp":"2022-11-16T13:31:37Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2022-11-16T13:31:37Z","message":"internal error: error applying manifest: not all objects applied","metadata":{"creationTimestamp":"2022-01-01T00:00:04Z","name":"simple1.172813dc123d970a","namespace":"ns1","resourceVersion":"7","uid":"00000000-0000-0000-0000-000000000005"},"reason":"InternalError","reportingComponent":"","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
 
 ---
 
@@ -341,11 +341,11 @@ Internal Server Error
 
 ---
 
-PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.1728128f78b53dcd
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.172813dc123d970a
 Accept: application/json, */*
 Content-Type: application/strategic-merge-patch+json
 
-{"count":2,"lastTimestamp":"2022-11-16T13:07:49Z","message":"internal error: error applying manifest: not all objects applied"}
+{"count":2,"lastTimestamp":"2022-11-16T13:31:37Z","message":"internal error: error applying manifest: not all objects applied"}
 
 200 OK
 Cache-Control: no-cache, private
@@ -353,4 +353,4 @@ Content-Length: 851
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","count":2,"eventTime":null,"firstTimestamp":"2022-11-16T13:07:49Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2022-11-16T13:07:49Z","message":"internal error: error applying manifest: not all objects applied","metadata":{"creationTimestamp":"2022-01-01T00:00:04Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.1728128f78b53dcd","namespace":"ns1","resourceVersion":"8","uid":"00000000-0000-0000-0000-000000000005"},"reason":"InternalError","reportingComponent":"","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+{"apiVersion":"v1","count":2,"eventTime":null,"firstTimestamp":"2022-11-16T13:31:37Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2022-11-16T13:31:37Z","message":"internal error: error applying manifest: not all objects applied","metadata":{"creationTimestamp":"2022-01-01T00:00:04Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.172813dc123d970a","namespace":"ns1","resourceVersion":"8","uid":"00000000-0000-0000-0000-000000000005"},"reason":"InternalError","reportingComponent":"","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
