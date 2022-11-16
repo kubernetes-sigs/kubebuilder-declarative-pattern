@@ -304,7 +304,22 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		CascadingStrategy: r.options.cascadingStrategy,
 	}
 
+	applyOperation := &ApplyOperation{
+		Subject:        instance,
+		Objects:        objects,
+		ApplierOptions: &applierOpt,
+	}
+
 	applier := r.options.applier
+	for _, hook := range r.options.hooks {
+		if beforeApply, ok := hook.(BeforeApply); ok {
+			if err := beforeApply.BeforeApply(ctx, applyOperation); err != nil {
+				log.Error(err, "calling BeforeApply hook")
+				return objects, fmt.Errorf("error calling BeforeApply hook: %v", err)
+			}
+		}
+	}
+
 	if err := applier.Apply(ctx, applierOpt); err != nil {
 		log.Error(err, "applying manifest")
 		return objects, fmt.Errorf("error applying manifest: %v", err)
@@ -316,6 +331,16 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 			return objects, err
 		}
 	}
+
+	for _, hook := range r.options.hooks {
+		if afterApply, ok := hook.(AfterApply); ok {
+			if err := afterApply.AfterApply(ctx, applyOperation); err != nil {
+				log.Error(err, "calling AfterApply hook")
+				return objects, fmt.Errorf("error calling AfterApply hook: %w", err)
+			}
+		}
+	}
+
 	return objects, nil
 }
 
@@ -613,8 +638,15 @@ func (r *Reconciler) IsKustomizeOptionUsed() bool {
 }
 
 // SetSink provides a Sink that will be notified for all deployments
+//
+// Deprecated: prefer WithHook
 func (r *Reconciler) SetSink(sink Sink) {
 	r.options.sink = sink
+}
+
+// AddHook provides a Hook that will be notified of significant events
+func (r *Reconciler) AddHook(hook Hook) {
+	r.options.hooks = append(r.options.hooks, hook)
 }
 
 func parseListKind(infos *manifest.Objects) (*manifest.Objects, error) {
