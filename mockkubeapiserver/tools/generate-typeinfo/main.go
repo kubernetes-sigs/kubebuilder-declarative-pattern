@@ -1,0 +1,165 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"sort"
+	"strings"
+
+	"k8s.io/apimachinery/pkg/api/meta"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
+	"sigs.k8s.io/yaml"
+)
+
+func main() {
+	err := run(context.Background())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+type minOpenAPI struct {
+	Definitions map[string]openapiDefinition
+	Paths       map[string]openapiPath
+}
+
+type openapiDefinition struct {
+	Type                        string                     `json:"type"`
+	Properties                  map[string]openapiProperty `json:"properties"`
+	XKubernetesGroupVersionKind []openapiGVK               `json:"x-kubernetes-group-version-kind"`
+}
+
+type openapiPath struct {
+	Get *openapiPathMethod `json:"get"`
+}
+
+type openapiPathMethod struct {
+	XKubernetesAction           string      `json:"x-kubernetes-action"`
+	XKubernetesGroupVersionKind *openapiGVK `json:"x-kubernetes-group-version-kind"`
+}
+
+type openapiProperty struct {
+	Type string `json:"type"`
+}
+
+type openapiGVK struct {
+	Group   string `json:"group"`
+	Version string `json:"version"`
+	Kind    string `json:"kind"`
+}
+
+func run(ctx context.Context) error {
+	p := "openapi.json" // should be populated with e.g. kubectl get --raw /openapi/v2 > openapi.json
+	b, err := os.ReadFile("openapi.json")
+	if err != nil {
+		return fmt.Errorf("error reading %q: %w", p, err)
+	}
+	var schema minOpenAPI
+	if err := json.Unmarshal(b, &schema); err != nil {
+		return fmt.Errorf("error parsing %q: %w", p, err)
+	}
+
+	schemaMeta := &mockkubeapiserver.SchemaMeta{}
+
+	// Go through the paths to determine if resources are cluster or namespace scoped.  We look at the "list" endpoint.
+	pathInfo := make(map[openapiGVK]mockkubeapiserver.SchemaMetaResource)
+	for url, path := range schema.Paths {
+		if path.Get == nil {
+			continue
+		}
+		if path.Get.XKubernetesAction != "list" {
+			continue
+		}
+		if path.Get.XKubernetesGroupVersionKind == nil {
+			continue
+		}
+		gvk := *path.Get.XKubernetesGroupVersionKind
+
+		// Note that namespace scoped resources will appear as both cluster and namespace scoped paths
+		resource, exists := pathInfo[gvk]
+		if !exists {
+			resource.Resource = lastComponent(url)
+			// Namespace scoped until proven otherwise
+			resource.Scope = string(meta.RESTScopeNameRoot)
+		}
+		// If we've found the namespace scoped path, then we know it is namespace scoped.
+		// If it's the cluster scoped path, the namespace-scoped path could be coming up.
+		if strings.Contains(url, "{namespace}") {
+			resource.Scope = string(meta.RESTScopeNameNamespace)
+		}
+		pathInfo[gvk] = resource
+	}
+
+	// Now go through the definitions and build the resources
+	for k := range schema.Definitions {
+		// Some types are "irregular", we just skip them
+		ignore := false
+		switch k {
+		case "io.k8s.apimachinery.pkg.apis.meta.v1.APIResourceList", "io.k8s.apimachinery.pkg.apis.meta.v1.APIGroup", "io.k8s.apimachinery.pkg.apis.meta.v1.APIVersions", "io.k8s.apimachinery.pkg.apis.meta.v1.APIGroupList":
+			ignore = true
+		case "io.k8s.api.authorization.v1.LocalSubjectAccessReview", "io.k8s.api.authorization.v1.SubjectAccessReview", "io.k8s.api.authorization.v1.SelfSubjectRulesReview", "io.k8s.api.authorization.v1.SelfSubjectAccessReview":
+			ignore = true
+		case "io.k8s.api.authentication.v1.TokenReview", "io.k8s.api.authentication.v1.TokenRequest":
+			ignore = true
+		case "io.k8s.apimachinery.pkg.apis.meta.v1.DeleteOptions":
+			ignore = true
+		case "io.k8s.api.autoscaling.v1.Scale", "io.k8s.api.policy.v1.Eviction", "io.k8s.apimachinery.pkg.apis.meta.v1.Status":
+			ignore = true
+		case "io.k8s.apimachinery.pkg.apis.meta.v1.WatchEvent":
+			ignore = true
+		case "io.k8s.api.core.v1.Binding":
+			// Deprecated in 1.7
+			ignore = true
+		}
+		if ignore {
+			continue
+		}
+
+		def := schema.Definitions[k]
+		for _, gvk := range def.XKubernetesGroupVersionKind {
+			resourceFromPaths, found := pathInfo[gvk]
+			if !found {
+				// We want to ignore the *List types, but error on other problems
+				withoutList := gvk
+				withoutList.Kind = strings.TrimSuffix(withoutList.Kind, "List")
+				if _, found := pathInfo[withoutList]; found {
+					// ignore the List types
+					continue
+				}
+				return fmt.Errorf("key %q, gvk %#v not found in paths", k, gvk)
+			}
+			resource := mockkubeapiserver.SchemaMetaResource{
+				Group:    gvk.Group,
+				Version:  gvk.Version,
+				Kind:     gvk.Kind,
+				Key:      k,
+				Scope:    resourceFromPaths.Scope,
+				Resource: resourceFromPaths.Resource,
+			}
+			schemaMeta.Resources = append(schemaMeta.Resources, resource)
+		}
+	}
+
+	// sort by key so output is stable
+	sort.Slice(schemaMeta.Resources, func(i, j int) bool {
+		return schemaMeta.Resources[i].Key < schemaMeta.Resources[j].Key
+	})
+
+	outBytes, err := yaml.Marshal(schemaMeta)
+	if err != nil {
+		return fmt.Errorf("error converting meta to yaml: %w", err)
+	}
+	outPath := "../../kubernetes_builtin_schema.meta.yaml"
+	out := "# Generated by generate-typeinfo\n\n" + string(outBytes)
+	if err := os.WriteFile(outPath, []byte(out), 0644); err != nil {
+		return fmt.Errorf("error writing file %q: %w", outPath, err)
+	}
+	return nil
+}
+
+func lastComponent(s string) string {
+	return s[strings.LastIndex(s, "/")+1:]
+}

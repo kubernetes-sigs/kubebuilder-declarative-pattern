@@ -53,6 +53,48 @@ func NewMemoryStorage(clock Clock, uidGenerator UIDGenerator) (*MemoryStorage, e
 		return nil, err
 	}
 
+	for _, builtinType := range s.schema.builtin.Meta.Resources {
+		klog.V(4).Infof("registering builtin type %v", builtinType.Key)
+		gvk := schema.GroupVersionKind{Group: builtinType.Group, Version: builtinType.Version, Kind: builtinType.Kind}
+		gvr := gvk.GroupVersion().WithResource(builtinType.Resource)
+		gr := gvr.GroupResource()
+
+		storage := &resourceStorage{
+			GroupResource: gr,
+			objects:       make(map[types.NamespacedName]*unstructured.Unstructured),
+		}
+
+		// TODO: share storage across different versions
+		s.resourceStorages[gr] = storage
+
+		r := &ResourceInfo{
+			API: metav1.APIResource{
+				Name:    builtinType.Resource,
+				Group:   gvk.Group,
+				Version: gvk.Version,
+				Kind:    gvk.Kind,
+			},
+			GVK:     gvk,
+			GVR:     gvr,
+			storage: storage,
+		}
+		r.ListGVK = gvk.GroupVersion().WithKind(gvk.Kind + "List")
+
+		parserType := s.schema.builtin.Parser.Type(builtinType.Key)
+		r.TypeInfo = &typeInfo{
+			ParserType: parserType,
+		}
+		if r.TypeInfo == nil {
+			klog.Fatalf("type info not known for %v", gvk)
+		}
+
+		if meta.RESTScopeName(builtinType.Scope) == meta.RESTScopeNameNamespace {
+			r.API.Namespaced = true
+		}
+
+		s.schema.resources = append(s.schema.resources, r)
+	}
+
 	return s, nil
 }
 
