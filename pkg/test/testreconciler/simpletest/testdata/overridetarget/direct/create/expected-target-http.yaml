@@ -11,7 +11,34 @@ Date: (removed)
 
 ---
 
+GET http://kube-apiserver/apis/apps/v1?timeout=32s
+Accept: application/json, */*
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 205
+Content-Type: application/json
+Date: (removed)
+
+{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"apps/v1","resources":[{"name":"deployments","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"Deployment","verbs":null}]}
+
+---
+
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
 
 404 Not Found
@@ -70,6 +97,75 @@ Date: (removed)
 
 ---
 
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+POST http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments?fieldManager=kubectl-client-side-apply&fieldValidation=Strict
+Accept: application/json
+Content-Type: application/json
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/api/v1/configmaps?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Type: application/json
+Date: (removed)
+
+<streaming response not included>
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/deployments?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Type: application/json
+Date: (removed)
+
+<streaming response not included>
+
+---
+
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
 Accept: application/json
 
@@ -83,11 +179,91 @@ Date: (removed)
 
 ---
 
-GET http://kube-apiserver/api/v1/configmaps?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
 
 200 OK
 Cache-Control: no-cache, private
+Content-Length: 1397
 Content-Type: application/json
 Date: (removed)
 
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"1","uid":"00000000-0000-0000-0000-000000000001"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"1","uid":"00000000-0000-0000-0000-000000000001"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"1","uid":"00000000-0000-0000-0000-000000000001"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}

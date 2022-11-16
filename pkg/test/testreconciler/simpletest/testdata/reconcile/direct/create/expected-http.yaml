@@ -32,10 +32,7 @@ Cache-Control: no-cache, private
 Content-Type: application/json
 Date: (removed)
 
-<<<<<<< HEAD
 <streaming response not included>
-=======
->>>>>>> 4a7d123 (testing: Record watch requests)
 
 ---
 
@@ -137,7 +134,6 @@ Date: (removed)
 
 ---
 
-<<<<<<< HEAD
 GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
 
@@ -153,14 +149,10 @@ Not Found
 ---
 
 GET http://kube-apiserver/api/v1/namespaces/ns1
-=======
-GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
->>>>>>> 2a32e5c (Switch to new kstatus function in example controller tests)
 Accept: application/json
 
 200 OK
 Cache-Control: no-cache, private
-<<<<<<< HEAD
 Content-Length: 286
 Content-Type: application/json
 Date: (removed)
@@ -174,37 +166,10 @@ Accept: application/json
 Content-Type: application/json
 
 {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
-=======
-Content-Length: 1025
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
-
----
-
-GET http://kube-apiserver/api/v1/configmaps?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
-Accept: application/json
-
-200 OK
-Cache-Control: no-cache, private
-Content-Type: application/json
-Date: (removed)
-
-
----
-
-PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
-Accept: application/json, */*
-Content-Type: application/json
-
-{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Current"}}
->>>>>>> 2a32e5c (Switch to new kstatus function in example controller tests)
 
 
 200 OK
 Cache-Control: no-cache, private
-<<<<<<< HEAD
 Content-Length: 1397
 Content-Type: application/json
 Date: (removed)
@@ -264,7 +229,6 @@ Content-Type: application/json
 Date: (removed)
 
 {"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"errors":["deployment does not meet condition: Available"],"healthy":false}}
-<<<<<<< HEAD
 
 ---
 
@@ -330,12 +294,3 @@ Content-Type: application/json
 Date: (removed)
 
 {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
-=======
-=======
-Content-Length: 295
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Current"}}
->>>>>>> 2a32e5c (Switch to new kstatus function in example controller tests)
->>>>>>> b950ecd (Switch to new kstatus function in example controller tests)
