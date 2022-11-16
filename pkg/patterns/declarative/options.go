@@ -58,6 +58,9 @@ type reconcilerParams struct {
 	ownerFn    OwnerSelector
 	labelMaker LabelMaker
 	status     Status
+
+	// hooks allow for interception of events during the reconciliation lifecycle
+	hooks []Hook
 }
 
 type ManifestController interface {
@@ -227,6 +230,14 @@ func WithReconcileMetrics(metricsDuration int, ot *ObjectTracker) ReconcilerOpti
 			ot.setMetricsDurationInternal(metricsDuration)
 		}
 
+		return p
+	}
+}
+
+// WithHook allows for us to intercept and inject behaviours at various points in the lifecycle
+func WithHook(hook Hook) ReconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.hooks = append(p.hooks, hook)
 		return p
 	}
 }
