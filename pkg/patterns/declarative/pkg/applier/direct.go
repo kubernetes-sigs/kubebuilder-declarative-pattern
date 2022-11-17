@@ -77,7 +77,14 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	b := d.inner.NewBuilder(opt)
 	f := d.inner.NewFactory(opt)
 
+	// TODO can we just reuse this
+	dynamicClient, err := f.DynamicClient()
+	if err != nil {
+		return err
+	}
+
 	if opt.Validate {
+		// TODO is this related to the dynamic client creation?
 		// This potentially causes redundant work, but validation isn't the common path
 
 		dynamicClient, err := f.DynamicClient()
@@ -124,6 +131,8 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		IOStreams:           ioStreams,
 		FieldManager:        "kubectl-client-side-apply",
 		ValidationDirective: metav1.FieldValidationStrict,
+		Mapper: 			 opt.RESTMapper,
+		DynamicClient:		 dynamicClient,
 	}
 	// TODO this will add the print part at all times.
 	applyOpts.PostProcessorFn = applyOpts.PrintAndPrunePostProcessor()
@@ -169,6 +178,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	}
 	applyOpts.DeleteOptions = &cmdDelete.DeleteOptions{
 		IOStreams: ioStreams,
+		CascadingStrategy: opt.CascadingStrategy,
 	}
 
 	if err := d.inner.Run(applyOpts); err != nil {

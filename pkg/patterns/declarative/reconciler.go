@@ -303,13 +303,15 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 
 	applierOpt := applier.ApplierOptions{
-		RESTConfig: r.config,
-		RESTMapper: r.restMapper,
-		Namespace:  ns,
-		Manifest:   manifestStr,
-		Validate:   r.options.validate,
-		ExtraArgs:  extraArgs,
-		Force:      true,
+		RESTConfig: 		r.config,
+		RESTMapper: 		r.restMapper,
+		Namespace:  		ns,
+		Manifest:   		manifestStr,
+		Validate:   		r.options.validate,
+		ExtraArgs:  		extraArgs,
+		Force:      		true,
+		// TODO Make this configurable
+		CascadingStrategy: 	"Foreground",		
 	}
 
 	applier := r.options.applier
