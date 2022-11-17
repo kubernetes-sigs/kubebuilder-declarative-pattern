@@ -162,7 +162,6 @@ metadata:
   name: foo-operator
   namespace: kube-system`,
 					args: []string{"--prune", "--selector", "label=true", "--prune-whitelist", "core/v1/Namespace", "--prune-whitelist", "core/v1/Service"},
-					// TODO is this used somewhere?
 					expectApplyOptions: &apply.ApplyOptions{
 						Prune: true,
 					},
@@ -191,6 +190,7 @@ metadata:
 				Manifest:  test.manifest,
 				Validate:  test.validate,
 				ExtraArgs: test.args,
+				RESTMapper: testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme),
 			}
 
 			err := testApplier.Apply(context.Background(), opts)
