@@ -23,8 +23,8 @@ type ApplierOptions struct {
 	CascadingStrategy metav1.DeletionPropagation
 
 	PruneWhitelist []string
-	Prune bool
-	
+	Prune          bool
+
 	// Force is set if we should "force" the apply.
 	// For server-side-apply, this corresponds to setting the force option, which ensures we take ownership
 	// even when another field manager owns a field.

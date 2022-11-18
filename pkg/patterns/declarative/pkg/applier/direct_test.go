@@ -152,33 +152,33 @@ metadata:
 				return nil
 			},
 		},
-				{
-					name:      "manifest with prune, prune-whitelist and selector",
-					namespace: "",
-					manifest: `---
+		{
+			name:      "manifest with prune, prune-whitelist and selector",
+			namespace: "",
+			manifest: `---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: foo-operator
   namespace: kube-system`,
-					args: []string{"--prune", "--selector", "label=true", "--prune-whitelist", "core/v1/Namespace", "--prune-whitelist", "core/v1/Service"},
-					// TODO is this used somewhere?
-					expectApplyOptions: &apply.ApplyOptions{
-						Prune: true,
-					},
-					expectCheckFunc: func(opt *apply.ApplyOptions) error {
-						if opt.Prune != true {
-							return fmt.Errorf("prune is not set")
-						}
-						if len(opt.PruneResources) != 2 {
-							return fmt.Errorf("prune resources are not set correctly, found %s", opt.PruneResources)
-						}
-						if opt.Selector != "label=true" {
-							return fmt.Errorf("selector is not set as expected, found %s", opt.Selector)
-						}
-						return nil
-					},
-				},
+			args: []string{"--prune", "--selector", "label=true", "--prune-whitelist", "core/v1/Namespace", "--prune-whitelist", "core/v1/Service"},
+			// TODO is this used somewhere?
+			expectApplyOptions: &apply.ApplyOptions{
+				Prune: true,
+			},
+			expectCheckFunc: func(opt *apply.ApplyOptions) error {
+				if opt.Prune != true {
+					return fmt.Errorf("prune is not set")
+				}
+				if len(opt.PruneResources) != 2 {
+					return fmt.Errorf("prune resources are not set correctly, found %s", opt.PruneResources)
+				}
+				if opt.Selector != "label=true" {
+					return fmt.Errorf("selector is not set as expected, found %s", opt.Selector)
+				}
+				return nil
+			},
+		},
 	}
 
 	for _, test := range tests {

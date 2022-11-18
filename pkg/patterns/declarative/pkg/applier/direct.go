@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
 	"k8s.io/kubectl/pkg/util/prune"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -20,7 +21,6 @@ import (
 	cmdDelete "k8s.io/kubectl/pkg/cmd/delete"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
-
 
 type DirectApplier struct {
 	inner directApplierSite
@@ -132,12 +132,11 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		IOStreams:           ioStreams,
 		FieldManager:        "kubectl-client-side-apply",
 		ValidationDirective: metav1.FieldValidationStrict,
-		Mapper: 			 opt.RESTMapper,
-		DynamicClient:		 dynamicClient,
+		Mapper:              opt.RESTMapper,
+		DynamicClient:       dynamicClient,
 	}
 	// TODO this will add the print part at all times.
 	applyOpts.PostProcessorFn = applyOpts.PrintAndPrunePostProcessor()
-
 
 	whiteListResources := []string{}
 	for i, arg := range opt.ExtraArgs {
@@ -165,9 +164,8 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		if err != nil {
 			return err
 		}
-		applyOpts.PruneResources = append(applyOpts.PruneResources, r...)	
+		applyOpts.PruneResources = append(applyOpts.PruneResources, r...)
 	}
-
 
 	applyOpts.ForceConflicts = opt.Force
 	applyOpts.Namespace = opt.Namespace
@@ -178,7 +176,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		return applyOpts.PrintFlags.ToPrinter()
 	}
 	applyOpts.DeleteOptions = &cmdDelete.DeleteOptions{
-		IOStreams: ioStreams,
+		IOStreams:         ioStreams,
 		CascadingStrategy: opt.CascadingStrategy,
 	}
 
