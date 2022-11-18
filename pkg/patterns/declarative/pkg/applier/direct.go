@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"k8s.io/kubectl/pkg/util/prune"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,8 +19,8 @@ import (
 	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdDelete "k8s.io/kubectl/pkg/cmd/delete"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"k8s.io/kubectl/pkg/util/prune"
 )
+
 
 type DirectApplier struct {
 	inner directApplierSite
@@ -83,7 +84,8 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	}
 
 	if opt.Validate {
-		// This potentially causes redundant work, but validation isn't the common path
+		// validation likely makes redundant apiserver requests and is less optimized than the non-validation case,
+		// but validation isn't the common path
 
 		nqpv := resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamFieldValidation)
 

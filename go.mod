@@ -15,7 +15,7 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/prometheus/client_golang v1.12.2
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
-	golang.org/x/tools v0.1.12
+	golang.org/x/tools v0.3.0
 	k8s.io/api v0.25.0
 	k8s.io/apimachinery v0.25.4
 	k8s.io/cli-runtime v0.25.0
@@ -93,7 +93,7 @@ require (
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
-	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
+	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sys v0.2.0 // indirect
