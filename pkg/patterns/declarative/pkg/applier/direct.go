@@ -78,6 +78,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	b := d.inner.NewBuilder(opt)
 	f := d.inner.NewFactory(opt)
 
+	// TODO can we just reuse this
 	dynamicClient, err := f.DynamicClient()
 	if err != nil {
 		return err
@@ -87,6 +88,10 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		// validation likely makes redundant apiserver requests and is less optimized than the non-validation case,
 		// but validation isn't the common path
 
+		dynamicClient, err := f.DynamicClient()
+		if err != nil {
+			return err
+		}
 		nqpv := resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamFieldValidation)
 
 		v, err := d.inner.NewFactory(opt).Validator(metav1.FieldValidationStrict, nqpv)
@@ -130,6 +135,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		Mapper: 			 opt.RESTMapper,
 		DynamicClient:		 dynamicClient,
 	}
+	// TODO this will add the print part at all times.
 	applyOpts.PostProcessorFn = applyOpts.PrintAndPrunePostProcessor()
 
 
@@ -137,6 +143,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	for i, arg := range opt.ExtraArgs {
 		switch arg {
 		case "--force":
+			// TODO Does this do anything? It seems like opt (aka ApplierOptions) is not used anymore
 			opt.Force = true
 		case "--prune":
 			applyOpts.Prune = true
@@ -149,14 +156,18 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		}
 	}
 
-	
 	if len(whiteListResources) > 0 {
-		r, err := prune.ParseResources(opt.RESTMapper, whiteListResources)
+		rm, err := f.ToRESTMapper()
+		if err != nil {
+			return err
+		}
+		r, err := prune.ParseResources(rm, whiteListResources)
 		if err != nil {
 			return err
 		}
 		applyOpts.PruneResources = append(applyOpts.PruneResources, r...)	
 	}
+
 
 	applyOpts.ForceConflicts = opt.Force
 	applyOpts.Namespace = opt.Namespace
