@@ -286,7 +286,7 @@ func Test_AddAnnotations(t *testing.T) {
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
+  annotations:
     app: test-app
   name: frontend
 spec:
@@ -333,7 +333,7 @@ spec:
 			}
 			for _, o := range objects.Items {
 				o.AddAnnotations(tt.inputAnnotations)
-				if len(tt.expectedAnnotations) != len(o.object.GetLabels()) {
+				if len(tt.expectedAnnotations) != len(o.object.GetAnnotations()) {
 					t.Errorf("Expected length of labels to be %v but is %v", len(tt.expectedAnnotations), len(o.object.GetAnnotations()))
 				}
 				if diff := cmp.Diff(tt.expectedAnnotations, o.object.GetAnnotations()); diff != "" {
