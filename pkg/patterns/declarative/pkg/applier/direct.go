@@ -134,6 +134,9 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		ValidationDirective: metav1.FieldValidationStrict,
 		Mapper:              opt.RESTMapper,
 		DynamicClient:       dynamicClient,
+
+		// Automatically resolve conflicts between the modified and live configuration by using values from the modified configuration
+		Overwrite: true,
 	}
 	// TODO this will add the print part at all times.
 	applyOpts.PostProcessorFn = applyOpts.PrintAndPrunePostProcessor()
