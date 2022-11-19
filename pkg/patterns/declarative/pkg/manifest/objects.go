@@ -95,6 +95,21 @@ func (o *Object) AddLabels(labels map[string]string) {
 	o.json = nil
 }
 
+func (o *Object) AddAnnotations(annotations map[string]string) {
+	merged := make(map[string]string)
+	for k, v := range o.object.GetAnnotations() {
+		merged[k] = v
+	}
+
+	for k, v := range annotations {
+		merged[k] = v
+	}
+
+	o.object.SetAnnotations(merged)
+	// Invalidate cached json
+	o.json = nil
+}
+
 func (o *Object) GetNamespace() string {
 	return o.namespace
 }

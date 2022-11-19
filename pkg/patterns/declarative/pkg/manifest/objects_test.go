@@ -281,6 +281,69 @@ spec:
 	}
 }
 
+func Test_AddAnnotations(t *testing.T) {
+	inputManifest := `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-app
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-app
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: test-app
+    spec:
+      containers:
+      - image: busybox
+        name: busybox`
+	tests := []struct {
+		name                string
+		inputManifest       string
+		inputAnnotations    map[string]string
+		expectedAnnotations map[string]string
+	}{
+		{
+			name:                "add annotations which are all new one",
+			inputManifest:       inputManifest,
+			inputAnnotations:    map[string]string{"sample-key1": "sample-value1", "sample-key2": "sample-value2"},
+			expectedAnnotations: map[string]string{"app": "test-app", "sample-key1": "sample-value1", "sample-key2": "sample-value2"},
+		},
+		{
+			// If call AddAnnotations with a key which has exists already, value will be overwritten.
+			name:                "add annotations which has already exist in manifest",
+			inputManifest:       inputManifest,
+			inputAnnotations:    map[string]string{"app": "test-app2"},
+			expectedAnnotations: map[string]string{"app": "test-app2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			objects, err := ParseObjects(ctx, tt.inputManifest)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			for _, o := range objects.Items {
+				o.AddAnnotations(tt.inputAnnotations)
+				if len(tt.expectedAnnotations) != len(o.object.GetLabels()) {
+					t.Errorf("Expected length of labels to be %v but is %v", len(tt.expectedAnnotations), len(o.object.GetAnnotations()))
+				}
+				if diff := cmp.Diff(tt.expectedAnnotations, o.object.GetAnnotations()); diff != "" {
+					t.Fatalf("result mismatch (-want +got):\n%s", diff)
+				}
+			}
+		})
+	}
+}
+
 func Test_ParseJSONToObject(t *testing.T) {
 	tests := []struct {
 		name           string
