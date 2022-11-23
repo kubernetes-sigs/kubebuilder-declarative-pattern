@@ -525,7 +525,7 @@ func TestAddIfNotPresent(t *testing.T) {
 				if st.actions[i] == "Create" || st.actions[i] == "Update" {
 					var options applier.ApplierOptions
 					options.Namespace = st.defaultNamespace
-					options.Manifest = yobj
+					options.Objects = objList
 					options.RESTMapper = restMapper
 					options.RESTConfig = restConfig
 					applier := applier.NewApplySetApplier(metav1.PatchOptions{FieldManager: "kdp-test"})

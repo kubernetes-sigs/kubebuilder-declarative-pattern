@@ -20,6 +20,7 @@ import (
 	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdDelete "k8s.io/kubectl/pkg/cmd/delete"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
 type DirectApplier struct {
@@ -68,12 +69,18 @@ func NewDirectApplier() Applier {
 }
 
 func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
+	objects := manifest.Objects{Items: opt.Objects}
+	manifestStr, err := objects.JSONManifest()
+	if err != nil {
+		return fmt.Errorf("error creating JSON manifest: %w", err)
+	}
+
 	ioStreams := genericclioptions.IOStreams{
 		In:     os.Stdin,
 		Out:    os.Stdout,
 		ErrOut: os.Stderr,
 	}
-	ioReader := strings.NewReader(opt.Manifest)
+	ioReader := strings.NewReader(manifestStr)
 
 	b := d.inner.NewBuilder(opt)
 	f := d.inner.NewFactory(opt)

@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 	controllerrestmapper "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
@@ -69,7 +70,12 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 				t.Fatalf("error precreating objects: %v", err)
 			}
 		}
-		manifest := string(h.MustReadFile(filepath.Join(testdir, "manifest.yaml")))
+		p := filepath.Join(testdir, "manifest.yaml")
+		manifestYAML := string(h.MustReadFile(p))
+		objects, err := manifest.ParseObjects(ctx, manifestYAML)
+		if err != nil {
+			t.Errorf("error parsing manifest %q: %v", p, err)
+		}
 
 		restMapper, err := controllerrestmapper.NewControllerRESTMapper(restConfig)
 		if err != nil {
@@ -77,7 +83,7 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 		}
 
 		options := ApplierOptions{
-			Manifest:   manifest,
+			Objects:    objects.GetItems(),
 			RESTConfig: restConfig,
 			RESTMapper: restMapper,
 		}
