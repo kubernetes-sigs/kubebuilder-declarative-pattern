@@ -19,7 +19,7 @@ package mockkubeapiserver
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 
@@ -52,7 +52,7 @@ func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return req.writeErrorResponse(http.StatusNotFound)
 	}
 
-	bodyBytes, err := ioutil.ReadAll(req.r.Body)
+	bodyBytes, err := io.ReadAll(req.r.Body)
 	if err != nil {
 		return err
 	}

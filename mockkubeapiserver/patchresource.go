@@ -20,7 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -53,7 +53,7 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		existingObj = nil
 	}
 
-	bodyBytes, err := ioutil.ReadAll(req.r.Body)
+	bodyBytes, err := io.ReadAll(req.r.Body)
 	if err != nil {
 		return err
 	}

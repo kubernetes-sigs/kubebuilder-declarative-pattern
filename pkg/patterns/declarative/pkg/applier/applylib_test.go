@@ -3,7 +3,7 @@ package applier
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path/filepath"
 	"testing"
@@ -125,12 +125,12 @@ func (h *logKubeRequestsHook) BeforeHTTPOperation(op *mockkubeapiserver.HTTPOper
 	}
 
 	if req.Body != nil {
-		requestBody, err := ioutil.ReadAll(req.Body)
+		requestBody, err := io.ReadAll(req.Body)
 		if err != nil {
 			panic("failed to read request body")
 		}
 		entry.Request.Body = string(requestBody)
-		req.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
+		req.Body = io.NopCloser(bytes.NewReader(requestBody))
 	}
 	h.log.Entries = append(h.log.Entries, entry)
 }

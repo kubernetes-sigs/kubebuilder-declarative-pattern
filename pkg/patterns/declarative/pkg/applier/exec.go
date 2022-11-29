@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -117,7 +116,7 @@ func (c *ExecKubectl) Apply(ctx context.Context, opt ApplierOptions) error {
 			return fmt.Errorf("error building kubeconfig: %w", err)
 		}
 
-		f, err := ioutil.TempFile("", "kubeconfig")
+		f, err := os.CreateTemp("", "kubeconfig")
 		if err != nil {
 			return fmt.Errorf("error creating temp file: %w", err)
 		}

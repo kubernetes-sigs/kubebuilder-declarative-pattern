@@ -3,7 +3,7 @@ package httprecorder
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -27,12 +27,12 @@ func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) 
 	}
 
 	if request.Body != nil {
-		requestBody, err := ioutil.ReadAll(request.Body)
+		requestBody, err := io.ReadAll(request.Body)
 		if err != nil {
 			panic("failed to read request body")
 		}
 		entry.Request.Body = string(requestBody)
-		request.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
+		request.Body = io.NopCloser(bytes.NewReader(requestBody))
 	}
 
 	response, err := m.inner.RoundTrip(request)
@@ -54,12 +54,12 @@ func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) 
 		}
 
 		if response.Body != nil {
-			requestBody, err := ioutil.ReadAll(response.Body)
+			requestBody, err := io.ReadAll(response.Body)
 			if err != nil {
 				entry.Response.Body = fmt.Sprintf("<error reading response:%v>", err)
 			} else {
 				entry.Response.Body = string(requestBody)
-				response.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
+				response.Body = io.NopCloser(bytes.NewReader(requestBody))
 			}
 		}
 	}
