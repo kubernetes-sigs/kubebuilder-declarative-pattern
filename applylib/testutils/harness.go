@@ -21,7 +21,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -205,12 +204,12 @@ func (h *Harness) RESTMapper() *restmapper.DeferredDiscoveryRESTMapper {
 func (h *Harness) AssertMatchesFile(p string, got string) {
 	if os.Getenv("WRITE_GOLDEN_OUTPUT") != "" {
 		// Short-circuit when the output is correct
-		b, err := ioutil.ReadFile(p)
+		b, err := os.ReadFile(p)
 		if err == nil && bytes.Equal(b, []byte(got)) {
 			return
 		}
 
-		if err := ioutil.WriteFile(p, []byte(got), 0644); err != nil {
+		if err := os.WriteFile(p, []byte(got), 0644); err != nil {
 			h.Fatalf("failed to write golden output %s: %v", p, err)
 		}
 		h.Errorf("wrote output to %s", p)

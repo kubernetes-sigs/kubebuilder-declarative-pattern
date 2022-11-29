@@ -2,7 +2,7 @@ package testharness
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,9 +11,17 @@ import (
 )
 
 func RunGoldenTests(t *testing.T, basedir string, fn func(h *Harness, dir string)) {
-	files, err := ioutil.ReadDir(basedir)
+	entries, err := os.ReadDir(basedir)
 	if err != nil {
 		t.Fatalf("ReadDir(%q) failed: %v", basedir, err)
+	}
+	files := make([]fs.FileInfo, 0, len(entries))
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			t.Fatalf("failed to get FileInfo %v: %v", info, err)
+		}
+		files = append(files, info)
 	}
 	count := 0
 	for _, file := range files {
@@ -34,12 +42,12 @@ func RunGoldenTests(t *testing.T, basedir string, fn func(h *Harness, dir string
 func (h *Harness) CompareGoldenFile(p string, got string) {
 	if os.Getenv("WRITE_GOLDEN_OUTPUT") != "" {
 		// Short-circuit when the output is correct
-		b, err := ioutil.ReadFile(p)
+		b, err := os.ReadFile(p)
 		if err == nil && bytes.Equal(b, []byte(got)) {
 			return
 		}
 
-		if err := ioutil.WriteFile(p, []byte(got), 0644); err != nil {
+		if err := os.WriteFile(p, []byte(got), 0644); err != nil {
 			h.Fatalf("failed to write golden output %s: %v", p, err)
 		}
 		h.Errorf("wrote output to %s", p)
