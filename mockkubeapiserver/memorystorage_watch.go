@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sync"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -89,21 +90,80 @@ func (r *resourceStorage) watch(ctx context.Context, opt WatchOptions, callback 
 
 func buildWatchEvent(evType string, u *unstructured.Unstructured) *watchEvent {
 	ev := &watchEvent{
-		Message: messageV1{
-			Type:   evType,
-			Object: u,
-		},
-		Namespace: u.GetNamespace(),
+		internalObject: u,
+		eventType:      evType,
+		Namespace:      u.GetNamespace(),
 	}
-	evJSON, err := json.Marshal(&ev.Message)
-	if err != nil {
-		klog.Fatalf("error from json.Marshal(%T): %v", &ev.Message, err)
-	}
-
-	evJSON = append(evJSON, byte('\n'))
-	ev.JSON = evJSON
-
 	return ev
+}
+
+func (ev *watchEvent) JSON() []byte {
+	ev.mutex.Lock()
+	defer ev.mutex.Unlock()
+
+	if ev.json != nil {
+		return ev.json
+	}
+	u := ev.internalObject
+
+	msg := messageV1{
+		Type:   ev.eventType,
+		Object: u,
+	}
+
+	j, err := json.Marshal(&msg)
+	if err != nil {
+		klog.Fatalf("error from json.Marshal(%T): %v", &msg, err)
+	}
+
+	j = append(j, byte('\n'))
+	ev.json = j
+
+	return j
+}
+
+// Constructs the message for a PartialObjectMetadata response
+func (ev *watchEvent) PartialObjectMetadataJSON() []byte {
+	ev.mutex.Lock()
+	defer ev.mutex.Unlock()
+
+	if ev.partialObjectMetadataJSON != nil {
+		return ev.partialObjectMetadataJSON
+	}
+	u := ev.internalObject
+
+	partialObjectMetadata := &metav1.PartialObjectMetadata{}
+	partialObjectMetadata.APIVersion = u.GetAPIVersion()
+	partialObjectMetadata.Kind = u.GetKind()
+
+	partialObjectMetadata.APIVersion = "meta.k8s.io/v1beta1"
+	partialObjectMetadata.Kind = "PartialObjectMetadata"
+	// {"kind":"PartialObjectMetadata","apiVersion":"meta.k8s.io/v1beta1","metadata"":
+
+	partialObjectMetadata.Annotations = u.GetAnnotations()
+	partialObjectMetadata.Labels = u.GetLabels()
+	partialObjectMetadata.Name = u.GetName()
+	partialObjectMetadata.Namespace = u.GetNamespace()
+	partialObjectMetadata.ResourceVersion = u.GetResourceVersion()
+	partialObjectMetadata.Generation = u.GetGeneration()
+	partialObjectMetadata.CreationTimestamp = u.GetCreationTimestamp()
+	partialObjectMetadata.DeletionTimestamp = u.GetDeletionTimestamp()
+	partialObjectMetadata.DeletionGracePeriodSeconds = u.GetDeletionGracePeriodSeconds()
+	partialObjectMetadata.GenerateName = u.GetGenerateName()
+
+	msg := messageV1{
+		Type:   ev.eventType,
+		Object: partialObjectMetadata,
+	}
+
+	j, err := json.Marshal(&msg)
+	if err != nil {
+		klog.Fatalf("error from json.Marshal(%T): %v", &msg, err)
+	}
+
+	j = append(j, byte('\n'))
+	ev.partialObjectMetadataJSON = j
+	return j
 }
 
 func (r *resourceStorage) broadcastEventHoldingLock(ctx context.Context, evType string, u *unstructured.Unstructured) {
