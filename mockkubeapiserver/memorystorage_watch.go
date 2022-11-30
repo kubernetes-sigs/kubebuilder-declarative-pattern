@@ -40,6 +40,7 @@ func (r *resourceStorage) watch(ctx context.Context, opt WatchOptions, callback 
 	w := &watch{
 		callback: callback,
 		opt:      opt,
+		errChan:  make(chan error),
 	}
 
 	r.mutex.Lock()
@@ -72,7 +73,7 @@ func (r *resourceStorage) watch(ctx context.Context, opt WatchOptions, callback 
 
 		ev := buildWatchEvent("ADDED", obj)
 		if err := w.callback(ev); err != nil {
-			klog.Warningf("error sending watch notification; stopping watch: %v", err)
+			klog.Warningf("error sending backfill watch notification; stopping watch: %v", err)
 
 			// remove watch from list
 			r.mutex.Lock()
