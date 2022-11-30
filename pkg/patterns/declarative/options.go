@@ -19,6 +19,8 @@ package declarative
 import (
 	"context"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
@@ -48,6 +50,7 @@ type reconcilerParams struct {
 
 	applier applier.Applier
 
+	cascadingStrategy metav1.DeletionPropagation
 	prune             bool
 	preserveNamespace bool
 	kustomize         bool
@@ -183,6 +186,14 @@ func WithApplyValidation() ReconcilerOption {
 func WithApplier(applier applier.Applier) ReconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.applier = applier
+		return p
+	}
+}
+
+// WithCascadingStrategy allows us to select a different CascadingStrategy, which ultimately sets the PropagationPolicy
+func WithCascadingStrategy(cs metav1.DeletionPropagation) ReconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.cascadingStrategy = cs
 		return p
 	}
 }
