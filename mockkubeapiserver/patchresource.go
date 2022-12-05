@@ -89,7 +89,6 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	changed := true
 	if req.SubResource == "" {
 		if resource.TypeInfo != nil {
-
 			patchOptions := metav1.PatchOptions{}
 			if fieldManager := req.r.URL.Query().Get("fieldManager"); fieldManager != "" {
 				patchOptions.FieldManager = fieldManager

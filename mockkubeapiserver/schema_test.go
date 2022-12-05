@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -21,7 +20,6 @@ func TestApply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewMemoryStorage failed: %v", err)
 	}
-	storage.RegisterType(gvk, "configmaps", meta.RESTScopeNamespace)
 
 	resource := storage.findResourceByGVK(gvk)
 	if resource == nil {
