@@ -144,6 +144,18 @@ metadata:
 }
 
 func TestKubectlApplier(t *testing.T) {
+	kubectlPath, err := exec.LookPath("kubectl")
+	if err != nil {
+		t.Fatalf("failed to find kubectl on path: %v", err)
+	}
+	t.Logf("kubectl found at %q", kubectlPath)
+
+	kubectlVersion, err := exec.Command("kubectl", "version", "--client").CombinedOutput()
+	if err != nil {
+		t.Fatalf("failed to run kubectl version: %v", err)
+	}
+	t.Logf("kubectl version is %q", kubectlVersion)
+
 	applier := NewExec()
 	runApplierGoldenTests(t, "testdata/kubectl", true, applier)
 }

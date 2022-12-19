@@ -24,10 +24,22 @@ REPO_ROOT=$(dirname "${BASH_SOURCE}")/../..
 source "${CI_ROOT}/fetch_kubebuilder_release_bin.sh"
 
 cd "${REPO_ROOT}"
+# Make sure REPO_ROOT is an absolute path
+REPO_ROOT=$(pwd)
+
+# Ensure we run with a known version of kubectl
+if [[ ! -f "bin/kubectl" ]]; then
+  echo "Downloading kubectl to bin/kubectl"
+  mkdir -p bin/
+  curl -L -o bin/kubectl https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl
+fi
+chmod +x bin/kubectl
+export PATH="${REPO_ROOT}/bin:$PATH"
+echo "kubectl version is $(kubectl version --client)"
 
 export GO111MODULE=on
 
-go test sigs.k8s.io/kubebuilder-declarative-pattern/pkg/...
+go test -v -count=1 sigs.k8s.io/kubebuilder-declarative-pattern/pkg/...
 
 cd examples/guestbook-operator
 go test sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator/controllers/...

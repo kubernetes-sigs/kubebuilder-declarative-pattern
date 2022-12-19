@@ -9,17 +9,7 @@ Kubectl-Command: kubectl apply
 ---
 
 GET /api?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
-
----
-
-GET /api/v1?timeout=32s
-Accept: application/json, */*
+Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
@@ -39,6 +29,16 @@ Kubectl-Command: kubectl apply
 ---
 
 GET /apis?timeout=32s
+Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
