@@ -3,6 +3,7 @@ package httprecorder
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -105,6 +106,47 @@ func (l *RequestLog) RemoveHeader(k string) {
 	for i := range l.Entries {
 		r := &l.Entries[i].Request
 		r.Header.Del(k)
+	}
+}
+
+// SortGETs attempts to normalize parallel requests.
+// Consecutive GET requests are sorted alphabetically.
+func (l *RequestLog) SortGETs() {
+
+	isSwappable := func(urlString string) (string, bool) {
+		u, err := url.Parse(urlString)
+		if err != nil {
+			klog.Warningf("unable to parse url %q", urlString)
+			return "", false
+		}
+
+		switch u.Path {
+		case "/apis", "/api/v1", "/apis/v1":
+			return u.Path, true
+		}
+		return "", false
+	}
+
+doAgain:
+	changed := false
+	for i := 0; i < len(l.Entries)-1; i++ {
+		a := l.Entries[i]
+		b := l.Entries[i+1]
+
+		if a.Request.Method == "GET" && b.Request.Method == "GET" {
+			aKey, aSwappable := isSwappable(a.Request.URL)
+			bKey, bSwappable := isSwappable(b.Request.URL)
+			if aSwappable && bSwappable {
+				if aKey > bKey {
+					l.Entries[i+1] = a
+					l.Entries[i] = b
+					changed = true
+				}
+			}
+		}
+	}
+	if changed {
+		goto doAgain
 	}
 }
 

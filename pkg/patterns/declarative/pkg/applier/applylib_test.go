@@ -94,6 +94,8 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 		t.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
 		requestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
 		requestLog.RemoveUserAgent()
+		requestLog.SortGETs()
+
 		requests := requestLog.FormatHTTP()
 		h.CompareGoldenFile(filepath.Join(testdir, "expected.yaml"), requests)
 
@@ -101,6 +103,7 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 			t.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
 			apiserverRequestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
 			apiserverRequestLog.RemoveUserAgent()
+			apiserverRequestLog.SortGETs()
 			apiserverRequestLog.RemoveHeader("Kubectl-Session")
 			apiserverRequests := apiserverRequestLog.FormatHTTP()
 			h.CompareGoldenFile(filepath.Join(testdir, "expected-apiserver.yaml"), apiserverRequests)
