@@ -62,7 +62,7 @@ type validator struct {
 	scheme  *runtime.Scheme
 	TestDir string
 	mgr     mocks.Manager
-	client  mocks.FakeClient
+	client  *mocks.FakeClient
 }
 
 // findChannelsPath will search for a channels directory, which is helpful when running under bazel
@@ -134,7 +134,7 @@ func (v *validator) Manager() *mocks.Manager {
 }
 
 func (v *validator) Client() *mocks.FakeClient {
-	return &v.client
+	return v.client
 }
 
 func (v *validator) Validate(r declarative.Reconciler) {

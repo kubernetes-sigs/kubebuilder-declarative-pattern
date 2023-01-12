@@ -18,17 +18,21 @@ import (
 type FakeClient struct {
 	tracker testing.ObjectTracker
 	scheme  *runtime.Scheme
+
+	client.Client
 }
 
-func NewClient(clientScheme *runtime.Scheme) FakeClient {
+var _ client.Client = &FakeClient{}
+
+func NewClient(clientScheme *runtime.Scheme) *FakeClient {
 	tracker := testing.NewObjectTracker(clientScheme, scheme.Codecs.UniversalDecoder())
-	return FakeClient{
+	return &FakeClient{
 		tracker: tracker,
 		scheme:  clientScheme,
 	}
 }
 
-func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out client.Object, opts ...client.GetOption) error {
+func (f *FakeClient) Get(ctx context.Context, key client.ObjectKey, out client.Object, opts ...client.GetOption) error {
 	gvr, err := getGVRFromObject(out, f.scheme)
 	if err != nil {
 		return err
@@ -46,7 +50,7 @@ func (f FakeClient) Get(ctx context.Context, key client.ObjectKey, out client.Ob
 	return err
 }
 
-func (f FakeClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+func (f *FakeClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	gvkUnprocessed, err := apiutil.GVKForObject(list, f.scheme)
 	if err != nil {
 		return err
@@ -70,7 +74,7 @@ func (f FakeClient) List(ctx context.Context, list client.ObjectList, opts ...cl
 	return meta.SetList(list, items)
 }
 
-func (f FakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+func (f *FakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	gvr, err := getGVRFromObject(obj, f.scheme)
 	if err != nil {
 		return err
@@ -78,12 +82,12 @@ func (f FakeClient) Create(ctx context.Context, obj client.Object, opts ...clien
 	return f.create(gvr, obj, opts...)
 }
 
-func (f FakeClient) CreateRuntimeObject(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+func (f *FakeClient) CreateRuntimeObject(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
 	gvr := getGVRFromRuntimeObject(obj)
 	return f.create(gvr, obj, opts...)
 }
 
-func (f FakeClient) create(gvr schema.GroupVersionResource, obj runtime.Object, opts ...client.CreateOption) error {
+func (f *FakeClient) create(gvr schema.GroupVersionResource, obj runtime.Object, opts ...client.CreateOption) error {
 	createOptions := &client.CreateOptions{}
 	createOptions.ApplyOptions(opts)
 
@@ -100,7 +104,7 @@ func (f FakeClient) create(gvr schema.GroupVersionResource, obj runtime.Object, 
 	return f.tracker.Create(gvr, obj, accessor.GetNamespace())
 }
 
-func (f FakeClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+func (f *FakeClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	gvr, err := getGVRFromObject(obj, f.scheme)
 	if err != nil {
 		return err
@@ -108,7 +112,7 @@ func (f FakeClient) Delete(ctx context.Context, obj client.Object, opts ...clien
 	return f.tracker.Delete(gvr, obj.GetNamespace(), obj.GetName())
 }
 
-func (f FakeClient) DeleteRuntimeObject(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
+func (f *FakeClient) DeleteRuntimeObject(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 	gvr := getGVRFromRuntimeObject(obj)
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
@@ -117,27 +121,27 @@ func (f FakeClient) DeleteRuntimeObject(ctx context.Context, obj runtime.Object,
 	return f.tracker.Delete(gvr, accessor.GetNamespace(), accessor.GetName())
 }
 
-func (FakeClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
+func (*FakeClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	return nil
 }
 
-func (FakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (*FakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return nil
 }
 
-func (FakeClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+func (*FakeClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	return nil
 }
 
-func (FakeClient) Status() client.StatusWriter {
-	return FakeStatusClient{}
+func (*FakeClient) Status() client.StatusWriter {
+	return &FakeStatusClient{}
 }
 
-func (FakeClient) RESTMapper() meta.RESTMapper {
+func (*FakeClient) RESTMapper() meta.RESTMapper {
 	return nil
 }
 
-func (FakeClient) Scheme() *runtime.Scheme {
+func (*FakeClient) Scheme() *runtime.Scheme {
 	return scheme.Scheme
 }
 
@@ -156,12 +160,9 @@ func getGVRFromRuntimeObject(obj runtime.Object) schema.GroupVersionResource {
 	return gvr
 }
 
-type FakeStatusClient struct{}
-
-func (FakeStatusClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	return nil
+type FakeStatusClient struct {
+	client.StatusClient
+	client.StatusWriter
 }
 
-func (FakeStatusClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	return nil
-}
+var _ client.StatusClient = &FakeStatusClient{}

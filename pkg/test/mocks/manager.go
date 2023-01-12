@@ -47,7 +47,7 @@ type Manager struct {
 
 var _ manager.Manager = &Manager{}
 
-func NewManager(c FakeClient) Manager {
+func NewManager(c *FakeClient) Manager {
 	return Manager{
 		client: c,
 		cache:  FakeCache{},
