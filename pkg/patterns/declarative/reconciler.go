@@ -294,15 +294,14 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	}
 
 	applierOpt := applier.ApplierOptions{
-		RESTConfig: r.config,
-		RESTMapper: r.restMapper,
-		Namespace:  ns,
-		Objects:    objects.GetItems(),
-		Validate:   r.options.validate,
-		ExtraArgs:  extraArgs,
-		Force:      true,
-		// TODO Make this configurable
-		CascadingStrategy: "Foreground",
+		RESTConfig:        r.config,
+		RESTMapper:        r.restMapper,
+		Namespace:         ns,
+		Objects:           objects.GetItems(),
+		Validate:          r.options.validate,
+		ExtraArgs:         extraArgs,
+		Force:             true,
+		CascadingStrategy: r.options.cascadingStrategy,
 	}
 
 	applier := r.options.applier
@@ -482,6 +481,10 @@ func (r *Reconciler) applyOptions(opts ...ReconcilerOption) error {
 			return err
 		}
 		params.manifestController = loader
+	}
+
+	if params.cascadingStrategy == "" {
+		params.cascadingStrategy = "Foreground"
 	}
 
 	r.options = params
