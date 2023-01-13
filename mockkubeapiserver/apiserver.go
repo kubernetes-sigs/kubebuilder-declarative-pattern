@@ -247,6 +247,17 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+
+		if tokens[0] == "apis" {
+			buildObjectRequest(resourceRequestBase{
+				Group:     tokens[1],
+				Version:   tokens[2],
+				Resource:  tokens[3],
+				Namespace: "",
+				Name:      tokens[4],
+			})
+			matchedPath = true
+		}
 	}
 
 	if len(tokens) == 6 {
