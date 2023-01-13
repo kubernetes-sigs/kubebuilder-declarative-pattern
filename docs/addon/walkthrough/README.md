@@ -10,7 +10,7 @@ Install the following depenencies:
 - [kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize/) (tested with v3.8.7)
 - docker
 - kubectl
-- golang (>=1.11 for go modules)
+- golang (1.13 <= version < 1.17 for go modules)
 
 Create a new directory and use kubebuilder to scaffold the operator:
 
