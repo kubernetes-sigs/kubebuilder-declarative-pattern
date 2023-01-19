@@ -712,6 +712,7 @@ sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2/go.mod h1:B8JuhiUyNFVKdsE8h6
 sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20221111030210-e034bc5469a5 h1:o4Wltkyn3ddIHD6PDSNDc/H6Tvrnb8Po4J3nRepiUKI=
 sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20221111030210-e034bc5469a5/go.mod h1:pVjrMOBKjOFQ/3hktlrseM3biE1lO0zACpfJuwYYNDc=
 sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20221111030210-e034bc5469a5 h1:jLa+teeZ5bmymaj82MN5I3Izjz/Ampdz0PlyL5+nafk=
+sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20221111030210-e034bc5469a5/go.mod h1:DXh2lUaKUJhMW9cGc7A72yssGyu+rTrZgVelYOupXRM=
 sigs.k8s.io/kustomize/api v0.12.1 h1:7YM7gW3kYBwtKvoY216ZzY+8hM+lV53LUayghNRJ0vM=
 sigs.k8s.io/kustomize/api v0.12.1/go.mod h1:y3JUhimkZkR6sbLNwfJHxvo1TCLwuwm14sCYnkH6S1s=
 sigs.k8s.io/kustomize/kyaml v0.13.9 h1:Qz53EAaFFANyNgyOEJbT/yoIHygK40/ZcvU3rgry2Tk=
