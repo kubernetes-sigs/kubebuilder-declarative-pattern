@@ -223,12 +223,12 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 
 		unstruct, err := GetObjectFromCluster(obj, r)
 		if err != nil && !apierrors.IsNotFound(errors.Unwrap(err)) {
-			log.WithValues("name", obj.Name).Error(err, "Unable to get resource")
+			log.WithValues("name", obj.GetName()).Error(err, "Unable to get resource")
 		}
 		if unstruct != nil {
 			annotations := unstruct.GetAnnotations()
 			if _, ok := annotations["addons.k8s.io/ignore"]; ok {
-				log.WithValues("kind", obj.Kind).WithValues("name", obj.Name).Info("Found ignore annotation on object, " +
+				log.WithValues("kind", obj.Kind).WithValues("name", obj.GetName()).Info("Found ignore annotation on object, " +
 					"skipping object")
 				continue
 			}
@@ -514,10 +514,11 @@ func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObj
 			continue
 		}
 
-		if owner.GetNamespace() != "" && owner.GetNamespace() != o.Namespace {
+		if owner.GetNamespace() != "" && owner.GetNamespace() != o.GetNamespace() {
 			// a namespaced object can only own objects within the same namespace, not objects in other namespaces or cluster-scoped objects
 			// for any other combination, skip setting owner reference here, to allow declarative.SourceAsOwner to be used for the
 			// subset of objects that make up a supported combination
+			log.WithValues("object", o).Info("not setting ownerRef across namespaces")
 			continue
 		}
 
@@ -605,9 +606,9 @@ func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Un
 	if err != nil {
 		return nil, fmt.Errorf("unable to get mapping for resource %v: %w", gvk, err)
 	}
-	ns := obj.UnstructuredObject().GetNamespace()
-	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(),
-		obj.Name, getOptions)
+	ns := obj.GetNamespace()
+	name := obj.GetName()
+	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(), name, getOptions)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get object: %w", err)
 	}

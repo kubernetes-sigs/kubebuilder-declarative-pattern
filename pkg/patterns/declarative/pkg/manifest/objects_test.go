@@ -929,7 +929,7 @@ func Test_Sort(t *testing.T) {
 				},
 			},
 			error:     false,
-			scoreFunc: func(o *Object) int { return len(o.Name) },
+			scoreFunc: func(o *Object) int { return len(o.GetName()) },
 		},
 		{
 			name: "sort with Group",
