@@ -59,8 +59,6 @@ func (r *GuestbookReconciler) setupReconciler(mgr ctrl.Manager) error {
 		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
 		declarative.WithApplyPrune(),
 		declarative.WithObjectTransform(addon.ApplyPatches),
-		declarative.WithApplyKustomize(),
-
 		// Add other optional options for testing
 		declarative.WithApplyValidation(),
 		declarative.WithReconcileMetrics(0, nil),

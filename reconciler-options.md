@@ -37,9 +37,6 @@ WithStatus provides a (Status)[https://github.com/kubernetes-sigs/kubebuilder-de
 WithPreserveNamespace preserves the namespaces defined in the deployment manifest
 instead of matching the namespace of the DeclarativeObject
 
-## WithApplyKustomize
-WithApplyKustomize run kustomize build to create final manifest
-
 ## WithManagedApplication
 WithManagedApplication is a transform that will modify the Application object in the deployment to match the configuration of the rest of the deployment.
 

@@ -39,7 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
@@ -191,9 +190,6 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 	log.WithValues("object", name.String()).Info("reconciling")
 
 	var fs filesys.FileSystem
-	if r.IsKustomizeOptionUsed() {
-		fs = filesys.MakeFsInMemory()
-	}
 
 	objects, err := r.BuildDeploymentObjectsWithFs(ctx, name, instance, fs)
 	if err != nil {
@@ -325,7 +321,7 @@ func (r *Reconciler) BuildDeploymentObjects(ctx context.Context, name types.Name
 	return r.BuildDeploymentObjectsWithFs(ctx, name, instance, nil)
 }
 
-// BuildDeploymentObjectsWithFs is the implementation of BuildDeploymentObjects, supporting saving to a filesystem for kustomize
+// BuildDeploymentObjectsWithFs is the implementation of BuildDeploymentObjects
 // If fs is provided, the transformed manifests will be saved to that filesystem
 func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name types.NamespacedName, instance DeclarativeObject, fs filesys.FileSystem) (*manifest.Objects, error) {
 	log := log.FromContext(ctx)
@@ -356,12 +352,9 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 		}
 
 		// 4. Perform object transformations
-		// (unless kustomize is in use, in which case we transform after running kustomize)
-		if !r.IsKustomizeOptionUsed() {
-			if err := r.transformManifest(ctx, instance, objects); err != nil {
-				log.Error(err, "error transforming manifest")
-				return nil, err
-			}
+		if err := r.transformManifest(ctx, instance, objects); err != nil {
+			log.Error(err, "error transforming manifest")
+			return nil, err
 		}
 
 		if fs != nil {
@@ -385,37 +378,6 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 		manifestObjects.Path = filepath.Dir(manifestPath)
 		manifestObjects.Items = append(manifestObjects.Items, objects.Items...)
 		manifestObjects.Blobs = append(manifestObjects.Blobs, objects.Blobs...)
-	}
-
-	// If Kustomize option is on, it's assumed that the entire addon manifest is created using Kustomize
-	// Here, the manifest is built using Kustomize and then replaces the Object items with the created manifest
-	if r.IsKustomizeOptionUsed() {
-		// run kustomize to create final manifest
-		opts := krusty.MakeDefaultOptions()
-		k := krusty.MakeKustomizer(opts)
-		m, err := k.Run(fs, manifestObjects.Path)
-		if err != nil {
-			log.Error(err, "running kustomize to create final manifest")
-			return nil, fmt.Errorf("error running kustomize: %v", err)
-		}
-
-		manifestYaml, err := m.AsYaml()
-		if err != nil {
-			log.Error(err, "creating final manifest yaml")
-			return nil, fmt.Errorf("error converting kustomize output to yaml: %v", err)
-		}
-
-		objects, err := r.parseManifest(ctx, instance, string(manifestYaml))
-		if err != nil {
-			log.Error(err, "creating final manifest yaml")
-			return nil, err
-		}
-
-		if err := r.transformManifest(ctx, instance, objects); err != nil {
-			log.Error(err, "error transforming manifest")
-			return nil, err
-		}
-		manifestObjects.Items = objects.Items
 	}
 
 	// 6. Sort objects to work around dependent objects in the same manifest (eg: service-account, deployment)
@@ -609,11 +571,9 @@ func (r *Reconciler) collectMetrics(request reconcile.Request, result reconcile.
 	}
 }
 
-// IsKustomizeOptionUsed checks if the option for Kustomize build is used for creating manifests
+// IsKustomizeOptionUsed checks if the option for Kustomize build is used for creating manifests.
+// Deprecated: Kustomize hydration is no longer supported. This method will always return false.
 func (r *Reconciler) IsKustomizeOptionUsed() bool {
-	if r.options.kustomize {
-		return true
-	}
 	return false
 }
 

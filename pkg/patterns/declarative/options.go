@@ -50,7 +50,6 @@ type reconcilerParams struct {
 
 	prune             bool
 	preserveNamespace bool
-	kustomize         bool
 	validate          bool
 	metrics           bool
 
@@ -153,9 +152,9 @@ func WithPreserveNamespace() ReconcilerOption {
 }
 
 // WithApplyKustomize run kustomize build to create final manifest
+// Deprecated: Kustomize hydration is no longer supported, please use WithObjectTransform.
 func WithApplyKustomize() ReconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
-		p.kustomize = true
 		return p
 	}
 }
