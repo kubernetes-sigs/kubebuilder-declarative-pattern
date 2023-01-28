@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/kustomize"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -39,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
@@ -390,18 +390,10 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 	// Here, the manifest is built using Kustomize and then replaces the Object items with the created manifest
 	if r.IsKustomizeOptionUsed() {
 		// run kustomize to create final manifest
-		opts := krusty.MakeDefaultOptions()
-		k := krusty.MakeKustomizer(opts)
-		m, err := k.Run(fs, manifestObjects.Path)
+		manifestYaml, err := kustomize.Kustomize.Run(ctx, fs, manifestObjects.Path)
 		if err != nil {
-			log.Error(err, "running kustomize to create final manifest")
+			log.Error(err, "run kustomize build")
 			return nil, fmt.Errorf("error running kustomize: %v", err)
-		}
-
-		manifestYaml, err := m.AsYaml()
-		if err != nil {
-			log.Error(err, "creating final manifest yaml")
-			return nil, fmt.Errorf("error converting kustomize output to yaml: %v", err)
 		}
 
 		objects, err := r.parseManifest(ctx, instance, string(manifestYaml))
