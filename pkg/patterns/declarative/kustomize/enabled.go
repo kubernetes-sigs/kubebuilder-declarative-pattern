@@ -1,3 +1,6 @@
+//go:build !without_kustomize
+// +build !without_kustomize
+
 package kustomize
 
 import (
@@ -9,19 +12,11 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
-func init() {
-	Kustomize = &EnabledKustomize{}
-}
-
-var _ Kustomizer = &EnabledKustomize{}
-
-// EnabledKustomize runs kustomize build. It requires kustomize/api v0.12.1 and above
-type EnabledKustomize struct{}
-
-// Run calls the kustomize/api library to run `kustomize build`.
-func (k *EnabledKustomize) Run(ctx context.Context, fs filesys.FileSystem, manifestPath string) ([]byte, error) {
+// Run calls the kustomize/api library to run `kustomize build`. This method is differentiated by go build
+// tag `without-kustomize`
+func Run(ctx context.Context, fs filesys.FileSystem, manifestPath string) ([]byte, error) {
 	log := log.FromContext(ctx)
-	log.WithValues("kustomizer", "EnabledKustomize").Info("running kustomize")
+	log.WithValues("manifestPath", manifestPath).Info("running kustomize")
 	// run kustomize to create final manifest
 	opts := krusty.MakeDefaultOptions()
 	kustomizer := krusty.MakeKustomizer(opts)

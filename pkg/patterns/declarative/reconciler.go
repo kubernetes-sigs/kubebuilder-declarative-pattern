@@ -390,7 +390,7 @@ func (r *Reconciler) BuildDeploymentObjectsWithFs(ctx context.Context, name type
 	// Here, the manifest is built using Kustomize and then replaces the Object items with the created manifest
 	if r.IsKustomizeOptionUsed() {
 		// run kustomize to create final manifest
-		manifestYaml, err := kustomize.Kustomize.Run(ctx, fs, manifestObjects.Path)
+		manifestYaml, err := kustomize.Run(ctx, fs, manifestObjects.Path)
 		if err != nil {
 			log.Error(err, "run kustomize build")
 			return nil, fmt.Errorf("error running kustomize: %v", err)
