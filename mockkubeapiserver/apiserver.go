@@ -89,7 +89,7 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	klog.Infof("kubeapiserver request: %s %s", r.Method, r.URL)
+	klog.V(4).Infof("kubeapiserver request: %s %s", r.Method, r.URL)
 
 	path := r.URL.Path
 	tokens := strings.Split(strings.Trim(path, "/"), "/")
