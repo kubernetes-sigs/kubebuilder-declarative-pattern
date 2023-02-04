@@ -32,12 +32,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/diff"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/mocks"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
@@ -51,9 +54,35 @@ func NewValidator(t *testing.T, b *scheme.Builder) *validator {
 	addon.Init()
 	v.findChannelsPath()
 
-	v.client = mocks.NewClient(v.scheme)
-	v.mgr = mocks.NewManager(v.client)
-	v.mgr.Scheme = v.scheme
+	k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
+	if err != nil {
+		t.Fatalf("error building mock kube-apiserver: %v", err)
+	}
+
+	addr, err := k8s.StartServing()
+	if err != nil {
+		t.Errorf("error starting mock kube-apiserver: %v", err)
+	}
+	v.k8s = k8s
+
+	t.Cleanup(func() {
+		if err := k8s.Stop(); err != nil {
+			t.Errorf("error stopping mock kube-apiserver: %v", err)
+		}
+	})
+
+	restConfig := &rest.Config{
+		Host: addr.String(),
+	}
+
+	mgr, err := manager.New(restConfig, manager.Options{
+		Scheme: v.scheme,
+	})
+	if err != nil {
+		t.Fatalf("error building manager: %v", err)
+	}
+	v.client = mgr.GetClient()
+	v.mgr = mgr
 	return v
 }
 
@@ -61,8 +90,11 @@ type validator struct {
 	T       *testing.T
 	scheme  *runtime.Scheme
 	TestDir string
-	mgr     mocks.Manager
-	client  *mocks.FakeClient
+
+	k8s *mockkubeapiserver.MockKubeAPIServer
+
+	mgr    manager.Manager
+	client client.Client
 }
 
 // findChannelsPath will search for a channels directory, which is helpful when running under bazel
@@ -129,11 +161,11 @@ func (v *validator) findChannelsPath() {
 	t.Logf("flagChannel = %s", loaders.FlagChannel)
 }
 
-func (v *validator) Manager() *mocks.Manager {
-	return &v.mgr
+func (v *validator) Manager() manager.Manager {
+	return v.mgr
 }
 
-func (v *validator) Client() *mocks.FakeClient {
+func (v *validator) Client() client.Client {
 	return v.client
 }
 
@@ -179,12 +211,14 @@ func (v *validator) Validate(r declarative.Reconciler) {
 			continue
 		}
 
-		objectsToCleanup := []runtime.Object{}
+		objectsToCleanup := []client.Object{}
 		// Check if there is a file containing side inputs for this test
 		sideInputPath := strings.Replace(p, ".in.yaml", ".side_in.yaml", -1)
 		sideInputRead, err := os.ReadFile(sideInputPath)
 		if err != nil {
-			t.Logf("Could not read side input file %s: %v, skipping", sideInputPath, err)
+			if !os.IsNotExist(err) {
+				t.Errorf("Could not read side input file %s: %v", sideInputPath, err)
+			}
 		} else {
 			objs, err := manifest.ParseObjects(ctx, string(sideInputRead))
 			if err != nil {
@@ -203,8 +237,11 @@ func (v *validator) Validate(r declarative.Reconciler) {
 					t.Errorf("error parsing resource in %s: %v", p, err)
 					continue
 				}
-				v.client.CreateRuntimeObject(ctx, decoded)
-				objectsToCleanup = append(objectsToCleanup, decoded)
+				obj := decoded.(client.Object)
+				if err := v.client.Create(ctx, obj); err != nil {
+					t.Errorf("error creating resource in %s: %v", p, err)
+				}
+				objectsToCleanup = append(objectsToCleanup, obj)
 			}
 		}
 
@@ -307,7 +344,9 @@ func (v *validator) Validate(r declarative.Reconciler) {
 		}
 
 		for _, objectToCleanup := range objectsToCleanup {
-			v.client.DeleteRuntimeObject(ctx, objectToCleanup)
+			if err := v.client.Delete(ctx, objectToCleanup); err != nil {
+				t.Errorf("error deleting object: %v", err)
+			}
 		}
 	}
 }
