@@ -120,7 +120,7 @@ var _ mockkubeapiserver.BeforeHTTPOperation = &logKubeRequestsHook{}
 
 func (h *logKubeRequestsHook) BeforeHTTPOperation(op *mockkubeapiserver.HTTPOperation) {
 	req := op.Request
-	entry := httprecorder.LogEntry{}
+	entry := &httprecorder.LogEntry{}
 	entry.Request = httprecorder.Request{
 		Method: req.Method,
 		URL:    req.URL.String(),
