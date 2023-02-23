@@ -85,25 +85,11 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 		// Summarize all the deployment manifests statuses to a single results.
 		aggregatedPhase := aggregateStatus(statusMap)
 		// Update the Conditions for the declarativeObject status.
-		switch aggregatedPhase {
-		case status.InProgressStatus:
-			// inProgressStatus indicates that the manifests are not yet installed.
-			SetReconciling(&currentStatus, totalAbnormalTrueConditions)
-			RemoveCondition(&currentStatus, status.ConditionStalled)
-		case status.FailedStatus:
-			// Reconciling status condition with appropriate message specifying the
-			// reason for failure.
-			SetReconciling(&currentStatus, totalAbnormalTrueConditions)
-			SetStalled(&currentStatus, totalAbnormalTrueConditions)
-		case status.CurrentStatus:
-			RemoveCondition(&currentStatus, status.ConditionStalled)
-			RemoveCondition(&currentStatus, status.ConditionReconciling)
-			SetNormal(&currentStatus)
-			currentStatus.Healthy = true
-		default:
-			RemoveCondition(&currentStatus, ReadyType)
+		if aggregatedPhase == status.CurrentStatus {
+			SetReady(&currentStatus, totalAbnormalTrueConditions)
+		} else {
+			SetInProgress(&currentStatus, totalAbnormalTrueConditions)
 		}
-
 		currentStatus.Phase = string(aggregatedPhase)
 	}
 
