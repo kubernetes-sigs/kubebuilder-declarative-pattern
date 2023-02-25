@@ -3,13 +3,14 @@ package status
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 )
 
 const (
-	AbnormalReason = "AbnormalTrueConditions"
+	AbnormalReason = "HaveAbnormalTrueManifests"
 	NormalReason   = "Normal"
 	ReadyType      = "Ready"
 )
@@ -29,20 +30,19 @@ func SetReady(commonStatus *addonsv1alpha1.CommonStatus, abnormalTrueConditions 
 
 func setCondition(status metav1.ConditionStatus, commonStatus *addonsv1alpha1.CommonStatus, abnormalTrueConditions []status.Condition) {
 	reason, message := humanMessagefromConditions(abnormalTrueConditions)
-	commonStatus.Conditions = []*metav1.Condition{{
-		Status:             status,
-		Type:               ReadyType,
-		LastTransitionTime: metav1.Now(),
-		Reason:             reason,
-		Message:            message,
-	},
+	newCondition := metav1.Condition{
+		Status:  status,
+		Type:    ReadyType,
+		Reason:  reason,
+		Message: message,
 	}
+	meta.SetStatusCondition(&commonStatus.Conditions, newCondition)
 }
 
 // humanMessagefromConditions summarize the kstatus abnormal-true conditions to a reason with human-readable message.
 // The "reason" should be "Normal" if no deployment manifests have abnormal conditions, or "ContainAbnormalTrueConditions"
 // as long as one deployment manifest has an abnormal condition.
-// THe "message" contains the each abnormal condition's "reason" and "message".
+// The "message" contains each abnormal condition's "reason" and "message".
 // e.g.
 //
 //	 conditions:

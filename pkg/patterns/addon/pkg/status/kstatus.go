@@ -3,7 +3,6 @@ package status
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -72,14 +71,12 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 			} else if res != nil {
 				log.WithValues("status", res.Status).WithValues("message", res.Message).Info("Got status of resource:")
 				statusMap[res.Status] = true
-				if res.Status != status.CurrentStatus {
-					abnormalTrueConds := getAbnormalTrueConditions(ctx, unstruct)
-					totalAbnormalTrueConditions = append(totalAbnormalTrueConditions, abnormalTrueConds...)
-				}
 			} else {
 				log.Info("resource status was nil")
 				statusMap[status.UnknownStatus] = true
 			}
+			abnormalTrueConds := getAbnormalTrueConditions(ctx, unstruct)
+			totalAbnormalTrueConditions = append(totalAbnormalTrueConditions, abnormalTrueConds...)
 		}
 
 		// Summarize all the deployment manifests statuses to a single results.
@@ -117,16 +114,21 @@ func getAbnormalTrueConditions(ctx context.Context, unstruct *unstructured.Unstr
 		return nil
 	}
 
-	if len(obj.Status.Conditions) == 0 || obj.Status.Conditions[0].Status == corev1.ConditionFalse {
+	if len(obj.Status.Conditions) == 0 {
 		return nil
 	}
-	cond := obj.Status.Conditions[0]
-	return []status.Condition{{
-		Type:    status.ConditionType(cond.Type),
-		Status:  cond.Status,
-		Reason:  cond.Reason,
-		Message: getGVKNN(unstruct) + ":" + cond.Message,
-	}}
+
+	// kstatus appends the augmented conditions to the end.
+	cond := obj.Status.Conditions[len(obj.Status.Conditions)-1]
+	if cond.Type == string(status.ConditionStalled) || cond.Type == string(status.ConditionReconciling) {
+		return []status.Condition{{
+			Type:    status.ConditionType(cond.Type),
+			Status:  cond.Status,
+			Reason:  cond.Reason,
+			Message: getGVKNN(unstruct) + ":" + cond.Message,
+		}}
+	}
+	return nil
 }
 
 func getGVKNN(obj *unstructured.Unstructured) string {

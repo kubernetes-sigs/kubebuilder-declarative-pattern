@@ -52,7 +52,7 @@ type CommonStatus struct {
 	Phase   string   `json:"phase,omitempty"`
 	// Conditions follows the API specification "Conditions" properties.
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
-	Conditions []*metav1.Condition `json:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // Patchable is a trait for addon CRDs that expose a raw set of Patches to be
