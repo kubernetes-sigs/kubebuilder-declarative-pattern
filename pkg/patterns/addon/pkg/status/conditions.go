@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	AbnormalReason = "HaveAbnormalTrueManifests"
+	AbnormalReason = "ManifestsNotReady"
 	NormalReason   = "Normal"
 	ReadyType      = "Ready"
 )
