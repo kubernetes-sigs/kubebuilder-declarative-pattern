@@ -20,8 +20,8 @@ import (
 	"context"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
@@ -57,10 +57,27 @@ type reconcilerParams struct {
 	validate          bool
 	metrics           bool
 
-	sink       Sink
-	ownerFn    OwnerSelector
-	labelMaker LabelMaker
-	status     Status
+	sink                 Sink
+	ownerFn              OwnerSelector
+	labelMaker           LabelMaker
+	status               Status
+	remoteClusterControl RemoteClusterControl
+}
+
+type ConnectCluster interface {
+	GetName() string
+	GetConfig(ctx context.Context) *rest.Config
+}
+
+type RemoteClusterControl interface {
+	GetClusters(ctx context.Context, dest DeclarativeObject) ([]ConnectCluster, error)
+}
+
+func WithRemoteClusterControl(cluster RemoteClusterControl) ReconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.remoteClusterControl = cluster
+		return p
+	}
 }
 
 type ManifestController interface {

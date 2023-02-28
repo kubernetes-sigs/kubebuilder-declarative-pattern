@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 
+	addoncluster "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/cluster"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -45,7 +46,7 @@ type aggregator struct {
 	client client.Client
 }
 
-func (a *aggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject, objs *manifest.Objects, reconcileErr error) error {
+func (a *aggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject, objs *manifest.Objects, c addoncluster.Cluster, reconcileErr error) error {
 	log := log.FromContext(ctx)
 
 	statusHealthy := true
@@ -69,9 +70,9 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 		var err error
 		switch gk {
 		case "/Service":
-			healthy, err = a.service(ctx, objKey)
+			healthy, err = a.service(ctx, objKey, c)
 		case "extensions/Deployment", "apps/Deployment":
-			healthy, err = a.deployment(ctx, objKey)
+			healthy, err = a.deployment(ctx, objKey, c)
 		default:
 			log.WithValues("type", gk).V(2).Info("type not implemented for status aggregation, skipping")
 		}
@@ -100,7 +101,7 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 		}
 
 		log.WithValues("name", src.GetName()).WithValues("status", status).Info("updating status")
-		err = a.client.Status().Update(ctx, src)
+		err = c.GetClient().Status().Update(ctx, src)
 		if err != nil {
 			log.Error(err, "updating status")
 			return err
@@ -110,10 +111,10 @@ func (a *aggregator) Reconciled(ctx context.Context, src declarative.Declarative
 	return nil
 }
 
-func (a *aggregator) deployment(ctx context.Context, key client.ObjectKey) (bool, error) {
+func (a *aggregator) deployment(ctx context.Context, key client.ObjectKey, c addoncluster.Cluster) (bool, error) {
 	dep := &appsv1.Deployment{}
 
-	if err := a.client.Get(ctx, key, dep); err != nil {
+	if err := c.GetClient().Get(ctx, key, dep); err != nil {
 		return false, fmt.Errorf("error reading deployment (%s): %v", key, err)
 	}
 
@@ -126,9 +127,9 @@ func (a *aggregator) deployment(ctx context.Context, key client.ObjectKey) (bool
 	return false, fmt.Errorf("deployment (%s) does not meet condition: %s", key, successfulDeployment)
 }
 
-func (a *aggregator) service(ctx context.Context, key client.ObjectKey) (bool, error) {
+func (a *aggregator) service(ctx context.Context, key client.ObjectKey, c addoncluster.Cluster) (bool, error) {
 	svc := &corev1.Service{}
-	err := a.client.Get(ctx, key, svc)
+	err := c.GetClient().Get(ctx, key, svc)
 	if err != nil {
 		return false, fmt.Errorf("error reading service (%s): %v", key, err)
 	}

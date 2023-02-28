@@ -19,6 +19,7 @@ package declarative
 import (
 	"context"
 
+	addoncluster "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/cluster"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
@@ -33,7 +34,7 @@ type Reconciled interface {
 	// Reconciled is triggered when Reconciliation has occured.
 	// The caller is encouraged to determine and surface the health of the reconcilation
 	// on the DeclarativeObject.
-	Reconciled(context.Context, DeclarativeObject, *manifest.Objects, error) error
+	Reconciled(context.Context, DeclarativeObject, *manifest.Objects, addoncluster.Cluster, error) error
 }
 
 type Preflight interface {
@@ -57,9 +58,9 @@ type StatusBuilder struct {
 	VersionCheckImpl VersionCheck
 }
 
-func (s *StatusBuilder) Reconciled(ctx context.Context, src DeclarativeObject, objs *manifest.Objects, err error) error {
+func (s *StatusBuilder) Reconciled(ctx context.Context, src DeclarativeObject, objs *manifest.Objects, c addoncluster.Cluster, err error) error {
 	if s.ReconciledImpl != nil {
-		return s.ReconciledImpl.Reconciled(ctx, src, objs, err)
+		return s.ReconciledImpl.Reconciled(ctx, src, objs, c, err)
 	}
 	return nil
 }

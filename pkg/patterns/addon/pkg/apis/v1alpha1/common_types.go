@@ -40,6 +40,12 @@ type CommonSpec struct {
 	// Channel specifies a channel that can be used to resolve a specific addon, eg: stable
 	// It will be ignored if Version is specified
 	Channel string `json:"channel,omitempty"`
+
+	Clusters []CommonCluster `json:"clusters,omitempty"`
+}
+
+type CommonCluster struct {
+	Name string `json:"name,omitempty"`
 }
 
 //go:generate go run ../../../../../../vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i ./... -h ../../../../../../hack/boilerplate.go.txt

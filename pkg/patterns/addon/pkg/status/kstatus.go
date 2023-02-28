@@ -7,6 +7,7 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	addoncluster "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/cluster"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
@@ -23,13 +24,13 @@ func NewKstatusAgregator(c client.Client, reconciler *declarative.Reconciler) *k
 }
 
 func (k *kstatusAggregator) Reconciled(ctx context.Context, src declarative.DeclarativeObject,
-	objs *manifest.Objects, _ error) error {
+	objs *manifest.Objects, c addoncluster.Cluster, _ error) error {
 	log := log.FromContext(ctx)
 
 	statusMap := make(map[status.Status]bool)
 	for _, object := range objs.Items {
 
-		unstruct, err := declarative.GetObjectFromCluster(object, k.reconciler)
+		unstruct, err := declarative.GetObjectFromCluster(object, c)
 		if err != nil {
 			log.WithValues("object", object.Kind+"/"+object.GetName()).Error(err, "Unable to get status of object")
 			return err

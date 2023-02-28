@@ -23,10 +23,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/kustomize"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	addoncluster "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/cluster"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/kustomize"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -137,7 +137,6 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 
 // +rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (result reconcile.Result, err error) {
-	var objects *manifest.Objects
 	log := log.FromContext(ctx)
 	defer r.collectMetrics(request, result, err)
 
@@ -154,6 +153,41 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
+	var clusters []addoncluster.Cluster
+	// TODO(yuwenma): Right now, the remote cluster control only support customized  `remoteClusterControl`,
+	// where users need to specify the Rest.Config for each cluster. We can also support a default version, which finds
+	// out the rest.config from .kubconfig based on the `spec.clusters[].name`.
+	if r.options.remoteClusterControl != nil {
+		remoteClusters, err := r.options.remoteClusterControl.GetClusters(ctx, instance)
+		if err != nil {
+			log.Error(err, "filtering remote cluster failed, not reconciling")
+		}
+		for _, remote := range remoteClusters {
+			clusters = append(clusters, addoncluster.NewRemote(ctx, remote.GetName(), remote.GetConfig(ctx)))
+		}
+	}
+	if len(clusters) == 0 {
+		// Local cluster
+		clusters = append(clusters, addoncluster.NewLocal(r.mgr))
+	}
+
+	objects, err := r.PrepareDeploymentObjects(ctx, request.NamespacedName, instance)
+	if err != nil {
+		log.Error(err, "unable to prepare deployment objects")
+		return reconcile.Result{}, err
+	}
+
+	for _, c := range clusters {
+		result, err = r.PerClusterReconcile(ctx, c, request.NamespacedName, instance, objects)
+		if err != nil {
+			log.WithValues("cluster", c.GetName()).Error(err, "unable to deploy to cluster ")
+		}
+	}
+	return result, err
+}
+
+func (r *Reconciler) PerClusterReconcile(ctx context.Context, c addoncluster.Cluster, name types.NamespacedName, instance DeclarativeObject, objects *manifest.Objects) (result reconcile.Result, err error) {
+	log := log.FromContext(ctx)
 	// status.Reconciled should catch all error
 	defer func() {
 		// error is data
@@ -164,7 +198,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 
 		if r.options.status != nil {
-			if statusErr := r.options.status.Reconciled(ctx, instance, objects, err); statusErr != nil {
+			if statusErr := r.options.status.Reconciled(ctx, instance, objects, c, err); statusErr != nil {
 				log.Error(statusErr, "failed to reconcile status")
 			}
 		}
@@ -177,16 +211,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	objects, err = r.reconcileExists(ctx, request.NamespacedName, instance)
-
+	objects, err = r.reconcileExists(ctx, c, name, instance, objects)
 	if err != nil {
 		r.recorder.Eventf(instance, "Warning", "InternalError", "internal error: %v", err)
 	}
-
 	return result, err
 }
 
-func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (*manifest.Objects, error) {
+func (r *Reconciler) PrepareDeploymentObjects(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (*manifest.Objects, error) {
 	log := log.FromContext(ctx)
 	log.WithValues("object", name.String()).Info("reconciling")
 
@@ -225,21 +257,22 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		log.Error(err, "Parsing list kind")
 		return objects, fmt.Errorf("error parsing list kind: %v", err)
 	}
-
 	err = r.setNamespaces(ctx, instance, objects)
 	if err != nil {
 		return objects, err
 	}
 
 	err = r.injectOwnerRef(ctx, instance, objects)
-	if err != nil {
-		return objects, err
-	}
+	return objects, err
+}
+
+func (r *Reconciler) reconcileExists(ctx context.Context, c addoncluster.Cluster, name types.NamespacedName, instance DeclarativeObject, objects *manifest.Objects) (*manifest.Objects, error) {
+	log := log.FromContext(ctx)
 
 	var newItems []*manifest.Object
-	for _, obj := range objects.Items {
 
-		unstruct, err := GetObjectFromCluster(obj, r)
+	for _, obj := range objects.Items {
+		unstruct, err := GetObjectFromCluster(obj, c)
 		if err != nil && !apierrors.IsNotFound(errors.Unwrap(err)) {
 			log.WithValues("name", obj.GetName()).Error(err, "Unable to get resource")
 		}
@@ -292,10 +325,9 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 			}
 		}
 	}
-
 	applierOpt := applier.ApplierOptions{
-		RESTConfig:        r.config,
-		RESTMapper:        r.restMapper,
+		RESTConfig:        c.GetConfig(ctx),
+		RESTMapper:        c.GetRestMapper(),
 		Namespace:         ns,
 		Objects:           objects.GetItems(),
 		Validate:          r.options.validate,
@@ -656,11 +688,11 @@ func (r *Reconciler) CollectMetrics() bool {
 	return r.options.metrics
 }
 
-func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Unstructured, error) {
+func GetObjectFromCluster(obj *manifest.Object, cluster addoncluster.Cluster) (*unstructured.Unstructured, error) {
 	getOptions := metav1.GetOptions{}
 	gvk := obj.GroupVersionKind()
 
-	mapping, err := r.restMapper.RESTMapping(obj.GroupKind(), gvk.Version)
+	mapping, err := cluster.GetRestMapper().RESTMapping(obj.GroupKind(), gvk.Version)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get mapping for resource %v: %w", gvk, err)
 	}
@@ -669,7 +701,7 @@ func GetObjectFromCluster(obj *manifest.Object, r *Reconciler) (*unstructured.Un
 	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
 		ns = obj.GetNamespace()
 	}
-	unstruct, err := r.dynamicClient.Resource(mapping.Resource).Namespace(ns).Get(context.Background(), name, getOptions)
+	unstruct, err := cluster.GetDynamicClient().Resource(mapping.Resource).Namespace(ns).Get(context.Background(), name, getOptions)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get object: %w", err)
 	}
