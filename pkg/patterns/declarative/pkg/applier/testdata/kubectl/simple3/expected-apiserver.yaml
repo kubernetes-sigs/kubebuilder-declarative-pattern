@@ -38,6 +38,216 @@ Kubectl-Command: kubectl apply
 
 ---
 
+GET /apis/admissionregistration.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/apiextensions.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/apiregistration.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/apps/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/autoscaling/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/autoscaling/v2?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/autoscaling/v2beta2?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/batch/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/certificates.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/coordination.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/discovery.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/events.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/flowcontrol.apiserver.k8s.io/v1beta1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/flowcontrol.apiserver.k8s.io/v1beta2?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/networking.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/node.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/policy/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/rbac.authorization.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/scheduling.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/storage.k8s.io/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /apis/storage.k8s.io/v1beta1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+Kubectl-Command: kubectl apply
+
+
+
+
+---
+
 GET /apis/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
