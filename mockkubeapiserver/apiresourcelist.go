@@ -18,6 +18,7 @@ package mockkubeapiserver
 
 import (
 	"context"
+	"sort"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -47,5 +48,19 @@ func (req *apiResourceList) Run(ctx context.Context, s *MockKubeAPIServer) error
 		}
 		response.APIResources = append(response.APIResources, resource)
 	}
+
+	// Return in a stable order, for more test predictability
+	sort.Slice(response.APIResources, func(i, j int) bool {
+		l := response.APIResources[i]
+		r := response.APIResources[j]
+
+		if l.Group != r.Group {
+			return l.Group < r.Group
+		}
+		if l.Kind != r.Kind {
+			return l.Kind < r.Kind
+		}
+		return false
+	})
 	return req.writeResponse(response)
 }
