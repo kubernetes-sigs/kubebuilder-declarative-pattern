@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"k8s.io/klog/v2"
 )
@@ -48,6 +49,9 @@ func (r *baseRequest) writeResponse(obj interface{}) error {
 	}
 	r.w.Header().Add("Content-Type", "application/json")
 	r.w.Header().Add("Cache-Control", "no-cache, private")
+	r.w.Header().Add("Content-Length", strconv.Itoa(len(b)))
+
+	r.w.WriteHeader(http.StatusOK)
 
 	if _, err := r.w.Write(b); err != nil {
 		// Too late to send error response
