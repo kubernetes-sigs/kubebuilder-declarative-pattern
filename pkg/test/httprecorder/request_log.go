@@ -123,6 +123,11 @@ func (l *RequestLog) SortGETs() {
 		switch u.Path {
 		case "/apis", "/api/v1", "/apis/v1":
 			return u.Path, true
+		default:
+			tokens := strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
+			if len(tokens) == 3 && tokens[0] == "apis" {
+				return u.Path, true
+			}
 		}
 		return "", false
 	}

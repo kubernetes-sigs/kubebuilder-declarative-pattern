@@ -142,6 +142,7 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 	h.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
 	requestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
 	requestLog.RemoveUserAgent()
+	requestLog.SortGETs()
 	// Workaround for non-determinism in https://github.com/kubernetes/kubernetes/blob/79a62d62350fb600f97d1f6309c3274515b3587a/staging/src/k8s.io/client-go/tools/cache/reflector.go#L301
 	requestLog.RegexReplaceURL("&timeoutSeconds=.*&", "&timeoutSeconds=<replaced>&")
 
