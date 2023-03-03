@@ -27,7 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 
@@ -48,6 +47,7 @@ type SimpleTestReconciler struct {
 	manifestController declarative.ManifestController
 
 	applier applier.Applier
+	status  declarative.Status
 }
 
 func (r *SimpleTestReconciler) setupReconciler(mgr ctrl.Manager) error {
@@ -61,7 +61,7 @@ func (r *SimpleTestReconciler) setupReconciler(mgr ctrl.Manager) error {
 		declarative.WithObjectTransform(declarative.AddLabels(labels)),
 		declarative.WithOwner(declarative.SourceAsOwner),
 		declarative.WithLabels(r.watchLabels),
-		declarative.WithStatus(status.NewBasic(mgr.GetClient())),
+		declarative.WithStatus(r.status),
 
 		// TODO: Readd prune
 		//declarative.WithApplyPrune(),

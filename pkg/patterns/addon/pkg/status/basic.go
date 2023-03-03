@@ -21,13 +21,13 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 )
 
-// Deprecated: This function exists for backward compatibility, please use NewKstatusCheck
-
 // NewBasic provides an implementation of declarative.Status that
 // performs no preflight checks.
+//
+// Deprecated: This function exists for backward compatibility, please use NewKstatusCheck
 func NewBasic(client client.Client) declarative.Status {
 	return &declarative.StatusBuilder{
-		ReconciledImpl: NewAggregator(client),
+		BuildStatusImpl: NewAggregator(client),
 		// no preflight checks
 	}
 }
@@ -41,14 +41,15 @@ func NewBasicVersionChecks(client client.Client, version string) (declarative.St
 	}
 
 	return &declarative.StatusBuilder{
-		ReconciledImpl:   NewAggregator(client),
+		BuildStatusImpl:  NewAggregator(client),
 		VersionCheckImpl: v,
 		// no preflight checks
 	}, nil
 }
 
+// TODO: Create a version that doesn't take (unusued) client & reconciler args
 func NewKstatusCheck(client client.Client, d *declarative.Reconciler) declarative.Status {
 	return &declarative.StatusBuilder{
-		ReconciledImpl: NewKstatusAgregator(client, d),
+		BuildStatusImpl: NewKstatusAgregator(client, d),
 	}
 }
