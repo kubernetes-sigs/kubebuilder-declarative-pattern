@@ -1,6 +1,7 @@
 package httprecorder
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -8,7 +9,10 @@ import (
 	"sort"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
+	"sigs.k8s.io/yaml"
 )
 
 type LogEntry struct {
@@ -53,12 +57,34 @@ func (r *Request) FormatHTTP() string {
 	}
 	b.WriteString("\n")
 	if r.Body != "" {
-		b.WriteString(r.Body)
+		body := resetTimestamp(r.Body)
+		b.WriteString(body)
 		b.WriteString("\n\n")
 	}
 	return b.String()
 }
+func resetTimestamp(body string) string {
+	var u *unstructured.Unstructured
+	if err := yaml.Unmarshal([]byte(body), &u); err != nil {
+		panic("body")
+	}
 
+	if u.Object["status"] == nil {
+		return body
+	}
+	status := u.Object["status"].(map[string]interface{})
+	if status["conditions"] == nil {
+		return body
+	}
+	conditions := status["conditions"].([]interface{})
+	for _, condition := range conditions {
+		cond := condition.(map[string]interface{})
+		// the time format is required and validated by client-go.
+		cond["lastTransitionTime"] = mockkubeapiserver.NewTestClock().Now().Format("2006-01-02T15:04:05Z07:00")
+	}
+	b, _ := json.Marshal(u)
+	return string(b)
+}
 func (r *Response) FormatHTTP() string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("%s\n", r.Status))

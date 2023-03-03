@@ -4,8 +4,9 @@ go 1.19
 
 // Sometimes handy for development, but breaks usage as a library
 // Instead, please break apart commits to this module
-// replace sigs.k8s.io/kubebuilder-declarative-pattern/applylib => ./applylib
-// replace sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver => ./mockkubeapiserver
+replace sigs.k8s.io/kubebuilder-declarative-pattern/applylib => ./applylib
+
+replace sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver => ./mockkubeapiserver
 
 require (
 	github.com/blang/semver/v4 v4.0.0
@@ -16,12 +17,12 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	golang.org/x/crypto v0.1.0
 	golang.org/x/tools v0.3.0
-	k8s.io/api v0.26.0
+	k8s.io/api v0.26.2
 	k8s.io/apimachinery v0.26.2
-	k8s.io/cli-runtime v0.26.0
-	k8s.io/client-go v0.26.0
+	k8s.io/cli-runtime v0.26.2
+	k8s.io/client-go v0.26.2
 	k8s.io/klog/v2 v2.90.1
-	k8s.io/kubectl v0.26.0
+	k8s.io/kubectl v0.26.2
 	sigs.k8s.io/cli-utils v0.33.0
 	sigs.k8s.io/controller-runtime v0.14.1
 	sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20230303024857-d1f76c15e05b
@@ -106,7 +107,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.26.0 // indirect
-	k8s.io/component-base v0.26.0 // indirect
+	k8s.io/component-base v0.26.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
 	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect

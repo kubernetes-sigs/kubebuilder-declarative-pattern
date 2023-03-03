@@ -40,17 +40,16 @@ func setCondition(status metav1.ConditionStatus, commonStatus *addonsv1alpha1.Co
 }
 
 // humanMessagefromConditions summarize the kstatus abnormal-true conditions to a reason with human-readable message.
-// The "reason" should be "Normal" if no deployment manifests have abnormal conditions, or "ContainAbnormalTrueConditions"
+// The "reason" should be "Normal" if no deployment manifests have abnormal conditions, or "ManifestsNotReady"
 // as long as one deployment manifest has an abnormal condition.
 // The "message" contains each abnormal condition's "reason" and "message".
 // e.g.
 //
 //	 conditions:
-//	 - reason: ContainAbnormalTrueConditions
-//		  message: |-
+//	 - reason: ManifestsNotReady
+//	   message: |-
 //		    apps/v1, Kind=Deployment/argocd/argocd-repo-server:Deployment does not have minimum availability.
 //		    apps/v1, Kind=Deployment/argocd/argocd-server:Deployment does not have minimum availability.
-//		  reason: ContainAbnormalTrueConditions
 func humanMessagefromConditions(conditions []status.Condition) (reason, message string) {
 	if len(conditions) == 0 {
 		return NormalReason, "all manifests are reconciled."
