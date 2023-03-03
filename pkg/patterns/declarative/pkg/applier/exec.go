@@ -33,14 +33,30 @@ import (
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
-// New creates a Client that runs kubectl avaliable on the path
+// ExecKubectlOptions provides options for the kubectl applier
+type ExecKubectlOptions struct {
+	// KubeCacheDir specifies the directory to use for kubectl caching, in particular for discovery data.
+	KubeCacheDir string
+}
+
+// NewExecKubectlApplier creates a applier that runs kubectl avaliable on the path
+func NewExecKubectlApplier(options ExecKubectlOptions) *ExecKubectl {
+	return &ExecKubectl{
+		options: options,
+		cmdSite: &console{},
+	}
+}
+
+// NewExec creates a Client that runs kubectl avaliable on the path
+// Deprecated: prefer NewExecKubectl
 func NewExec() *ExecKubectl {
-	return &ExecKubectl{cmdSite: &console{}}
+	return NewExecKubectlApplier(ExecKubectlOptions{})
 }
 
 // ExecKubectl provides an interface to kubectl
 type ExecKubectl struct {
 	cmdSite commandSite
+	options ExecKubectlOptions
 }
 
 var _ Applier = &ExecKubectl{}
@@ -149,6 +165,11 @@ func (c *ExecKubectl) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	cmd := exec.Command("kubectl", args...)
 	cmd.Stdin = strings.NewReader(manifestStr)
+
+	cmd.Env = os.Environ()
+	if c.options.KubeCacheDir != "" {
+		cmd.Env = append(cmd.Env, "KUBECACHEDIR="+c.options.KubeCacheDir)
+	}
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
