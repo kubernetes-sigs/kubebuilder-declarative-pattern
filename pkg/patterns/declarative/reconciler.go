@@ -237,8 +237,14 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		log.Error(err, "building deployment objects")
 		return statusInfo, fmt.Errorf("error building deployment objects: %v", err)
 	}
-	statusInfo.Manifest = objects
+
+	objects, err = flattenListObjects(objects)
+	if err != nil {
+		log.Error(err, "flattening list objects")
+		return statusInfo, fmt.Errorf("error flattening list objects: %w", err)
+	}
 	log.WithValues("objects", fmt.Sprintf("%d", len(objects.Items))).Info("built deployment objects")
+	statusInfo.Manifest = objects
 
 	if r.options.status != nil {
 		isValidVersion, err := r.options.status.VersionCheck(ctx, instance, objects)
@@ -254,13 +260,6 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 			}
 		}
 	}
-
-	objects, err = parseListKind(objects)
-	if err != nil {
-		log.Error(err, "Parsing list kind")
-		return statusInfo, fmt.Errorf("error parsing list kind: %v", err)
-	}
-	statusInfo.Manifest = objects
 
 	err = r.setNamespaces(ctx, instance, objects)
 	if err != nil {
@@ -711,7 +710,9 @@ func (r *Reconciler) AddHook(hook Hook) {
 	r.options.hooks = append(r.options.hooks, hook)
 }
 
-func parseListKind(infos *manifest.Objects) (*manifest.Objects, error) {
+// flattenListObjects will replace any List objects in the manifest with the items,
+// "flattening" the objects.
+func flattenListObjects(infos *manifest.Objects) (*manifest.Objects, error) {
 	var out []*manifest.Object
 
 	for _, item := range infos.Items {
