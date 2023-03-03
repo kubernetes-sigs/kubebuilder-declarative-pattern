@@ -19,6 +19,7 @@ package watch
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -100,15 +101,24 @@ func (dw *dynamicWatch) Add(trigger schema.GroupVersionKind, options metav1.List
 		return fmt.Errorf("creating client for (%s): %v", trigger.String(), err)
 	}
 
+	var watchStarted sync.WaitGroup
+
+	watchStarted.Add(1)
+
 	go func() {
+		firstWatchStarted := &watchStarted
+
 		for {
 			ctx := context.TODO()
 
-			dkw.watchUntilClosed(ctx, target)
+			dkw.watchUntilClosed(ctx, target, firstWatchStarted)
+			firstWatchStarted = nil // only notify once
 
 			time.Sleep(WatchDelay)
 		}
 	}()
+
+	watchStarted.Wait()
 
 	return nil
 }
@@ -127,7 +137,7 @@ type clientObject struct {
 // from this Watch but it will ensure we always Reconcile when needed`.
 //
 // [1] https://github.com/kubernetes/kubernetes/issues/54878#issuecomment-357575276
-func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget metav1.ObjectMeta) {
+func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget metav1.ObjectMeta, watchStarted *sync.WaitGroup) {
 	log := log.FromContext(ctx)
 
 	options := w.FilterOptions
@@ -135,6 +145,9 @@ func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget met
 	options.AllowWatchBookmarks = true
 
 	events, err := w.resource.Watch(context.TODO(), options)
+	if watchStarted != nil {
+		watchStarted.Done()
+	}
 	if err != nil {
 		log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).Error(err, "failed to add watch to dynamic client")
 		return

@@ -33,12 +33,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/watch"
 )
 
-type eventsSource interface {
-	SetSink(sink Sink)
+// hookableReconciler is implemented by a reconciler that we can hook
+type hookableReconciler interface {
+	AddHook(hook Hook)
 }
 
 type DynamicWatch interface {
@@ -62,7 +62,7 @@ type WatchChildrenOptions struct {
 	Controller controller.Controller
 
 	// Reconciler lets us hook into the post-apply lifecycle event.
-	Reconciler eventsSource
+	Reconciler hookableReconciler
 
 	// ScopeWatchesToNamespace controls whether watches are per-namespace.
 	// This allows for more narrowly scoped RBAC permissions, at the cost of more watches.
@@ -71,7 +71,7 @@ type WatchChildrenOptions struct {
 
 // WatchAll creates a Watch on ctrl for all objects reconciled by recnl.
 // Deprecated: prefer WatchChildren (and consider setting ScopeWatchesToNamespace)
-func WatchAll(config *rest.Config, ctrl controller.Controller, reconciler eventsSource, labelMaker LabelMaker) (chan struct{}, error) {
+func WatchAll(config *rest.Config, ctrl controller.Controller, reconciler hookableReconciler, labelMaker LabelMaker) (chan struct{}, error) {
 	options := WatchChildrenOptions{
 		RESTConfig:              config,
 		Controller:              ctrl,
@@ -126,47 +126,54 @@ func WatchChildren(options WatchChildrenOptions) (chan struct{}, error) {
 		return nil, fmt.Errorf("setting up dynamic watch on the controller: %w", err)
 	}
 
-	options.Reconciler.SetSink(&watchAll{
-		dw:         dw,
-		options:    options,
-		registered: make(map[string]struct{})})
+	afterApplyHook := &clusterWatch{
+		dw:                      dw,
+		scopeWatchesToNamespace: options.ScopeWatchesToNamespace,
+		labelMaker:              options.LabelMaker,
+		registered:              make(map[string]struct{}),
+	}
+
+	options.Reconciler.AddHook(afterApplyHook)
 
 	return stopCh, nil
 }
 
-type watchAll struct {
+// clusterWatch watches the objects in one cluster
+type clusterWatch struct {
 	dw DynamicWatch
 
-	options WatchChildrenOptions
+	scopeWatchesToNamespace bool
+	labelMaker              LabelMaker
 
 	mutex sync.Mutex
-	// registered tracks what we are currently watching, avoid duplicate watches.
+
+	// registered tracks the objects we are currently watching, avoid duplicate watches.
 	registered map[string]struct{}
 }
 
-// Notify is called by the controller when the object changes.  We establish any new watches.
-func (w *watchAll) Notify(ctx context.Context, dest DeclarativeObject, objs *manifest.Objects) error {
+// BeforeApply is called by the controller before an apply. We establish any new watches that will be needed by the apply.
+func (w *clusterWatch) BeforeApply(ctx context.Context, op *ApplyOperation) error {
 	log := log.FromContext(ctx)
 
-	labelSelector, err := labels.ValidatedSelectorFromSet(w.options.LabelMaker(ctx, dest))
+	labelSelector, err := labels.ValidatedSelectorFromSet(w.labelMaker(ctx, op.Subject))
 	if err != nil {
 		return fmt.Errorf("failed to build label selector: %w", err)
 	}
 
-	notify := metav1.ObjectMeta{Name: dest.GetName(), Namespace: dest.GetNamespace()}
+	notify := metav1.ObjectMeta{Name: op.Subject.GetName(), Namespace: op.Subject.GetNamespace()}
 	filter := metav1.ListOptions{LabelSelector: labelSelector.String()}
 
 	// Protect against concurrent invocation
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	for _, obj := range objs.Items {
+	for _, obj := range op.Objects.Items {
 		gvk := obj.GroupVersionKind()
 
 		key := fmt.Sprintf("gvk=%s:%s:%s;labels=%s", gvk.Group, gvk.Version, gvk.Kind, filter.LabelSelector)
 
 		filterNamespace := ""
-		if w.options.ScopeWatchesToNamespace && obj.GetNamespace() != "" {
+		if w.scopeWatchesToNamespace && obj.GetNamespace() != "" {
 			filterNamespace = obj.GetNamespace()
 			key += ";namespace=" + filterNamespace
 		}
