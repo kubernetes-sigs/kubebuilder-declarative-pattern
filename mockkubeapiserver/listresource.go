@@ -103,6 +103,11 @@ func (req *listResource) doWatch(ctx context.Context, s *MockKubeAPIServer, reso
 	var opt WatchOptions
 	opt.Namespace = req.Namespace
 
+	w.WriteHeader(200)
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
+
 	return s.storage.Watch(ctx, resource, opt, func(ev *watchEvent) error {
 		klog.V(2).Infof("sending watch event %s", string(ev.JSON()))
 		if partialObjectMetadata {
