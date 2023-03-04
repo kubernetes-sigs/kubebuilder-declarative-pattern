@@ -44,11 +44,10 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 		}
 	}
 
-	// Abnormal-true refers to the present state condition where something unusual happens.
-	// Here we augment each deployment manifests abnormal-true conditions and determine the declarativeObject's present
+	// Here we augment each deployment manifests abnormal conditions and determine the declarativeObject's present
 	// condition from these conditions.
 	// https://github.com/kubernetes-sigs/cli-utils/tree/master/pkg/kstatus#conditions
-	var totalAbnormalTrueConditions []status.Condition
+	var abnormalConditions []status.Condition
 
 	if shouldComputeHealthFromObjects {
 		statusMap := make(map[status.Status]bool)
@@ -56,7 +55,7 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 			gvk := object.GroupVersionKind()
 			nn := object.NamespacedName()
 
-			log.WithValues("kind", gvk.Kind).WithValues("name", nn.Name).WithValues("namespace", nn.Namespace)
+			log = log.WithValues("kind", gvk.Kind).WithValues("name", nn.Name).WithValues("namespace", nn.Namespace)
 
 			unstruct, err := info.LiveObjects(ctx, gvk, nn)
 			if err != nil {
@@ -75,17 +74,17 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 				log.Info("resource status was nil")
 				statusMap[status.UnknownStatus] = true
 			}
-			abnormalTrueConds := getAbnormalTrueConditions(ctx, unstruct)
-			totalAbnormalTrueConditions = append(totalAbnormalTrueConditions, abnormalTrueConds...)
+			conds := getAbnormalConditions(ctx, unstruct)
+			abnormalConditions = append(abnormalConditions, conds...)
 		}
 
 		// Summarize all the deployment manifests statuses to a single results.
 		aggregatedPhase := aggregateStatus(statusMap)
 		// Update the Conditions for the declarativeObject status.
 		if aggregatedPhase == status.CurrentStatus {
-			SetReady(&currentStatus, totalAbnormalTrueConditions)
+			SetReady(&currentStatus, abnormalConditions)
 		} else {
-			SetInProgress(&currentStatus, totalAbnormalTrueConditions)
+			SetInProgress(&currentStatus, abnormalConditions)
 		}
 		currentStatus.Phase = string(aggregatedPhase)
 	}
@@ -96,21 +95,21 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 	return nil
 }
 
-// getAbnormalTrueConditions calculates the abnormal-true conditions that best describe the current state of the deployment manifests.
-func getAbnormalTrueConditions(ctx context.Context, unstruct *unstructured.Unstructured) []status.Condition {
-	log := log.FromContext(ctx)
+// getAbnormalConditions calculates the abnormal-true conditions that best describe the current state of the deployment manifests.
+func getAbnormalConditions(ctx context.Context, unstruct *unstructured.Unstructured) []status.Condition {
+	log := log.FromContext(ctx).WithValues("object", unstruct)
 
 	// Normalize the deployment manifest conditions.
 	// The augmented condition "type" should only be "Stalled" or "Reconciling".
 	if err := status.Augment(unstruct); err != nil {
-		log.WithValues("object", unstruct).Error(err, "unable to augment conditions")
+		log.Error(err, "unable to augment conditions")
 		return nil
 	}
 
 	// The default unstructured.Unstructured does not have a structured "status.conditions" fields.
 	obj, err := status.GetObjectWithConditions(unstruct.Object)
 	if err != nil {
-		log.WithValues("object", unstruct).Error(err, "unable to get conditions")
+		log.Error(err, "unable to get conditions")
 		return nil
 	}
 

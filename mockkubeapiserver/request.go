@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
 )
 
@@ -43,28 +42,7 @@ func (b *baseRequest) Init(w http.ResponseWriter, r *http.Request) {
 	b.r = r
 }
 
-func resetConditionLastTransitionTime(u interface{}) {
-	switch v := u.(type) {
-	case *unstructured.Unstructured:
-		if v.Object["status"] == nil {
-			return
-		}
-		status := v.Object["status"].(map[string]interface{})
-		if status["conditions"] == nil {
-			return
-		}
-		conditions := status["conditions"].([]interface{})
-		for _, condition := range conditions {
-			cond := condition.(map[string]interface{})
-			// the time format is required and validated by client-go.
-			cond["lastTransitionTime"] = NewTestClock().Now().Format("2006-01-02T15:04:05Z07:00")
-		}
-		u = &unstructured.Unstructured{Object: v.Object}
-	}
-}
-
 func (r *baseRequest) writeResponse(obj interface{}) error {
-	resetConditionLastTransitionTime(obj)
 	b, err := json.Marshal(obj)
 	if err != nil {
 		return fmt.Errorf("error from json.Marshal on %T: %w", obj, err)

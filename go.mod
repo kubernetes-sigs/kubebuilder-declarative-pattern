@@ -4,9 +4,8 @@ go 1.19
 
 // Sometimes handy for development, but breaks usage as a library
 // Instead, please break apart commits to this module
-replace sigs.k8s.io/kubebuilder-declarative-pattern/applylib => ./applylib
-
-replace sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver => ./mockkubeapiserver
+// replace sigs.k8s.io/kubebuilder-declarative-pattern/applylib => ./applylib
+// replace sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver => ./mockkubeapiserver
 
 require (
 	github.com/blang/semver/v4 v4.0.0

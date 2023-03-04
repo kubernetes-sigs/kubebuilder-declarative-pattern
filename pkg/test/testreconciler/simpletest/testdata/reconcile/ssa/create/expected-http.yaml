@@ -176,15 +176,15 @@ PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simple
 Accept: application/json, */*
 Content-Type: application/json
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"apps/v1, Kind=Deployment/ns1/mydeployment:Replicas: 0/3\n","reason":"ManifestsNotReady","status":"False","type":"Ready"}],"healthy":false,"phase":"InProgress"}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"apps/v1, Kind=Deployment/ns1/mydeployment:Replicas: 0/3","reason":"ManifestsNotReady","status":"False","type":"Ready"}],"healthy":false,"phase":"InProgress"}}
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 490
+Content-Length: 488
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"apps/v1, Kind=Deployment/ns1/mydeployment:Replicas: 0/3\n","reason":"ManifestsNotReady","status":"False","type":"Ready"}],"healthy":false,"phase":"InProgress"}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"apps/v1, Kind=Deployment/ns1/mydeployment:Replicas: 0/3","reason":"ManifestsNotReady","status":"False","type":"Ready"}],"healthy":false,"phase":"InProgress"}}
 
 ---
 

@@ -66,7 +66,7 @@ func (r *Request) FormatHTTP() string {
 func resetTimestamp(body string) string {
 	var u *unstructured.Unstructured
 	if err := yaml.Unmarshal([]byte(body), &u); err != nil {
-		panic("body")
+		return body
 	}
 
 	if u.Object["status"] == nil {
@@ -100,7 +100,8 @@ func (r *Response) FormatHTTP() string {
 	}
 	b.WriteString("\n")
 	if r.Body != "" {
-		b.WriteString(r.Body)
+		body := resetTimestamp(r.Body)
+		b.WriteString(body)
 		b.WriteString("\n")
 	}
 	return b.String()

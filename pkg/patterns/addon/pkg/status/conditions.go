@@ -1,7 +1,7 @@
 package status
 
 import (
-	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,17 +29,13 @@ func SetReady(commonStatus *addonsv1alpha1.CommonStatus, abnormalTrueConditions 
 }
 
 func setCondition(status metav1.ConditionStatus, commonStatus *addonsv1alpha1.CommonStatus, abnormalTrueConditions []status.Condition) {
-	reason, message := humanMessagefromConditions(abnormalTrueConditions)
-	newCondition := metav1.Condition{
-		Status:  status,
-		Type:    ReadyType,
-		Reason:  reason,
-		Message: message,
-	}
+	newCondition := new(abnormalTrueConditions)
+	newCondition.Status = status
+	newCondition.Type = ReadyType
 	meta.SetStatusCondition(&commonStatus.Conditions, newCondition)
 }
 
-// humanMessagefromConditions summarize the kstatus abnormal-true conditions to a reason with human-readable message.
+// new returns a Condition object with human-readable message and reason.
 // The "reason" should be "Normal" if no deployment manifests have abnormal conditions, or "ManifestsNotReady"
 // as long as one deployment manifest has an abnormal condition.
 // The "message" contains each abnormal condition's "reason" and "message".
@@ -50,15 +46,22 @@ func setCondition(status metav1.ConditionStatus, commonStatus *addonsv1alpha1.Co
 //	   message: |-
 //		    apps/v1, Kind=Deployment/argocd/argocd-repo-server:Deployment does not have minimum availability.
 //		    apps/v1, Kind=Deployment/argocd/argocd-server:Deployment does not have minimum availability.
-func humanMessagefromConditions(conditions []status.Condition) (reason, message string) {
+func new(conditions []status.Condition) metav1.Condition {
 	if len(conditions) == 0 {
-		return NormalReason, "all manifests are reconciled."
+		return metav1.Condition{
+			Reason:  NormalReason,
+			Message: "all manifests are reconciled.",
+		}
 	}
 	abnormalMessage := ""
 	for _, cond := range conditions {
 		if cond.Message != "" {
-			abnormalMessage += fmt.Sprintln(cond.Message)
+			abnormalMessage += cond.Message + "\n"
 		}
 	}
-	return AbnormalReason, abnormalMessage
+
+	return metav1.Condition{
+		Reason:  AbnormalReason,
+		Message: strings.TrimSuffix(abnormalMessage, "\n"),
+	}
 }
