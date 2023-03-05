@@ -57,13 +57,23 @@ func (r *Request) FormatHTTP() string {
 	}
 	b.WriteString("\n")
 	if r.Body != "" {
-		body := resetTimestamp(r.Body)
-		b.WriteString(body)
+		b.WriteString(r.Body)
 		b.WriteString("\n\n")
 	}
 	return b.String()
 }
+
+func (l *RequestLog) ReplaceTimestamp() {
+	for _, entry := range l.Entries {
+		entry.Request.Body = resetTimestamp(entry.Request.Body)
+		entry.Response.Body = resetTimestamp(entry.Response.Body)
+	}
+}
+
 func resetTimestamp(body string) string {
+	if body == "" {
+		return body
+	}
 	var u *unstructured.Unstructured
 	if err := yaml.Unmarshal([]byte(body), &u); err != nil {
 		return body
@@ -79,12 +89,13 @@ func resetTimestamp(body string) string {
 	conditions := status["conditions"].([]interface{})
 	for _, condition := range conditions {
 		cond := condition.(map[string]interface{})
-		// the time format is required and validated by client-go.
+		// mockkubeapiserver provides a mock timestamp.
 		cond["lastTransitionTime"] = mockkubeapiserver.NewTestClock().Now().Format("2006-01-02T15:04:05Z07:00")
 	}
 	b, _ := json.Marshal(u)
 	return string(b)
 }
+
 func (r *Response) FormatHTTP() string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("%s\n", r.Status))
@@ -100,8 +111,7 @@ func (r *Response) FormatHTTP() string {
 	}
 	b.WriteString("\n")
 	if r.Body != "" {
-		body := resetTimestamp(r.Body)
-		b.WriteString(body)
+		b.WriteString(r.Body)
 		b.WriteString("\n")
 	}
 	return b.String()

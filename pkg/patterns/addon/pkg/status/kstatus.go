@@ -55,7 +55,7 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 			gvk := object.GroupVersionKind()
 			nn := object.NamespacedName()
 
-			log = log.WithValues("kind", gvk.Kind).WithValues("name", nn.Name).WithValues("namespace", nn.Namespace)
+			log := log.WithValues("kind", gvk.Kind).WithValues("name", nn.Name).WithValues("namespace", nn.Namespace)
 
 			unstruct, err := info.LiveObjects(ctx, gvk, nn)
 			if err != nil {
