@@ -1,6 +1,7 @@
 package httprecorder
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -8,7 +9,10 @@ import (
 	"sort"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
+	"sigs.k8s.io/yaml"
 )
 
 type LogEntry struct {
@@ -57,6 +61,39 @@ func (r *Request) FormatHTTP() string {
 		b.WriteString("\n\n")
 	}
 	return b.String()
+}
+
+func (l *RequestLog) ReplaceTimestamp() {
+	for _, entry := range l.Entries {
+		entry.Request.Body = resetTimestamp(entry.Request.Body)
+		entry.Response.Body = resetTimestamp(entry.Response.Body)
+	}
+}
+
+func resetTimestamp(body string) string {
+	if body == "" {
+		return body
+	}
+	var u *unstructured.Unstructured
+	if err := yaml.Unmarshal([]byte(body), &u); err != nil {
+		return body
+	}
+
+	if u.Object["status"] == nil {
+		return body
+	}
+	status := u.Object["status"].(map[string]interface{})
+	if status["conditions"] == nil {
+		return body
+	}
+	conditions := status["conditions"].([]interface{})
+	for _, condition := range conditions {
+		cond := condition.(map[string]interface{})
+		// mockkubeapiserver provides a mock timestamp.
+		cond["lastTransitionTime"] = mockkubeapiserver.NewTestClock().Now().Format("2006-01-02T15:04:05Z07:00")
+	}
+	b, _ := json.Marshal(u)
+	return string(b)
 }
 
 func (r *Response) FormatHTTP() string {
