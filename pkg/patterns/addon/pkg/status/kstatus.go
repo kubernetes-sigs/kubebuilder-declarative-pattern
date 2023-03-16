@@ -7,7 +7,6 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 )
@@ -18,19 +17,6 @@ type kstatusAggregator struct {
 // TODO: Create a version that doesn't need reconciler or client?
 func NewKstatusAgregator(_ client.Client, _ *declarative.Reconciler) *kstatusAggregator {
 	return &kstatusAggregator{}
-}
-
-// setStatusHealthy updates the `status.healthy` field based on current phase and all the deployment manifests's conditions.
-func setStatusHealthy(currentStatus *addonsv1alpha1.CommonStatus, abnormalConditions []status.Condition) {
-	if currentStatus.Phase != string(status.CurrentStatus) {
-		currentStatus.Healthy = false
-		return
-	}
-	if len(abnormalConditions) != 0 {
-		currentStatus.Healthy = false
-		return
-	}
-	currentStatus.Healthy = true
 }
 
 func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.StatusInfo) error {
@@ -101,7 +87,7 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 		}
 		currentStatus.Phase = string(aggregatedPhase)
 	}
-	setStatusHealthy(&currentStatus, abnormalConditions)
+	currentStatus.Healthy = currentStatus.Phase == string(status.CurrentStatus)
 	if err := utils.SetCommonStatus(info.Subject, currentStatus); err != nil {
 		return err
 	}
