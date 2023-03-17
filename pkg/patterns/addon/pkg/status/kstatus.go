@@ -30,7 +30,6 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 
 	shouldComputeHealthFromObjects := info.Manifest != nil && info.LiveObjects != nil
 	if info.Err != nil {
-		currentStatus.Healthy = false
 		switch info.KnownError {
 		case declarative.KnownErrorApplyFailed:
 			currentStatus.Phase = "Applying"
@@ -88,7 +87,7 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 		}
 		currentStatus.Phase = string(aggregatedPhase)
 	}
-
+	currentStatus.Healthy = currentStatus.Phase == string(status.CurrentStatus)
 	if err := utils.SetCommonStatus(info.Subject, currentStatus); err != nil {
 		return err
 	}
