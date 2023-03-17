@@ -2,8 +2,10 @@ package utils
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/apis/v1alpha1"
@@ -53,6 +55,58 @@ func SetCommonStatus(instance runtime.Object, status addonsv1alpha1.CommonStatus
 	default:
 		return genError(v)
 	}
+	return nil
+}
+
+func GetPatchableConditions(instance runtime.Object) (addonsv1alpha1.PatchableConditions, error) {
+	if v, ok := instance.(addonsv1alpha1.ConditionGetterSetter); ok {
+		return v.GetConditions(), nil
+	}
+	// instance cannot type assert to *unstructured.Unstructured directly.
+	v, err := runtime.DefaultUnstructuredConverter.ToUnstructured(instance)
+	if err != nil {
+		return addonsv1alpha1.PatchableConditions{}, err
+	}
+	unstructConditions, _, err := unstructured.NestedSlice(v, "status", "conditions")
+	if err != nil {
+		return addonsv1alpha1.PatchableConditions{}, fmt.Errorf("unable to get status.conditions from unstuctured: %v", err)
+	}
+	var addonConditions addonsv1alpha1.PatchableConditions
+	for _, ucond := range unstructConditions {
+		var addonCond v1.Condition
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(ucond.(map[string]interface{}), &addonCond)
+		if err != nil {
+			return addonConditions, err
+		}
+		addonConditions.Conditions = append(addonConditions.Conditions, addonCond)
+	}
+	return addonConditions, nil
+}
+
+type MissingConditionsErr struct {
+	Object runtime.Object
+}
+
+func (e *MissingConditionsErr) Error() string {
+	return fmt.Sprintf("unable to find `status.condition` in %T", e.Object)
+}
+
+func SetPatchableConditions(instance runtime.Object, conditions addonsv1alpha1.PatchableConditions) error {
+	if v, ok := instance.(addonsv1alpha1.ConditionGetterSetter); ok {
+		v.SetConditions(conditions)
+		return nil
+	}
+	newConditionsVal := reflect.ValueOf(conditions).FieldByName("Conditions")
+	statusVal := reflect.ValueOf(instance).Elem().FieldByName("Status")
+	if !statusVal.IsValid() {
+		// Status not ready.
+		return nil
+	}
+	conditionsVal := statusVal.FieldByName("Conditions")
+	if !conditionsVal.IsValid() {
+		return &MissingConditionsErr{Object: instance}
+	}
+	conditionsVal.Set(newConditionsVal)
 	return nil
 }
 

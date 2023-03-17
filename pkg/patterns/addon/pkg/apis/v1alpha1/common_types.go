@@ -50,6 +50,17 @@ type CommonStatus struct {
 	Healthy bool     `json:"healthy"`
 	Errors  []string `json:"errors,omitempty"`
 	Phase   string   `json:"phase,omitempty"`
+}
+
+type ConditionGetterSetter interface {
+	SetConditions(PatchableConditions)
+	GetConditions() PatchableConditions
+}
+
+// +k8s:deepcopy-gen=true
+//
+//go:generate go run ../../../../../../vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i ./... -h ../../../../../../hack/boilerplate.go.txt
+type PatchableConditions struct {
 	// Conditions follows the API specification "Conditions" properties.
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 	Conditions []metav1.Condition `json:"conditions,omitempty"`

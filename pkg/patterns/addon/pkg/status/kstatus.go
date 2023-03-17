@@ -2,6 +2,7 @@ package status
 
 import (
 	"context"
+	"errors"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
@@ -25,6 +26,11 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 	currentStatus, err := utils.GetCommonStatus(info.Subject)
 	if err != nil {
 		log.Error(err, "error retrieving status")
+		return err
+	}
+	currentConditions, err := utils.GetPatchableConditions(info.Subject)
+	if err != nil {
+		log.Error(err, "error retrieving status.conditions")
 		return err
 	}
 
@@ -81,14 +87,23 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 		aggregatedPhase := aggregateStatus(statusMap)
 		// Update the Conditions for the declarativeObject status.
 		if aggregatedPhase == status.CurrentStatus {
-			SetReady(&currentStatus, abnormalConditions)
+			SetReady(&currentConditions, abnormalConditions)
 		} else {
-			SetInProgress(&currentStatus, abnormalConditions)
+			SetInProgress(&currentConditions, abnormalConditions)
 		}
 		currentStatus.Phase = string(aggregatedPhase)
+		err = utils.SetPatchableConditions(info.Subject, currentConditions)
+		if err != nil {
+			var backwardTolerance *utils.MissingConditionsErr
+			if errors.As(err, &backwardTolerance) {
+				log.Info(err.Error())
+			} else {
+				return err
+			}
+		}
 	}
 	currentStatus.Healthy = currentStatus.Phase == string(status.CurrentStatus)
-	if err := utils.SetCommonStatus(info.Subject, currentStatus); err != nil {
+	if err = utils.SetCommonStatus(info.Subject, currentStatus); err != nil {
 		return err
 	}
 	return nil

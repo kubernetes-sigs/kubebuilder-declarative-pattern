@@ -18,21 +18,21 @@ const (
 // SetInProgress set the present condition to a single condition with type "Ready" and status "false". This means
 // the current resources is still reconciling. If any deployment manifests are abnormal, their abnormal status condition will
 // be recorded in the `message` field.
-func SetInProgress(commonStatus *addonsv1alpha1.CommonStatus, abnormalTrueConditions []status.Condition) {
-	setCondition(metav1.ConditionFalse, commonStatus, abnormalTrueConditions)
+func SetInProgress(patchable *addonsv1alpha1.PatchableConditions, abnormalTrueConditions []status.Condition) {
+	setCondition(metav1.ConditionFalse, patchable, abnormalTrueConditions)
 }
 
 // SetReady set the present condition to a single condition with type "Ready" and status "true". This means
 // all the deployment manifests are reconciled.
-func SetReady(commonStatus *addonsv1alpha1.CommonStatus, abnormalTrueConditions []status.Condition) {
-	setCondition(metav1.ConditionTrue, commonStatus, abnormalTrueConditions)
+func SetReady(patchable *addonsv1alpha1.PatchableConditions, abnormalTrueConditions []status.Condition) {
+	setCondition(metav1.ConditionTrue, patchable, abnormalTrueConditions)
 }
 
-func setCondition(status metav1.ConditionStatus, commonStatus *addonsv1alpha1.CommonStatus, abnormalTrueConditions []status.Condition) {
+func setCondition(status metav1.ConditionStatus, patchable *addonsv1alpha1.PatchableConditions, abnormalTrueConditions []status.Condition) {
 	newCondition := new(abnormalTrueConditions)
 	newCondition.Status = status
 	newCondition.Type = ReadyType
-	meta.SetStatusCondition(&commonStatus.Conditions, newCondition)
+	meta.SetStatusCondition(&patchable.Conditions, newCondition)
 }
 
 // new returns a Condition object with human-readable message and reason.
