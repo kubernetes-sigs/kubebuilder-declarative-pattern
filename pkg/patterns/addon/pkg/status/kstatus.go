@@ -2,7 +2,6 @@ package status
 
 import (
 	"context"
-	"errors"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
@@ -28,7 +27,7 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 		log.Error(err, "error retrieving status")
 		return err
 	}
-	currentConditions, err := utils.GetPatchableConditions(info.Subject)
+	conditions, err := GetConditions(info.Subject)
 	if err != nil {
 		log.Error(err, "error retrieving status.conditions")
 		return err
@@ -52,7 +51,7 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 	// Here we augment each deployment manifests abnormal conditions and determine the declarativeObject's present
 	// condition from these conditions.
 	// https://github.com/kubernetes-sigs/cli-utils/tree/master/pkg/kstatus#conditions
-	var abnormalConditions []status.Condition
+	// var abnormalConditions []status.Condition
 
 	if shouldComputeHealthFromObjects {
 		statusMap := make(map[status.Status]bool)
@@ -79,27 +78,21 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 				log.Info("resource status was nil")
 				statusMap[status.UnknownStatus] = true
 			}
-			conds := getAbnormalConditions(ctx, unstruct)
-			abnormalConditions = append(abnormalConditions, conds...)
+			// conds := getAbnormalConditions(ctx, unstruct)
+			// abnormalConditions = append(abnormalConditions, conds...)
 		}
 
 		// Summarize all the deployment manifests statuses to a single results.
 		aggregatedPhase := aggregateStatus(statusMap)
 		// Update the Conditions for the declarativeObject status.
 		if aggregatedPhase == status.CurrentStatus {
-			SetReady(&currentConditions, abnormalConditions)
+			SetReady(&conditions)
 		} else {
-			SetInProgress(&currentConditions, abnormalConditions)
+			SetInProgress(&conditions)
 		}
 		currentStatus.Phase = string(aggregatedPhase)
-		err = utils.SetPatchableConditions(info.Subject, currentConditions)
-		if err != nil {
-			var backwardTolerance *utils.MissingConditionsErr
-			if errors.As(err, &backwardTolerance) {
-				log.Info(err.Error())
-			} else {
-				return err
-			}
+		if err := SetConditions(info.Subject, conditions); err != nil {
+			return err
 		}
 	}
 	currentStatus.Healthy = currentStatus.Phase == string(status.CurrentStatus)

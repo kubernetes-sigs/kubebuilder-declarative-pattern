@@ -29,8 +29,8 @@ type SimpleTestSpec struct {
 
 // SimpleTestStatus defines the observed state of Guestbook
 type SimpleTestStatus struct {
-	addonv1alpha1.CommonStatus        `json:",inline"`
-	addonv1alpha1.PatchableConditions `json:",inline"`
+	addonv1alpha1.CommonStatus     `json:",inline"`
+	addonv1alpha1.StatusConditions `json:",inline"`
 }
 
 //+kubebuilder:object:root=true
