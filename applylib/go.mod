@@ -8,9 +8,9 @@ go 1.19
 
 require (
 	github.com/google/go-cmp v0.5.9
-	k8s.io/api v0.26.0
+	k8s.io/api v0.26.2
 	k8s.io/apimachinery v0.26.2
-	k8s.io/client-go v0.26.0
+	k8s.io/client-go v0.26.2
 	k8s.io/klog/v2 v2.90.1
 	sigs.k8s.io/controller-runtime v0.14.1
 	sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20221021151406-9bd3fb842119
