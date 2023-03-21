@@ -37,9 +37,11 @@ chmod +x bin/kubectl
 export PATH="${REPO_ROOT}/bin:$PATH"
 echo "kubectl version is $(kubectl version --client)"
 
-export GO111MODULE=on
+# Run with a go workspace
+rm -f go.work go.work.sum
+go work init .
+go work use applylib
+go work use mockkubeapiserver
+go work use examples/guestbook-operator
 
-go test -v -count=1 sigs.k8s.io/kubebuilder-declarative-pattern/pkg/...
-
-cd examples/guestbook-operator
-go test sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator/controllers/...
+dev/test
