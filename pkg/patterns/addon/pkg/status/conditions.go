@@ -13,27 +13,6 @@ const (
 	ReadyType      = "Ready"
 )
 
-// // SetInProgress set the present condition to a single condition with type "Ready" and status "false". This means
-// // the current resources is still reconciling. If any deployment manifests are abnormal, their abnormal status condition will
-// // be recorded in the `message` field.
-// func SetInProgress(conditions *[]metav1.Condition, message string) {
-// 	newCondition := metav1.Condition{}
-// 	newCondition.Status = metav1.ConditionFalse
-// 	newCondition.Type = ReadyType
-
-// 	meta.SetStatusCondition(conditions, newCondition)
-// }
-
-// // SetReady set the present condition to a single condition with type "Ready" and status "true". This means
-// // all the deployment manifests are reconciled.
-// func SetReady(conditions *[]metav1.Condition) {
-// 	newCondition := metav1.Condition{}
-// 	newCondition.Status = metav1.ConditionTrue
-// 	newCondition.Type = ReadyType
-
-// 	meta.SetStatusCondition(conditions, newCondition)
-// }
-
 // buildReadyCondition returns a Condition object with human-readable message and reason.
 // The "reason" should be "Normal" if no deployment manifests have abnormal conditions, or "ManifestsNotReady"
 // as long as one deployment manifest has an abnormal condition.
