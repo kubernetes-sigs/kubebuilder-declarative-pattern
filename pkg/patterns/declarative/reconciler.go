@@ -198,25 +198,56 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
+	if err := r.updateStatus(ctx, original, instance); err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+func (r *Reconciler) updateStatus(ctx context.Context, original DeclarativeObject, instance DeclarativeObject) error {
+	log := log.FromContext(ctx)
+
 	// Write the status if it has changed
 	oldStatus, err := utils.GetCommonStatus(original)
 	if err != nil {
 		log.Error(err, "error getting status")
-		return result, err
+		return err
 	}
 	newStatus, err := utils.GetCommonStatus(instance)
 	if err != nil {
 		log.Error(err, "error getting status")
-		return result, err
+		return err
 	}
-	if !reflect.DeepEqual(oldStatus, newStatus) {
-		if err := r.client.Status().Update(ctx, instance); err != nil {
-			log.Error(err, "error updating status")
-			return result, err
+
+	statusOperation := &UpdateStatusOperation{}
+
+	for _, hook := range r.options.hooks {
+		if beforeUpdateStatus, ok := hook.(BeforeUpdateStatus); ok {
+			if err := beforeUpdateStatus.BeforeUpdateStatus(ctx, statusOperation); err != nil {
+				log.Error(err, "calling BeforeUpdateStatus hook")
+				return fmt.Errorf("error calling BeforeUpdateStatus hook: %w", err)
+			}
 		}
 	}
 
-	return result, err
+	if !reflect.DeepEqual(oldStatus, newStatus) {
+		if err := r.client.Status().Update(ctx, instance); err != nil {
+			log.Error(err, "error updating status")
+			return err
+		}
+	}
+
+	for _, hook := range r.options.hooks {
+		if afterUpdateStatus, ok := hook.(AfterUpdateStatus); ok {
+			if err := afterUpdateStatus.AfterUpdateStatus(ctx, statusOperation); err != nil {
+				log.Error(err, "calling AfterUpdateStatus hook")
+				return fmt.Errorf("error calling AfterUpdateStatus hook: %w", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (*StatusInfo, error) {

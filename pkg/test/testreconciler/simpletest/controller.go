@@ -17,8 +17,12 @@ limitations under the License.
 package simpletest
 
 import (
+	"context"
+	"time"
+
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -76,6 +80,8 @@ func (r *SimpleTestReconciler) setupReconciler(mgr ctrl.Manager) error {
 
 		declarative.WithManifestController(r.manifestController),
 		declarative.WithApplier(r.applier),
+
+		declarative.WithHook(&sleepAfterUpdateStatusHook{}),
 	)
 }
 
@@ -101,5 +107,21 @@ func (r *SimpleTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
+	return nil
+}
+
+// We sleep briefly after updating the status.
+// This is a hack to ensure that we see the watch event, because otherwise we can start a re-reconcile based on our derived objects,
+// and then reconcile again based on our own status update.  This is racy behaviour and causes non-determinism.
+// We do this only in this test controller, but maybe we should have similar logic to "debounce" in all controllers.
+type sleepAfterUpdateStatusHook struct {
+}
+
+var _ declarative.AfterUpdateStatus = &sleepAfterUpdateStatusHook{}
+
+func (h *sleepAfterUpdateStatusHook) AfterUpdateStatus(ctx context.Context, op *declarative.UpdateStatusOperation) error {
+	sleepFor := 100 * time.Millisecond
+	klog.Infof("sleeping after apply for %v", sleepFor)
+	time.Sleep(sleepFor)
 	return nil
 }
