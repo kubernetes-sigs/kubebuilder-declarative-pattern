@@ -48,3 +48,19 @@ type AfterApply interface {
 type BeforeApply interface {
 	BeforeApply(ctx context.Context, op *ApplyOperation) error
 }
+
+// UpdateStatusOperation contains the details of an Apply operation
+type UpdateStatusOperation struct {
+	// Subject is the object we are reconciling
+	Subject DeclarativeObject
+}
+
+// AfterUpdateStatus is implemented by hooks that want to be called after the update-status phase
+type AfterUpdateStatus interface {
+	AfterUpdateStatus(ctx context.Context, op *UpdateStatusOperation) error
+}
+
+// BeforeUpdateStatus is implemented by hooks that want to be called before the update-status phase
+type BeforeUpdateStatus interface {
+	BeforeUpdateStatus(ctx context.Context, op *UpdateStatusOperation) error
+}
