@@ -3,6 +3,7 @@ package status
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,7 +52,7 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 	// Here we augment each deployment manifests abnormal conditions and determine the declarativeObject's present
 	// condition from these conditions.
 	// https://github.com/kubernetes-sigs/cli-utils/tree/master/pkg/kstatus#conditions
-	// var abnormalConditions []status.Condition
+	var abnormalConditions []status.Condition
 
 	if shouldComputeHealthFromObjects {
 		statusMap := make(map[status.Status]bool)
@@ -78,18 +79,18 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 				log.Info("resource status was nil")
 				statusMap[status.UnknownStatus] = true
 			}
-			// conds := getAbnormalConditions(ctx, unstruct)
-			// abnormalConditions = append(abnormalConditions, conds...)
+			conds := getAbnormalConditions(ctx, unstruct)
+			abnormalConditions = append(abnormalConditions, conds...)
 		}
 
 		// Summarize all the deployment manifests statuses to a single results.
-		aggregatedPhase := aggregateStatus(statusMap)
 		// Update the Conditions for the declarativeObject status.
-		if aggregatedPhase == status.CurrentStatus {
-			SetReady(&conditions)
-		} else {
-			SetInProgress(&conditions)
-		}
+		aggregatedPhase := aggregateStatus(statusMap)
+		isReady := aggregatedPhase == status.CurrentStatus
+		readyCondition := buildReadyCondition(isReady, abnormalConditions)
+
+		meta.SetStatusCondition(&conditions, readyCondition)
+
 		currentStatus.Phase = string(aggregatedPhase)
 		if err := SetConditions(info.Subject, conditions); err != nil {
 			return err
