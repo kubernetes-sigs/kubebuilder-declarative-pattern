@@ -138,7 +138,7 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 
 	mgrContext, mgrStop := context.WithCancel(ctx)
 	go func() {
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 		// time.Sleep(200 * time.Second)
 		mgrStop()
 	}()

@@ -42,17 +42,11 @@ type CommonSpec struct {
 	Channel string `json:"channel,omitempty"`
 }
 
-//go:generate go run ../../../../../../vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i ./... -h ../../../../../../hack/boilerplate.go.txt
-// +k8s:deepcopy-gen=true
-
 // CommonStatus is a set of status attributes that must be exposed on all addons.
 type CommonStatus struct {
 	Healthy bool     `json:"healthy"`
 	Errors  []string `json:"errors,omitempty"`
 	Phase   string   `json:"phase,omitempty"`
-	// Conditions follows the API specification "Conditions" properties.
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // Patchable is a trait for addon CRDs that expose a raw set of Patches to be
