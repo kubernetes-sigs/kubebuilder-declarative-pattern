@@ -32,6 +32,10 @@ func (s *MemoryStorage) objectChanged(u *unstructured.Unstructured) {
 	switch gvk.GroupKind() {
 	case schema.GroupKind{Kind: "Namespace"}:
 		s.namespaceChanged(u)
+	case schema.GroupKind{Group: "apps", Kind: "Deployment"}:
+		if err := s.deploymentChanged(u); err != nil {
+			klog.Fatalf("could not update deployment status: %v", err)
+		}
 	case schema.GroupKind{Group: "apiextensions.k8s.io", Kind: "CustomResourceDefinition"}:
 		if err := s.crdChanged(u); err != nil {
 			klog.Warningf("crd change was invalid: %v", err)
@@ -148,5 +152,62 @@ func (s *MemoryStorage) crdChanged(u *unstructured.Unstructured) error {
 
 		s.schema.resources = append(s.schema.resources, r)
 	}
+	return nil
+}
+
+func (s *MemoryStorage) deploymentChanged(u *unstructured.Unstructured) error {
+	// So that deployments become ready, we immediately update the status.
+	// We could do something better here, like e.g. a 1 second pause before changing the status
+	statusObj := u.Object["status"]
+	if statusObj == nil {
+		statusObj = make(map[string]interface{})
+		u.Object["status"] = statusObj
+	}
+	status, ok := statusObj.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("status was of unexpected type %T", statusObj)
+	}
+
+	generation := u.GetGeneration()
+	if generation == 0 {
+		generation = 1
+		u.SetGeneration(generation)
+	}
+
+	replicasVal, _, err := unstructured.NestedFieldNoCopy(u.Object, "spec", "replicas")
+	if err != nil {
+		return fmt.Errorf("error getting spec.replicas: %w", err)
+	}
+	replicas := int64(0)
+	switch replicasVal := replicasVal.(type) {
+	case int64:
+		replicas = replicasVal
+	case float64:
+		replicas = int64(replicasVal)
+	default:
+		return fmt.Errorf("unhandled type for spec.replicas %T", replicasVal)
+	}
+
+	var conditions []interface{}
+	conditions = append(conditions, map[string]interface{}{
+		"type":   "Available",
+		"status": "True",
+		"reason": "MinimumReplicasAvailable",
+	})
+	conditions = append(conditions, map[string]interface{}{
+		"type":   "Progressing",
+		"status": "True",
+		"reason": "NewReplicaSetAvailable",
+	})
+	status["conditions"] = conditions
+
+	status["availableReplicas"] = replicas
+	status["readyReplicas"] = replicas
+	status["replicas"] = replicas
+	status["updatedReplicas"] = replicas
+
+	observedGeneration := generation
+	status["observedGeneration"] = observedGeneration
+
 	return nil
 }
