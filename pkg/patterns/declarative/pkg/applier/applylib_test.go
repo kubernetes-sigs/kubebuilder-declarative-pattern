@@ -135,5 +135,5 @@ func (h *logKubeRequestsHook) BeforeHTTPOperation(op *mockkubeapiserver.HTTPOper
 		entry.Request.Body = string(requestBody)
 		req.Body = io.NopCloser(bytes.NewReader(requestBody))
 	}
-	h.log.Entries = append(h.log.Entries, entry)
+	h.log.AddEntry(entry)
 }

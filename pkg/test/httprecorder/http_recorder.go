@@ -41,7 +41,7 @@ func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) 
 	}
 
 	// We log the request here, because otherwise we miss long-running requests (watches)
-	m.log.Entries = append(m.log.Entries, entry)
+	m.log.AddEntry(entry)
 
 	response, err := m.inner.RoundTrip(request)
 
