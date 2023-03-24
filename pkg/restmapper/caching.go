@@ -8,6 +8,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"k8s.io/klog/v2"
@@ -17,6 +18,7 @@ import (
 // cache is our cache of schema information.
 type cache struct {
 	mutex         sync.Mutex
+	groups        map[string]metav1.APIGroup
 	groupVersions map[schema.GroupVersion]*cachedGroupVersion
 }
 
@@ -25,6 +27,34 @@ func newCache() *cache {
 	return &cache{
 		groupVersions: make(map[schema.GroupVersion]*cachedGroupVersion),
 	}
+}
+
+// findGroupInfo returns the APIGroup for the specified group, querying discovery if not cached.
+// If not found, returns APIGroup{}, false, nil
+func (c *cache) findGroupInfo(ctx context.Context, discovery discovery.DiscoveryInterface, groupName string) (metav1.APIGroup, bool, error) {
+	log := log.FromContext(ctx)
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.groups == nil {
+		log.Info("discovering server groups")
+		serverGroups, err := discovery.ServerGroups()
+		if err != nil {
+			klog.Infof("unexpected error from ServerGroups: %v", err)
+			return metav1.APIGroup{}, false, fmt.Errorf("error from ServerGroups: %w", err)
+		}
+
+		groups := make(map[string]metav1.APIGroup)
+		for i := range serverGroups.Groups {
+			group := &serverGroups.Groups[i]
+			groups[group.Name] = *group
+		}
+		c.groups = groups
+	}
+
+	group, found := c.groups[groupName]
+	return group, found, nil
 }
 
 // cachedGroupVersion caches (all) the resource information for a particular groupversion.
@@ -88,7 +118,7 @@ func (c *cachedGroupVersion) fetch(ctx context.Context, discovery discovery.Disc
 		if meta.IsNoMatchError(err) || apierrors.IsNotFound(err) {
 			return nil, nil
 		} else {
-			klog.Infof("unexpected error from ServerResourcesForGroupVersion(%v): %w", c.gv, err)
+			klog.Infof("unexpected error from ServerResourcesForGroupVersion(%v): %v", c.gv, err)
 			return nil, fmt.Errorf("error from ServerResourcesForGroupVersion(%v): %w", c.gv, err)
 		}
 	}
