@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
@@ -64,7 +65,10 @@ func (r *Request) FormatHTTP() string {
 }
 
 func (l *RequestLog) ReplaceTimestamp() {
-	for _, entry := range l.Entries {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	for _, entry := range l.entries {
 		entry.Request.Body = resetTimestamp(entry.Request.Body)
 		entry.Response.Body = resetTimestamp(entry.Response.Body)
 	}
@@ -118,12 +122,25 @@ func (r *Response) FormatHTTP() string {
 }
 
 type RequestLog struct {
-	Entries []*LogEntry
+	// We have seen dropped logs from concurrent requests
+	mutex sync.Mutex
+
+	entries []*LogEntry
+}
+
+func (l *RequestLog) AddEntry(entry *LogEntry) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	l.entries = append(l.entries, entry)
 }
 
 func (l *RequestLog) FormatHTTP() string {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
 	var actual []string
-	for _, entry := range l.Entries {
+	for _, entry := range l.entries {
 		s := entry.FormatHTTP()
 		actual = append(actual, s)
 	}
@@ -131,8 +148,11 @@ func (l *RequestLog) FormatHTTP() string {
 }
 
 func (l *RequestLog) ReplaceURLPrefix(old, new string) {
-	for i := range l.Entries {
-		r := &l.Entries[i].Request
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	for i := range l.entries {
+		r := &l.entries[i].Request
 		if strings.HasPrefix(r.URL, old) {
 			r.URL = new + strings.TrimPrefix(r.URL, old)
 		}
@@ -140,8 +160,11 @@ func (l *RequestLog) ReplaceURLPrefix(old, new string) {
 }
 
 func (l *RequestLog) RemoveHeader(k string) {
-	for i := range l.Entries {
-		r := &l.Entries[i].Request
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	for i := range l.entries {
+		r := &l.entries[i].Request
 		r.Header.Del(k)
 	}
 }
@@ -149,6 +172,8 @@ func (l *RequestLog) RemoveHeader(k string) {
 // SortGETs attempts to normalize parallel requests.
 // Consecutive GET requests are sorted alphabetically.
 func (l *RequestLog) SortGETs() {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
 
 	isSwappable := func(urlString string) (string, bool) {
 		u, err := url.Parse(urlString)
@@ -171,17 +196,17 @@ func (l *RequestLog) SortGETs() {
 
 doAgain:
 	changed := false
-	for i := 0; i < len(l.Entries)-1; i++ {
-		a := l.Entries[i]
-		b := l.Entries[i+1]
+	for i := 0; i < len(l.entries)-1; i++ {
+		a := l.entries[i]
+		b := l.entries[i+1]
 
 		if a.Request.Method == "GET" && b.Request.Method == "GET" {
 			aKey, aSwappable := isSwappable(a.Request.URL)
 			bKey, bSwappable := isSwappable(b.Request.URL)
 			if aSwappable && bSwappable {
 				if aKey > bKey {
-					l.Entries[i+1] = a
-					l.Entries[i] = b
+					l.entries[i+1] = a
+					l.entries[i] = b
 					changed = true
 				}
 			}
@@ -197,8 +222,11 @@ func (l *RequestLog) RemoveUserAgent() {
 }
 
 func (l *RequestLog) RegexReplaceURL(find string, replace string) {
-	for i := range l.Entries {
-		request := &l.Entries[i].Request
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	for i := range l.entries {
+		request := &l.entries[i].Request
 		u := request.URL
 		r, err := regexp.Compile(find)
 		if err != nil {
