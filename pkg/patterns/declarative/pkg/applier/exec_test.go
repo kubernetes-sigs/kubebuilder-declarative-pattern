@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -156,6 +157,23 @@ func TestKubectlApplier(t *testing.T) {
 	}
 	t.Logf("kubectl version is %q", kubectlVersion)
 
-	applier := NewExec()
-	runApplierGoldenTests(t, "testdata/kubectl", true, applier)
+	applierFn := func() Applier {
+		// We create a new temp dir every time for caching, so that discovery is predictable
+		// and happens on every test.
+		tempDir, err := os.MkdirTemp("", "kubebuilderdeclarativepattern-test")
+		if err != nil {
+			t.Fatalf("failed to create tempdir: %v", err)
+		}
+		t.Cleanup(func() {
+			if err := os.RemoveAll(tempDir); err != nil {
+				t.Errorf("error cleaning up temp dir %q: %v", tempDir, err)
+			}
+		})
+		opt := ExecKubectlOptions{
+			KubeCacheDir: tempDir,
+		}
+		applier := NewExecKubectlApplier(opt)
+		return applier
+	}
+	runApplierGoldenTests(t, "testdata/kubectl", true, applierFn)
 }

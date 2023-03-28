@@ -22,11 +22,13 @@ import (
 
 func TestApplySetApplier(t *testing.T) {
 	patchOptions := metav1.PatchOptions{FieldManager: "kdp-test"}
-	applier := NewApplySetApplier(patchOptions)
-	runApplierGoldenTests(t, "testdata/applylib", false, applier)
+	applierFn := func() Applier {
+		return NewApplySetApplier(patchOptions)
+	}
+	runApplierGoldenTests(t, "testdata/applylib", false, applierFn)
 }
 
-func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer bool, applier Applier) {
+func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer bool, applierFn func() Applier) {
 	testharness.RunGoldenTests(t, testDir, func(h *testharness.Harness, testdir string) {
 		ctx := context.Background()
 
@@ -87,6 +89,7 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 			RESTConfig: restConfig,
 			RESTMapper: restMapper,
 		}
+		applier := applierFn()
 		if err := applier.Apply(ctx, options); err != nil {
 			t.Fatalf("error from applier.Apply: %v", err)
 		}
