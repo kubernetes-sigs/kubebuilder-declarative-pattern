@@ -36,6 +36,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
@@ -528,7 +529,14 @@ func TestAddIfNotPresent(t *testing.T) {
 					options.Objects = objList
 					options.RESTMapper = restMapper
 					options.RESTConfig = restConfig
-					applier := applier.NewApplySetApplier(metav1.PatchOptions{FieldManager: "kdp-test"})
+					gvk := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}
+					restmapping, err := options.RESTMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+					if err != nil {
+						t.Fatalf("failed to get restmapping for parent: %v", err)
+					}
+					options.ParentRef = applyset.NewParentRef(gvk, "kdp-test", "default", restmapping)
+					applier := applier.NewApplySetApplier(
+						metav1.PatchOptions{FieldManager: "kdp-test"}, metav1.DeleteOptions{}, applier.ApplysetOptions{})
 					if err := applier.Apply(ctx, options); err != nil {
 						t.Fatalf("failed to apply objects: %v", err)
 					}

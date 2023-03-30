@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 	controllerrestmapper "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
@@ -22,7 +23,7 @@ import (
 
 func TestApplySetApplier(t *testing.T) {
 	patchOptions := metav1.PatchOptions{FieldManager: "kdp-test"}
-	applier := NewApplySetApplier(patchOptions)
+	applier := NewApplySetApplier(patchOptions, metav1.DeleteOptions{}, ApplysetOptions{})
 	runApplierGoldenTests(t, "testdata/applylib", false, applier)
 }
 
@@ -81,11 +82,16 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 		if err != nil {
 			t.Fatalf("error from controllerrestmapper.NewControllerRESTMapper: %v", err)
 		}
-
+		parentGVK := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}
+		restmapping, err := restMapper.RESTMapping(parentGVK.GroupKind(), parentGVK.Version)
+		if err != nil {
+			t.Errorf("error getting restmapping for parent %v", err)
+		}
 		options := ApplierOptions{
 			Objects:    objects.GetItems(),
 			RESTConfig: restConfig,
 			RESTMapper: restMapper,
+			ParentRef:  applyset.NewParentRef(parentGVK, "test", "default", restmapping),
 		}
 		if err := applier.Apply(ctx, options); err != nil {
 			t.Fatalf("error from applier.Apply: %v", err)

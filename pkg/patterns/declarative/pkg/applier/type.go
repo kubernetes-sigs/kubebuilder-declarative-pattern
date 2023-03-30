@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
@@ -34,4 +35,6 @@ type ApplierOptions struct {
 	// ExtraArgs holds additional arguments that should be passed to kubectl.
 	// @deprecated: prefer using explicit arguments (Force etc)
 	ExtraArgs []string
+
+	ParentRef applyset.Parent
 }

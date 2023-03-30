@@ -62,6 +62,8 @@ type cachedGroupVersion struct {
 	gv    schema.GroupVersion
 	mutex sync.Mutex
 	kinds map[string]cachedGVR
+	// resource to kind
+	toKind map[string]string
 }
 
 // cachedGVR caches the information for a particular resource.
@@ -70,12 +72,35 @@ type cachedGVR struct {
 	Scope    meta.RESTScope
 }
 
+// KindFromGVR finds out the Kind from the GVR in the cache. If the GVR version is not given, we will iterate all the matching
+// GR in the cache and return the first matching one.
+// e.g. https://github.com/kubernetes/kubernetes/blob/a0cff30104ea950a5cc733a109e7f9084275e49e/staging/src/k8s.io/kubectl/pkg/cmd/apply/applyset.go#L353
+func (c *cache) KindFromGVR(gvr schema.GroupVersionResource) string {
+	if gvr.Version != "" {
+		cachedgvr, ok := c.groupVersions[gvr.GroupVersion()]
+		if !ok {
+			return ""
+		}
+		return cachedgvr.toKind[gvr.Resource]
+	}
+	for keyGVR, cachedgvr := range c.groupVersions {
+		if keyGVR.Group != gvr.Group {
+			continue
+		}
+		kind, ok := cachedgvr.toKind[gvr.Resource]
+		if ok && kind != "" {
+			return kind
+		}
+	}
+	return ""
+}
+
 // findRESTMapping returns the RESTMapping for the specified GVK, querying discovery if not cached.
 func (c *cache) findRESTMapping(ctx context.Context, discovery discovery.DiscoveryInterface, gv schema.GroupVersion, kind string) (*meta.RESTMapping, error) {
 	c.mutex.Lock()
 	cached := c.groupVersions[gv]
 	if cached == nil {
-		cached = &cachedGroupVersion{gv: gv}
+		cached = &cachedGroupVersion{gv: gv, toKind: make(map[string]string)}
 		c.groupVersions[gv] = cached
 	}
 	c.mutex.Unlock()
@@ -140,6 +165,7 @@ func (c *cachedGroupVersion) fetch(ctx context.Context, discovery discovery.Disc
 			Resource: resource.Name,
 			Scope:    scope,
 		}
+		c.toKind[resource.Name] = resource.Kind
 	}
 	c.kinds = kinds
 	return kinds, nil

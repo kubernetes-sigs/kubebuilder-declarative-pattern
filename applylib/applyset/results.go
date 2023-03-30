@@ -27,6 +27,8 @@ type ApplyResults struct {
 	total             int
 	applySuccessCount int
 	applyFailCount    int
+	pruneSuccessCount int
+	pruneFailCount    int
 	healthyCount      int
 	unhealthyCount    int
 }
@@ -49,6 +51,7 @@ func (r *ApplyResults) AllHealthy() bool {
 
 // checkInvariants is an internal function that warns if the object doesn't match the expected invariants.
 func (r *ApplyResults) checkInvariants() {
+	// TODO: Check the pruning results.
 	if r.total != (r.applySuccessCount + r.applyFailCount) {
 		klog.Warningf("consistency error (apply counts): %#v", r)
 	} else if r.total != (r.healthyCount + r.unhealthyCount) {
@@ -66,6 +69,17 @@ func (r *ApplyResults) applyError(gvk schema.GroupVersionKind, nn types.Namespac
 // applySuccess records that an object was applied and this succeeded.
 func (r *ApplyResults) applySuccess(gvk schema.GroupVersionKind, nn types.NamespacedName) {
 	r.applySuccessCount++
+}
+
+// pruneError records that the prune of an object failed with an error.
+func (r *ApplyResults) pruneError(gvk schema.GroupVersionKind, nn types.NamespacedName, err error) {
+	r.pruneFailCount++
+	klog.Warningf("error from pruning on %s %s: %v", gvk, nn, err)
+}
+
+// pruneSuccess records that an object was pruned and this succeeded.
+func (r *ApplyResults) pruneSuccess(gvk schema.GroupVersionKind, nn types.NamespacedName) {
+	r.pruneSuccessCount++
 }
 
 // reportHealth records the health of an object.

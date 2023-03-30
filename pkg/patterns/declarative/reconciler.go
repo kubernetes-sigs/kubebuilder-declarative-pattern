@@ -18,6 +18,7 @@ package declarative
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -39,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
@@ -173,7 +175,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}()
 
 	original := instance.DeepCopyObject().(DeclarativeObject)
-
 	if r.options.status != nil {
 		if err := r.options.status.Preflight(ctx, instance); err != nil {
 			log.Error(err, "preflight check failed, not reconciling")
@@ -232,7 +233,11 @@ func (r *Reconciler) updateStatus(ctx context.Context, original DeclarativeObjec
 	}
 
 	if !reflect.DeepEqual(oldStatus, newStatus) {
-		if err := r.client.Status().Update(ctx, instance); err != nil {
+		data, err := json.Marshal(newStatus)
+		if err != nil {
+			log.Error(err, "error marshaling new status %v: %v", newStatus, err)
+		}
+		if err := r.client.Status().Patch(ctx, instance, client.RawPatch(types.ApplyPatchType, data)); err != nil {
 			log.Error(err, "error updating status")
 			return err
 		}
@@ -359,10 +364,16 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}
 
+	// TODO(yuwenma): instead of passing in the applyset "parent" as a applier option, maybe it's better to pass in the
+	// json serialized "subject", so as the applier options are less dedicated to a specific (applier) type.
+	parentRef := applier.NewParentRef(r.restMapper, instance, instance.GetName(), instance.GetNamespace())
+
+	preferredRestMapper, err := restmapper.NewControllerRESTMapper(r.config)
 	applierOpt := applier.ApplierOptions{
 		RESTConfig:        r.config,
-		RESTMapper:        r.restMapper,
+		RESTMapper:        preferredRestMapper,
 		Namespace:         ns,
+		ParentRef:         parentRef,
 		Objects:           objects.GetItems(),
 		Validate:          r.options.validate,
 		ExtraArgs:         extraArgs,

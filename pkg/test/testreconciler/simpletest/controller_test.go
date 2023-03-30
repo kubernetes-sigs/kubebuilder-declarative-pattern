@@ -40,9 +40,10 @@ func TestSimpleReconciler(t *testing.T) {
 			Status:  status.NewBasic(nil),
 		},
 		{
-			Key:     "ssa",
-			Applier: applier.NewApplySetApplier(metav1.PatchOptions{FieldManager: "kdp-test"}),
-			Status:  status.NewKstatusCheck(nil, nil),
+			Key: "ssa",
+			Applier: applier.NewApplySetApplier(
+				metav1.PatchOptions{FieldManager: "kdp-test"}, metav1.DeleteOptions{}, applier.ApplysetOptions{}),
+			Status: status.NewKstatusCheck(nil, nil),
 		},
 	}
 	for _, applier := range appliers {

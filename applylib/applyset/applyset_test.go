@@ -23,6 +23,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/testutils"
 	"sigs.k8s.io/yaml"
@@ -61,10 +62,18 @@ data:
 	force := true
 	patchOptions.Force = &force
 
+	parentGVK := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}
+	restmapping, err := h.RESTMapper().RESTMapping(parentGVK.GroupKind(), parentGVK.Version)
+	if err != nil {
+		h.Fatalf("error building parent restmappaing: %v", err)
+	}
 	s, err := New(Options{
-		RESTMapper:   h.RESTMapper(),
-		Client:       h.DynamicClient(),
-		PatchOptions: patchOptions,
+		Parent:        NewParentRef(parentGVK, "test", "default", restmapping),
+		RESTMapper:    h.RESTMapper(),
+		Client:        h.DynamicClient(),
+		PatchOptions:  patchOptions,
+		DeleteOptions: metav1.DeleteOptions{},
+		Prune:         true,
 	})
 	if err != nil {
 		h.Fatalf("error building applyset object: %v", err)
