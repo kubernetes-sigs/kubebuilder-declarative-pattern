@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/dynamic"
@@ -113,6 +114,11 @@ func (a *ApplySet) SetDesiredObjects(objects []ApplyableObject) error {
 	return nil
 }
 
+type restMappingResult struct {
+	restMapping *meta.RESTMapping
+	err         error
+}
+
 // ApplyOnce will make one attempt to apply all objects and observe their health.
 // It does not wait for the objects to become healthy, but will report their health.
 //
@@ -135,6 +141,35 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 	// Note: The Kubectl ApplySet will share the RESTMapper with k-d-p/ApplySet, which caches all the manifests in the past.
 	parentRef := &kubectlapply.ApplySetParentRef{Name: a.parent.Name(), Namespace: a.parent.Namespace(), RESTMapping: a.parent.RESTMapping()}
 	kapplyset := kubectlapply.NewApplySet(parentRef, kubectlapply.ApplySetTooling{Name: a.tooling}, a.restMapper)
+
+	restMappings := make(map[schema.GroupVersionKind]restMappingResult)
+	for i := range trackers.items {
+		tracker := &trackers.items[i]
+		obj := tracker.desired
+
+		gvk := obj.GroupVersionKind()
+
+		result, found := restMappings[gvk]
+		if !found {
+			restMapping, err := a.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			result = restMappingResult{
+				restMapping: restMapping,
+				err:         err,
+			}
+			restMappings[gvk] = result
+		}
+
+		// TODO: Check error is NotFound and not some transient error?
+		// TODO: Make sure we don't prune if there were errors
+
+		restMapping := result.restMapping
+		if restMapping != nil {
+			// cache the GVK in kubectlapply. kubectlapply will use this to calculate
+			// the latest parent "applyset.kubernetes.io/contains-group-resources" annotation after applying.
+			kapplyset.AddResource(restMapping, obj.GetNamespace())
+		}
+	}
+
 	for i := range trackers.items {
 		tracker := &trackers.items[i]
 		obj := tracker.desired
@@ -144,15 +179,19 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		gvk := obj.GroupVersionKind()
 		nn := types.NamespacedName{Namespace: ns, Name: name}
 
-		restMapping, err := a.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-		if err != nil {
-			results.applyError(gvk, nn, fmt.Errorf("error getting rest mapping for %v: %w", gvk, err))
+		restMappingResult := restMappings[gvk]
+		if restMappingResult.err != nil {
+			results.applyError(gvk, nn, fmt.Errorf("error getting rest mapping for %v: %w", gvk, restMappingResult.err))
 			continue
 		}
-		// cache the GVK in kubectlapply. kubectlapply will use this to calculate
-		// the latest parent "applyset.kubernetes.io/contains-group-resources" annotation after applying.
-		kapplyset.AddResource(restMapping, obj.GetNamespace())
-		if err = a.updateManifestLabel(obj, kapplyset.LabelsForMember()); err != nil {
+
+		restMapping := restMappingResult.restMapping
+		if restMapping == nil {
+			// Should be impossible
+			results.applyError(gvk, nn, fmt.Errorf("rest mapping result not found for %v", gvk))
+		}
+
+		if err := a.updateManifestLabel(obj, kapplyset.LabelsForMember()); err != nil {
 			klog.Errorf("unable to update label for %v/%v %v: %v", obj.GetName(), obj.GetNamespace(), gvk, err)
 			continue
 		}
