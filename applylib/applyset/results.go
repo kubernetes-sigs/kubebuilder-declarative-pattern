@@ -38,7 +38,7 @@ type ApplyResults struct {
 func (r *ApplyResults) AllApplied() bool {
 	r.checkInvariants()
 
-	return r.applyFailCount == 0
+	return r.applyFailCount == 0 && r.pruneFailCount == 0
 }
 
 // AllHealthy is true if all the objects have been applied and have converged to a "ready" state.
@@ -51,7 +51,6 @@ func (r *ApplyResults) AllHealthy() bool {
 
 // checkInvariants is an internal function that warns if the object doesn't match the expected invariants.
 func (r *ApplyResults) checkInvariants() {
-	// TODO: Check the pruning results.
 	if r.total != (r.applySuccessCount + r.applyFailCount) {
 		klog.Warningf("consistency error (apply counts): %#v", r)
 	} else if r.total != (r.healthyCount + r.unhealthyCount) {

@@ -20,23 +20,17 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/klog/v2"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 // Label and annotation keys from the ApplySet specification.
@@ -106,7 +100,7 @@ type ApplySet struct {
 	restMapper meta.RESTMapper
 
 	// client is a client specific to the ApplySet parent object's type
-	client resource.RESTClient
+	// client resource.RESTClient
 }
 
 var builtinApplySetParentGVRs = sets.New[schema.GroupVersionResource](
@@ -141,7 +135,8 @@ func (t ApplySetTooling) String() string {
 }
 
 // NewApplySet creates a new ApplySet object tracked by the given parent object.
-func NewApplySet(parent *ApplySetParentRef, tooling ApplySetTooling, mapper meta.RESTMapper, client resource.RESTClient) *ApplySet {
+func NewApplySet(parent *ApplySetParentRef, tooling ApplySetTooling, mapper meta.RESTMapper) *ApplySet {
+	// func NewApplySet(parent *ApplySetParentRef, tooling ApplySetTooling, mapper meta.RESTMapper, client resource.RESTClient) *ApplySet {
 	return &ApplySet{
 		currentResources:  make(map[schema.GroupVersionResource]*meta.RESTMapping),
 		currentNamespaces: make(sets.Set[string]),
@@ -150,7 +145,7 @@ func NewApplySet(parent *ApplySetParentRef, tooling ApplySetTooling, mapper meta
 		parentRef:         parent,
 		toolingID:         tooling,
 		restMapper:        mapper,
-		client:            client,
+		// client:            client,
 	}
 }
 
@@ -225,8 +220,9 @@ func (a *ApplySet) LabelsForMember() map[string]string {
 	}
 }
 
+/*
 // addLabels sets our tracking labels on each object; this should be called as part of loading the objects.
-func (a *ApplySet) AddLabels(objects ...*resource.Info) error {
+func (a *ApplySet) addLabels(objects ...*resource.Info) error {
 	applysetLabels := a.LabelsForMember()
 	for _, obj := range objects {
 		accessor, err := meta.Accessor(obj.Object)
@@ -248,21 +244,24 @@ func (a *ApplySet) AddLabels(objects ...*resource.Info) error {
 
 	return nil
 }
+*/
 
-func (a *ApplySet) fetchParent() error {
-	helper := resource.NewHelper(a.client, a.parentRef.RESTMapping)
-	obj, err := helper.Get(a.parentRef.Namespace, a.parentRef.Name)
-	if errors.IsNotFound(err) {
-		if !builtinApplySetParentGVRs.Has(a.parentRef.Resource) {
-			return fmt.Errorf("custom resource ApplySet parents cannot be created automatically")
-		}
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("failed to fetch ApplySet parent object %q: %w", a.parentRef, err)
-	} else if obj == nil {
-		return fmt.Errorf("failed to fetch ApplySet parent object %q", a.parentRef)
-	}
-
+func (a *ApplySet) FetchParent(obj runtime.Object) error {
+	/*
+		func (a *ApplySet) fetchParent() error {
+		    helper := resource.NewHelper(a.client, a.parentRef.RESTMapping)
+			obj, err := helper.Get(a.parentRef.Namespace, a.parentRef.Name)
+			if errors.IsNotFound(err) {
+				if !builtinApplySetParentGVRs.Has(a.parentRef.Resource) {
+					return fmt.Errorf("custom resource ApplySet parents cannot be created automatically")
+				}
+				return nil
+			} else if err != nil {
+				return fmt.Errorf("failed to fetch ApplySet parent object %q: %w", a.parentRef, err)
+			} else if obj == nil {
+				return fmt.Errorf("failed to fetch ApplySet parent object %q", a.parentRef)
+			}
+	*/
 	labels, annotations, err := getLabelsAndAnnotations(obj)
 	if err != nil {
 		return fmt.Errorf("getting metadata from parent object %q: %w", a.parentRef, err)
@@ -294,6 +293,7 @@ func (a *ApplySet) fetchParent() error {
 	}
 	return nil
 }
+
 func (a *ApplySet) LabelSelectorForMembers() string {
 	return metav1.FormatLabelSelector(&metav1.LabelSelector{
 		MatchLabels: a.LabelsForMember(),
@@ -375,9 +375,10 @@ func parseNamespacesAnnotation(annotations map[string]string) sets.Set[string] {
 	return sets.New(strings.Split(annotation, ",")...)
 }
 
+// Modified. change private to public
 // addResource registers the given resource and namespace as being part of the updated set of
 // resources being applied by the current operation.
-func (a *ApplySet) addResource(resource *meta.RESTMapping, namespace string) {
+func (a *ApplySet) AddResource(resource *meta.RESTMapping, namespace string) {
 	a.updatedResources[resource.Resource] = resource
 	if resource.Scope == meta.RESTScopeNamespace && namespace != "" {
 		a.updatedNamespaces.Insert(namespace)
@@ -389,6 +390,7 @@ type ApplySetUpdateMode string
 var updateToLatestSet ApplySetUpdateMode = "latest"
 var updateToSuperset ApplySetUpdateMode = "superset"
 
+/* commented since it's not used by applyset
 func (a *ApplySet) updateParent(mode ApplySetUpdateMode, dryRun cmdutil.DryRunStrategy, validation string) error {
 	data, err := json.Marshal(a.buildParentPatch(mode))
 	if err != nil {
@@ -427,8 +429,10 @@ func serverSideApplyRequest(a *ApplySet, data []byte, dryRun cmdutil.DryRunStrat
 	)
 	return err
 }
+*/
 
-func (a *ApplySet) buildParentPatch(mode ApplySetUpdateMode) *metav1.PartialObjectMetadata {
+// Modified from private to public buildParentPatch --> BuildParentPatch
+func (a *ApplySet) BuildParentPatch(mode ApplySetUpdateMode) *metav1.PartialObjectMetadata {
 	var newGRsAnnotation, newNsAnnotation string
 	switch mode {
 	case updateToSuperset:
@@ -482,6 +486,7 @@ func (a ApplySet) FieldManager() string {
 	return fmt.Sprintf("%s-applyset", a.toolingID.Name)
 }
 
+/*
 // ParseApplySetParentRef creates a new ApplySetParentRef from a parent reference in the format [RESOURCE][.GROUP]/NAME
 func ParseApplySetParentRef(parentRefStr string, mapper meta.RESTMapper) (*ApplySetParentRef, error) {
 	var gvr schema.GroupVersionResource
@@ -558,3 +563,4 @@ func (a *ApplySet) BeforeApply(objects []*resource.Info, dryRunStrategy cmdutil.
 	}
 	return nil
 }
+*/

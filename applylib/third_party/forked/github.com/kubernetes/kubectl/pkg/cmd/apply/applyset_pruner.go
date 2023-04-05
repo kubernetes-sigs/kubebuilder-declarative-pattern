@@ -26,21 +26,19 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog/v2"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	// cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 type ApplySetDeleteOptions struct {
 	CascadingStrategy metav1.DeletionPropagation
-	DryRunStrategy    cmdutil.DryRunStrategy
-	GracePeriod       int
+	// DryRunStrategy    cmdutil.DryRunStrategy
+	GracePeriod int
 
-	Printer printers.ResourcePrinter
+	// Printer printers.ResourcePrinter
 
-	IOStreams genericclioptions.IOStreams
+	// IOStreams genericclioptions.IOStreams
 }
 
 // PruneObject is an apiserver object that should be deleted as part of prune.
@@ -180,13 +178,13 @@ func (a *ApplySet) deleteObjects(ctx context.Context, dynamicClient dynamic.Inte
 		namespace := pruneObject.Namespace
 		mapping := pruneObject.Mapping
 
-		if opt.DryRunStrategy != cmdutil.DryRunClient {
-			if err := runDelete(ctx, namespace, name, mapping, dynamicClient, opt.CascadingStrategy, opt.GracePeriod, opt.DryRunStrategy == cmdutil.DryRunServer); err != nil {
-				return fmt.Errorf("pruning %v: %w", pruneObject.String(), err)
-			}
+		// if opt.DryRunStrategy != cmdutil.DryRunClient {
+		if err := runDelete(ctx, namespace, name, mapping, dynamicClient, opt.CascadingStrategy, opt.GracePeriod, true); err != nil {
+			return fmt.Errorf("pruning %v: %w", pruneObject.String(), err)
 		}
+		// }
 
-		opt.Printer.PrintObj(pruneObject.Object, opt.IOStreams.Out)
+		// opt.Printer.PrintObj(pruneObject.Object, opt.IOStreams.Out)
 
 	}
 	return nil

@@ -704,6 +704,8 @@ sigs.k8s.io/controller-runtime v0.14.1 h1:vThDes9pzg0Y+UbCPY3Wj34CGIYPgdmspPm2GI
 sigs.k8s.io/controller-runtime v0.14.1/go.mod h1:GaRkrY8a7UZF0kqFFbUKG7n9ICiTY5T55P1RiE3UZlU=
 sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd h1:EDPBXCAspyGV4jQlpZSudPeMmr1bNJefnuqLsRAsHZo=
 sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd/go.mod h1:B8JuhiUyNFVKdsE8h686QcCxMaH6HrOAZj4vswFpcB0=
+sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20230303024857-d1f76c15e05b h1:yeVPDUp6m7MDVQCO0YjqPW7pVSlGsmdCSU+s/IhnqRw=
+sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20230303024857-d1f76c15e05b/go.mod h1:E0R9uFUzswXbNUAeUpc5ACqogclIcuapnvP2iZGpSLs=
 sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20230303024857-d1f76c15e05b h1:VcgyLj8SawHulvC24SRgI37mnhMmR3hW+ZVqZGBmkbc=
 sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20230303024857-d1f76c15e05b/go.mod h1:smCBkOX4Z3K9+MUGAscbschHAYgbuRZ+Pri49+x2zTc=
 sigs.k8s.io/kustomize/api v0.12.1 h1:7YM7gW3kYBwtKvoY216ZzY+8hM+lV53LUayghNRJ0vM=

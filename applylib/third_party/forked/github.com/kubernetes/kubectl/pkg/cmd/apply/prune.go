@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,25 +13,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 package apply
 
 import (
 	"context"
-	"fmt"
-	"io"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/cli-runtime/pkg/printers"
+	// "k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/dynamic"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"k8s.io/kubectl/pkg/util/prune"
 )
 
+/*
 type pruner struct {
 	mapper        meta.RESTMapper
 	dynamicClient dynamic.Interface
@@ -45,7 +38,7 @@ type pruner struct {
 	dryRunStrategy    cmdutil.DryRunStrategy
 	gracePeriod       int
 
-	toPrinter func(string) (printers.ResourcePrinter, error)
+	// toPrinter func(string) (printers.ResourcePrinter, error)
 
 	out io.Writer
 }
@@ -143,6 +136,7 @@ func (p *pruner) delete(namespace, name string, mapping *meta.RESTMapping) error
 	ctx := context.TODO()
 	return runDelete(ctx, namespace, name, mapping, p.dynamicClient, p.cascadingStrategy, p.gracePeriod, p.dryRunStrategy == cmdutil.DryRunServer)
 }
+*/
 
 func runDelete(ctx context.Context, namespace, name string, mapping *meta.RESTMapping, c dynamic.Interface, cascadingStrategy metav1.DeletionPropagation, gracePeriod int, serverDryRun bool) error {
 	options := asDeleteOptions(cascadingStrategy, gracePeriod)

@@ -2,6 +2,7 @@ package applyset
 
 import (
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -11,28 +12,29 @@ type Parent interface {
 	Name() string
 	Namespace() string
 	RESTMapping() *meta.RESTMapping
+	GetSubject() runtime.Object
 }
 
-func NewParentRef(gvk schema.GroupVersionKind, name, namespace string, rest *meta.RESTMapping) *ParentRef {
+func NewParentRef(object runtime.Object, name, namespace string, rest *meta.RESTMapping) *ParentRef {
 	return &ParentRef{
-		groupVersionKind: gvk,
-		name:             name,
-		namespace:        namespace,
-		restMapping:      rest,
+		object:      object,
+		name:        name,
+		namespace:   namespace,
+		restMapping: rest,
 	}
 }
 
 var _ Parent = &ParentRef{}
 
 type ParentRef struct {
-	groupVersionKind schema.GroupVersionKind
-	namespace        string
-	name             string
-	restMapping      *meta.RESTMapping
+	namespace   string
+	name        string
+	restMapping *meta.RESTMapping
+	object      runtime.Object
 }
 
 func (p *ParentRef) GroupVersionKind() schema.GroupVersionKind {
-	return p.groupVersionKind
+	return p.object.GetObjectKind().GroupVersionKind()
 }
 
 func (p *ParentRef) Name() string {
@@ -45,4 +47,8 @@ func (p *ParentRef) Namespace() string {
 
 func (p *ParentRef) RESTMapping() *meta.RESTMapping {
 	return p.restMapping
+}
+
+func (p *ParentRef) GetSubject() runtime.Object {
+	return p.object
 }

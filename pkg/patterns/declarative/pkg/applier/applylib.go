@@ -3,6 +3,7 @@ package applier
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,15 +35,20 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	patchOptions := a.patchOptions
 
-	for _, arg := range opt.ExtraArgs {
-		switch arg {
+	for i := 0; i < len(opt.ExtraArgs); i++ {
+		switch opt.ExtraArgs[i] {
 		case "--force":
 			opt.Force = true
 		case "--prune":
 			opt.Prune = true
+		case "--selector":
+			if i == len(opt.ExtraArgs)-1 || strings.HasPrefix(opt.ExtraArgs[i+1], "-") {
+				return fmt.Errorf("invalid `--selector` in args %q", opt.ExtraArgs)
+			}
+			klog.Warningf("skip `--selector` from args, selector value %v ", opt.ExtraArgs[i+1])
+			i++
 		default:
-			// TODO(yuwenma): This skips the "--selector addons.configdelivery.anthos.io/MyCR=MyCRName"
-			klog.Errorf("extraArg %q is not supported by the ApplySetApplier", arg)
+			return fmt.Errorf("extraArg %q is not supported by the ApplySetApplier", opt.ExtraArgs[i])
 		}
 	}
 
@@ -73,15 +79,15 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		return fmt.Errorf("error creating applyset: %w", err)
 	}
 
-	for _, obj := range opt.Objects {
-		// cache all the object manifests GVK to restmapper
-		gvk := obj.GroupVersionKind()
-		restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-		if err != nil {
-			return fmt.Errorf("error getting rest mapping for %v: %w", gvk, err)
-		}
-		// Populate the namespace on any namespace-scoped objects
-		if opt.Namespace != "" {
+	// Populate the namespace on any namespace-scoped objects
+	if opt.Namespace != "" {
+		for _, obj := range opt.Objects {
+			gvk := obj.GroupVersionKind()
+			restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				return fmt.Errorf("error getting rest mapping for %v: %w", gvk, err)
+			}
+
 			switch restMapping.Scope {
 			case meta.RESTScopeNamespace:
 				obj.SetNamespace(opt.Namespace)
@@ -124,5 +130,5 @@ func NewParentRef(restMapper meta.RESTMapper, object runtime.Object, name, names
 	if err != nil {
 		return nil
 	}
-	return applyset.NewParentRef(gvk, name, namespace, restMapping)
+	return applyset.NewParentRef(object, name, namespace, restMapping)
 }

@@ -18,7 +18,6 @@ package declarative
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -65,6 +64,8 @@ type Reconciler struct {
 
 	restMapper meta.RESTMapper
 	options    reconcilerParams
+	// preferredRestMapper caches all the RESTMappings for manifests since the Reconciler runs.
+	preferredRestMapper meta.RESTMapper
 }
 
 type DeclarativeObject interface {
@@ -118,7 +119,10 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 	r.dynamicClient = d
 
 	r.restMapper = mgr.GetRESTMapper()
-
+	r.preferredRestMapper, err = restmapper.NewControllerRESTMapper(r.config)
+	if err != nil {
+		return err
+	}
 	if err := r.applyOptions(opts...); err != nil {
 		return err
 	}
@@ -173,7 +177,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			}
 		}
 	}()
-
 	original := instance.DeepCopyObject().(DeclarativeObject)
 	if r.options.status != nil {
 		if err := r.options.status.Preflight(ctx, instance); err != nil {
@@ -196,6 +199,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		if err := r.options.status.BuildStatus(ctx, statusInfo); err != nil {
 			log.Error(err, "error building status")
 			return result, err
+		}
+	}
+
+	if !reflect.DeepEqual(original.GetLabels(), instance.GetLabels()) || !reflect.DeepEqual(original.GetAnnotations(), instance.GetAnnotations()) {
+		if err := r.client.Update(ctx, instance); err != nil {
+			log.Error(err, "error updating spec")
 		}
 	}
 
@@ -233,11 +242,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, original DeclarativeObjec
 	}
 
 	if !reflect.DeepEqual(oldStatus, newStatus) {
-		data, err := json.Marshal(newStatus)
-		if err != nil {
-			log.Error(err, "error marshaling new status %v: %v", newStatus, err)
-		}
-		if err := r.client.Status().Patch(ctx, instance, client.RawPatch(types.ApplyPatchType, data)); err != nil {
+		if err := r.client.Status().Update(ctx, instance); err != nil {
 			log.Error(err, "error updating status")
 			return err
 		}
@@ -364,14 +369,11 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}
 
-	// TODO(yuwenma): instead of passing in the applyset "parent" as a applier option, maybe it's better to pass in the
-	// json serialized "subject", so as the applier options are less dedicated to a specific (applier) type.
 	parentRef := applier.NewParentRef(r.restMapper, instance, instance.GetName(), instance.GetNamespace())
 
-	preferredRestMapper, err := restmapper.NewControllerRESTMapper(r.config)
 	applierOpt := applier.ApplierOptions{
 		RESTConfig:        r.config,
-		RESTMapper:        preferredRestMapper,
+		RESTMapper:        r.preferredRestMapper,
 		Namespace:         ns,
 		ParentRef:         parentRef,
 		Objects:           objects.GetItems(),

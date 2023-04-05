@@ -25,12 +25,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset/forked/kubectlapply"
+	kubectlapply "sigs.k8s.io/kubebuilder-declarative-pattern/applylib/third_party/forked/github.com/kubernetes/kubectl/pkg/cmd/apply"
 )
 
 // ApplySet is a set of objects that we want to apply to the cluster.
@@ -65,10 +64,6 @@ type ApplySet struct {
 	// Parent provides the necessary methods to determine a ApplySet parent object, which can be used to find out all the on-track
 	// deployment manifests.
 	parent Parent
-	// Leveraging the applyset from kubectl. Eventually, we expect to use a tool-neutral library that can provide the key ApplySet
-	// methods. Nowadays, k8s.io/kubectl/pkg/cmd/apply provides the most complete ApplySet library. However, it is bundled
-	// with kubectl and can hardly be used directly by kubebuilder-declarative-pattern.
-	innerApplySet *kubectlapply.ApplySet
 	// If not given, the tooling value will be the `Parent` Kind.
 	tooling string
 }
@@ -90,7 +85,7 @@ type Options struct {
 // New constructs a new ApplySet
 func New(options Options) (*ApplySet, error) {
 	parent := options.Parent
-	parentRef := &kubectlapply.ApplySetParentRef{Name: parent.Name(), RESTMapping: parent.RESTMapping()}
+	parentRef := &kubectlapply.ApplySetParentRef{Name: parent.Name(), Namespace: parent.Namespace(), RESTMapping: parent.RESTMapping()}
 	kapplyset := kubectlapply.NewApplySet(parentRef, kubectlapply.ApplySetTooling{Name: options.Tooling}, options.RESTMapper)
 	options.PatchOptions.FieldManager = kapplyset.FieldManager()
 	a := &ApplySet{
@@ -99,7 +94,6 @@ func New(options Options) (*ApplySet, error) {
 		patchOptions:  options.PatchOptions,
 		deleteOptions: options.DeleteOptions,
 		prune:         options.Prune,
-		innerApplySet: kapplyset,
 		parent:        parent,
 		tooling:       options.Tooling,
 	}
@@ -134,9 +128,13 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 	a.mutex.Unlock()
 
 	results := &ApplyResults{total: len(trackers.items)}
-	if err := a.BeforeApply(ctx); err != nil {
-		return nil, err
-	}
+	visitedUids := sets.New[types.UID]()
+
+	// We initialize a new Kubectl ApplySet for each ApplyOnce run. This is because kubectl Applyset is designed for
+	// single actuation and not for reconciliation.
+	// Note: The Kubectl ApplySet will share the RESTMapper with k-d-p/ApplySet, which caches all the manifests in the past.
+	parentRef := &kubectlapply.ApplySetParentRef{Name: a.parent.Name(), Namespace: a.parent.Namespace(), RESTMapping: a.parent.RESTMapping()}
+	kapplyset := kubectlapply.NewApplySet(parentRef, kubectlapply.ApplySetTooling{Name: a.tooling}, a.restMapper)
 	for i := range trackers.items {
 		tracker := &trackers.items[i]
 		obj := tracker.desired
@@ -151,6 +149,14 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 			results.applyError(gvk, nn, fmt.Errorf("error getting rest mapping for %v: %w", gvk, err))
 			continue
 		}
+		// cache the GVK in kubectlapply. kubectlapply will use this to calculate
+		// the latest parent "applyset.kubernetes.io/contains-group-resources" annotation after applying.
+		kapplyset.AddResource(restMapping, obj.GetNamespace())
+		if err = a.updateManifestLabel(obj, kapplyset.LabelsForMember()); err != nil {
+			klog.Errorf("unable to update label for %v/%v %v: %v", obj.GetName(), obj.GetNamespace(), gvk, err)
+			continue
+		}
+
 		gvr := restMapping.Resource
 
 		var dynamicResource dynamic.ResourceInterface
@@ -188,7 +194,7 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 			results.applyError(gvk, nn, fmt.Errorf("error from apply: %w", err))
 			continue
 		}
-
+		visitedUids.Insert(lastApplied.GetUID())
 		tracker.lastApplied = lastApplied
 		results.applySuccess(gvk, nn)
 		tracker.isHealthy = isHealthy(lastApplied)
@@ -196,121 +202,73 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 	}
 
 	if a.prune {
-		klog.Info("prune is enabled")
+		klog.V(4).Infof("Prune is enabled")
+		if err := a.WithParent(kapplyset); err != nil {
+			return results, err
+		}
 		err := func() error {
-			allObjects, err := a.innerApplySet.FindAllObjectsToPrune(ctx, a.client, sets.New[types.UID]())
+			pruneObjects, err := kapplyset.FindAllObjectsToPrune(ctx, a.client, visitedUids)
 			if err != nil {
 				return err
 			}
-			pruneObjects := a.excludeCurrent(allObjects)
 			if err = a.deleteObjects(ctx, pruneObjects, results); err != nil {
 				return err
 			}
 			return nil
 		}()
 		if err != nil {
-			klog.Errorf("prune failed %v", err)
-			if e := a.updateParent(ctx, "superset"); e != nil {
-				klog.Errorf("update parent failed %v", e)
+			klog.Errorf("encounter error on pruning %v", err)
+			if e := a.updateParentLabelsAndAnnotations(kapplyset, "superset"); e != nil {
+				return results, e
 			}
-			return results, nil
 		}
-		klog.Info("prune succeed")
 	}
-	if err := a.updateParent(ctx, "latest"); err != nil {
+	if err := a.updateParentLabelsAndAnnotations(kapplyset, "latest"); err != nil {
 		klog.Errorf("update parent failed %v", err)
 	}
 	return results, nil
 }
 
-// BeforeApply updates the parent and manifests labels and annotations.
-// This method is adjusted for kubectlapply which requests
-// 1. the manifests with its RESTMappings. This is from the ControllerRESTMapper cache.
-// 2. the parent in the cluster must already have labels and annotations. This means the `FetchParent` will fail at first
-// until the `updateParent` updates the parent labels and annotations in the cluster. This is why the FetchParent continue wth error.
-func (a *ApplySet) BeforeApply(ctx context.Context) error {
-	if err := a.FetchParent(ctx); err != nil {
-		klog.Errorf("fetch parent error %v", err.Error())
+func mergeMap(from, to map[string]string) map[string]string {
+	if to == nil {
+		to = make(map[string]string)
 	}
-	for _, obj := range a.trackers.items {
-		gvk := obj.desired.GroupVersionKind()
-		restmapping, err := a.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-		if err != nil {
-			klog.Errorf("unable to get restmapping for %v: %v", gvk, err)
-			continue
-		}
-		a.innerApplySet.AddResource(restmapping, obj.desired.GetNamespace())
-		if err = a.updateLabel(obj.desired); err != nil {
-			klog.Errorf("unable to update label for %v: %w", gvk, err)
-		}
+	for k, v := range from {
+		to[k] = v
 	}
-	if err := a.updateParent(ctx, "superset"); err != nil {
-		klog.Errorf("before apply: update parent error %v", err.Error())
-	}
-	return nil
+	return to
 }
 
 // updateLabel adds the "applyset.kubernetes.io/part-of: Parent-ID" label to the manifest.
-func (a *ApplySet) updateLabel(obj ApplyableObject) error {
-	applysetLabels := a.innerApplySet.LabelsForMember()
-	data, err := obj.MarshalJSON()
-	if err != nil {
-		return err
-	}
-	var u unstructured.Unstructured
-	if err = u.UnmarshalJSON(data); err != nil {
-		return err
+func (a *ApplySet) updateManifestLabel(obj ApplyableObject, applysetLabels map[string]string) error {
+	u, ok := obj.(*unstructured.Unstructured)
+	if !ok {
+		return fmt.Errorf("unable to convert `ApplyableObject` to `unstructured.Unstructured` %v/%v %v",
+			obj.GetName(), obj.GetNamespace(), obj.GroupVersionKind().String())
 	}
 	labels := u.GetLabels()
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	for k, v := range applysetLabels {
-		labels[k] = v
-	}
-	u.SetLabels(labels)
-	newData, err := u.MarshalJSON()
-	if err != nil {
-		return err
-	}
-	json.Unmarshal(newData, obj)
+	newLabels := mergeMap(applysetLabels, labels)
+	u.SetLabels(newLabels)
 	return nil
 }
 
-// updateParent updates the parent labels and annotations.
+// updateParentLabelsAndAnnotations updates the parent labels and annotations.
 // This method leverages the kubectlapply to build the parent labels and annotations, but avoid using the
 // `resource.NewHelper` and cmdutil to patch the parent.
-func (a *ApplySet) updateParent(ctx context.Context, mode kubectlapply.ApplySetUpdateMode) error {
-	data, err := json.Marshal(a.innerApplySet.BuildParentPatch(mode))
+func (a *ApplySet) updateParentLabelsAndAnnotations(kapplyset *kubectlapply.ApplySet, mode kubectlapply.ApplySetUpdateMode) error {
+	parent, err := meta.Accessor(a.parent.GetSubject())
 	if err != nil {
-		return fmt.Errorf("failed to encode patch for ApplySet parent: %w", err)
-	}
-	if _, err = a.client.Resource(a.parent.RESTMapping().Resource).Patch(ctx, a.parent.Name(), types.ApplyPatchType, data, a.patchOptions); err != nil {
-		klog.Warningf("unable to patch parent before apply: %v", err)
 		return err
 	}
+	partialParent := kapplyset.BuildParentPatch(mode)
+	newAnnotations := mergeMap(partialParent.Annotations, parent.GetAnnotations())
+	parent.SetAnnotations(newAnnotations)
+	newLabels := mergeMap(partialParent.Labels, parent.GetLabels())
+	parent.SetLabels(newLabels)
 	return nil
-}
-
-func (a *ApplySet) excludeCurrent(allObjects []kubectlapply.PruneObject) []kubectlapply.PruneObject {
-	gvknnKey := func(gvk schema.GroupVersionKind, name, namespace string) string {
-		return gvk.String() + name + namespace
-	}
-	desiredObj := make(map[string]struct{})
-	for _, obj := range a.trackers.items {
-		gvk := obj.desired.GroupVersionKind()
-		name := obj.desired.GetName()
-		ns := obj.desired.GetNamespace()
-		desiredObj[gvknnKey(gvk, name, ns)] = struct{}{}
-	}
-	var pruneList []kubectlapply.PruneObject
-	for _, p := range allObjects {
-		gvk := p.Object.GetObjectKind().GroupVersionKind()
-		if _, ok := desiredObj[gvknnKey(gvk, p.Name, p.Namespace)]; !ok {
-			pruneList = append(pruneList, p)
-		}
-	}
-	return pruneList
 }
 
 func (a *ApplySet) deleteObjects(ctx context.Context, pruneObjects []kubectlapply.PruneObject, results *ApplyResults) error {
@@ -334,9 +292,8 @@ func (a *ApplySet) deleteObjects(ctx context.Context, pruneObjects []kubectlappl
 	return nil
 }
 
-func (a *ApplySet) FetchParent(ctx context.Context) error {
-	object, err := a.client.Resource(a.parent.RESTMapping().Resource).Namespace(a.parent.Namespace()).Get(
-		ctx, a.parent.Name(), metav1.GetOptions{})
+func (a *ApplySet) WithParent(kapplyset *kubectlapply.ApplySet) error {
+	object, err := meta.Accessor(a.parent.GetSubject())
 	if err != nil {
 		return err
 	}
@@ -356,8 +313,9 @@ func (a *ApplySet) FetchParent(ctx context.Context) error {
 		if labels == nil {
 			labels = make(map[string]string)
 		}
-		labels[kubectlapply.ApplySetParentIDLabel] = a.innerApplySet.ID()
+		labels[kubectlapply.ApplySetParentIDLabel] = kapplyset.ID()
 		object.SetLabels(labels)
 	}
-	return a.innerApplySet.FetchParent(object)
+	// This is not a cluster fetch. It builds up the parents labels and annotations information in kapplyset.
+	return kapplyset.FetchParent(a.parent.GetSubject())
 }

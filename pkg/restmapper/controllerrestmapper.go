@@ -63,11 +63,11 @@ func (m *ControllerRESTMapper) RESTMapping(gk schema.GroupKind, versions ...stri
 	// Since versions is optional string slice, it can be empty. If version is not given, we will iterate all the cached
 	// GV and find the first matching RESTMapping.
 	if len(versions) == 0 {
-		for keyGV, cachedGV := range m.cache.groupVersions {
+		for keyGV := range m.cache.groupVersions {
 			if keyGV.Group != gk.Group {
 				continue
 			}
-			mapping, err := cachedGV.findRESTMapping(ctx, m.uncached, gk.Kind)
+			mapping, err := m.RESTMapping(gk, keyGV.Version)
 			if err != nil {
 				continue
 			}
