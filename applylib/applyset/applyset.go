@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	kubectlapply "sigs.k8s.io/kubebuilder-declarative-pattern/applylib/third_party/forked/github.com/kubernetes/kubectl/pkg/cmd/apply"
 )
 
@@ -45,6 +47,8 @@ import (
 type ApplySet struct {
 	// client is the dynamic kubernetes client used to apply objects to the k8s cluster.
 	client dynamic.Interface
+	// ParentClient is the controller runtime client used to apply parent.
+	parentClient client.Client
 	// restMapper is used to map object kind to resources, and to know if objects are cluster-scoped.
 	restMapper meta.RESTMapper
 	// patchOptions holds the options used when applying, in particular the fieldManager
@@ -73,6 +77,8 @@ type ApplySet struct {
 type Options struct {
 	// Client is the dynamic kubernetes client used to apply objects to the k8s cluster.
 	Client dynamic.Interface
+	// ParentClient is the controller runtime client used to apply parent.
+	ParentClient client.Client
 	// RESTMapper is used to map object kind to resources, and to know if objects are cluster-scoped.
 	RESTMapper meta.RESTMapper
 	// PatchOptions holds the options used when applying, in particular the fieldManager
@@ -90,6 +96,7 @@ func New(options Options) (*ApplySet, error) {
 	kapplyset := kubectlapply.NewApplySet(parentRef, kubectlapply.ApplySetTooling{Name: options.Tooling}, options.RESTMapper)
 	options.PatchOptions.FieldManager = kapplyset.FieldManager()
 	a := &ApplySet{
+		parentClient:  options.ParentClient,
 		client:        options.Client,
 		restMapper:    options.RESTMapper,
 		patchOptions:  options.PatchOptions,
@@ -142,6 +149,7 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 	parentRef := &kubectlapply.ApplySetParentRef{Name: a.parent.Name(), Namespace: a.parent.Namespace(), RESTMapping: a.parent.RESTMapping()}
 	kapplyset := kubectlapply.NewApplySet(parentRef, kubectlapply.ApplySetTooling{Name: a.tooling}, a.restMapper)
 
+	// Cache the current RESTMappings to avoid re-fetching the bad ones.
 	restMappings := make(map[schema.GroupVersionKind]restMappingResult)
 	for i := range trackers.items {
 		tracker := &trackers.items[i]
@@ -160,14 +168,15 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		}
 
 		// TODO: Check error is NotFound and not some transient error?
-		// TODO: Make sure we don't prune if there were errors
-
 		restMapping := result.restMapping
 		if restMapping != nil {
 			// cache the GVK in kubectlapply. kubectlapply will use this to calculate
 			// the latest parent "applyset.kubernetes.io/contains-group-resources" annotation after applying.
 			kapplyset.AddResource(restMapping, obj.GetNamespace())
 		}
+	}
+	if err := a.WithParent(ctx, kapplyset); err != nil {
+		return results, fmt.Errorf("unable to update Parent %v", err)
 	}
 
 	for i := range trackers.items {
@@ -240,11 +249,9 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		results.reportHealth(gvk, nn, tracker.isHealthy)
 	}
 
-	if a.prune {
+	// We want to be more cautions on pruning and only do it if all manifests are applied.
+	if a.prune && results.applyFailCount == 0 {
 		klog.V(4).Infof("Prune is enabled")
-		if err := a.WithParent(kapplyset); err != nil {
-			return results, err
-		}
 		err := func() error {
 			pruneObjects, err := kapplyset.FindAllObjectsToPrune(ctx, a.client, visitedUids)
 			if err != nil {
@@ -257,12 +264,12 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		}()
 		if err != nil {
 			klog.Errorf("encounter error on pruning %v", err)
-			if e := a.updateParentLabelsAndAnnotations(kapplyset, "superset"); e != nil {
+			if e := a.updateParentLabelsAndAnnotations(ctx, kapplyset, "superset"); e != nil {
 				return results, e
 			}
 		}
 	}
-	if err := a.updateParentLabelsAndAnnotations(kapplyset, "latest"); err != nil {
+	if err := a.updateParentLabelsAndAnnotations(ctx, kapplyset, "latest"); err != nil {
 		klog.Errorf("update parent failed %v", err)
 	}
 	return results, nil
@@ -297,8 +304,13 @@ func (a *ApplySet) updateManifestLabel(obj ApplyableObject, applysetLabels map[s
 // updateParentLabelsAndAnnotations updates the parent labels and annotations.
 // This method leverages the kubectlapply to build the parent labels and annotations, but avoid using the
 // `resource.NewHelper` and cmdutil to patch the parent.
-func (a *ApplySet) updateParentLabelsAndAnnotations(kapplyset *kubectlapply.ApplySet, mode kubectlapply.ApplySetUpdateMode) error {
+func (a *ApplySet) updateParentLabelsAndAnnotations(ctx context.Context, kapplyset *kubectlapply.ApplySet, mode kubectlapply.ApplySetUpdateMode) error {
 	parent, err := meta.Accessor(a.parent.GetSubject())
+	if err != nil {
+		return err
+	}
+
+	original, err := meta.Accessor(a.parent.GetSubject().DeepCopyObject())
 	if err != nil {
 		return err
 	}
@@ -307,7 +319,8 @@ func (a *ApplySet) updateParentLabelsAndAnnotations(kapplyset *kubectlapply.Appl
 	parent.SetAnnotations(newAnnotations)
 	newLabels := mergeMap(partialParent.Labels, parent.GetLabels())
 	parent.SetLabels(newLabels)
-	return nil
+
+	return a.updateParent(ctx, original, parent)
 }
 
 func (a *ApplySet) deleteObjects(ctx context.Context, pruneObjects []kubectlapply.PruneObject, results *ApplyResults) error {
@@ -331,8 +344,13 @@ func (a *ApplySet) deleteObjects(ctx context.Context, pruneObjects []kubectlappl
 	return nil
 }
 
-func (a *ApplySet) WithParent(kapplyset *kubectlapply.ApplySet) error {
-	object, err := meta.Accessor(a.parent.GetSubject())
+func (a *ApplySet) WithParent(ctx context.Context, kapplyset *kubectlapply.ApplySet) error {
+	parent := a.parent.GetSubject()
+	object, err := meta.Accessor(parent)
+	if err != nil {
+		return err
+	}
+	original, err := meta.Accessor(parent.DeepCopyObject())
 	if err != nil {
 		return err
 	}
@@ -356,5 +374,19 @@ func (a *ApplySet) WithParent(kapplyset *kubectlapply.ApplySet) error {
 		object.SetLabels(labels)
 	}
 	// This is not a cluster fetch. It builds up the parents labels and annotations information in kapplyset.
-	return kapplyset.FetchParent(a.parent.GetSubject())
+	if err := kapplyset.FetchParent(a.parent.GetSubject()); err != nil {
+		return err
+	}
+
+	return a.updateParent(ctx, original, object)
+}
+
+func (a *ApplySet) updateParent(ctx context.Context, original, current metav1.Object) error {
+	if !reflect.DeepEqual(original.GetLabels(), current.GetLabels()) || !reflect.DeepEqual(original.GetAnnotations(), current.GetAnnotations()) {
+		if err := a.parentClient.Update(ctx, current.(client.Object)); err != nil {
+			return fmt.Errorf("error updating parent %v", err)
+		}
+	}
+	klog.V(4).Infof("parent labels and annotations are not changed, skip updating")
+	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
@@ -37,4 +38,5 @@ type ApplierOptions struct {
 	ExtraArgs []string
 
 	ParentRef applyset.Parent
+	Client    client.Client
 }

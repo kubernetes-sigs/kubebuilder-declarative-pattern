@@ -73,6 +73,7 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		Client:        dynamicClient,
 		Prune:         opt.Prune,
 		Tooling:       tooling,
+		ParentClient:  opt.Client,
 	}
 	s, err := applyset.New(options)
 	if err != nil {

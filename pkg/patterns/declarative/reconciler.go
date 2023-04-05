@@ -202,12 +202,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	if !reflect.DeepEqual(original.GetLabels(), instance.GetLabels()) || !reflect.DeepEqual(original.GetAnnotations(), instance.GetAnnotations()) {
-		if err := r.client.Update(ctx, instance); err != nil {
-			log.Error(err, "error updating spec")
-		}
-	}
-
 	if err := r.updateStatus(ctx, original, instance); err != nil {
 		return result, err
 	}
@@ -381,6 +375,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		ExtraArgs:         extraArgs,
 		Force:             true,
 		CascadingStrategy: r.options.cascadingStrategy,
+		Client:            r.client,
 	}
 
 	applyOperation := &ApplyOperation{
