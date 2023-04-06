@@ -15,13 +15,13 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 
@@ -97,7 +97,6 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 	}
 
 	logger := klogr.New()
-
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: "",

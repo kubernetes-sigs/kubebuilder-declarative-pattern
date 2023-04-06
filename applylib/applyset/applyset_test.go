@@ -23,7 +23,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/testutils"
 	"sigs.k8s.io/yaml"
@@ -32,7 +31,14 @@ import (
 func TestApplySet(t *testing.T) {
 	h := testutils.NewHarness(t)
 
-	existing := ``
+	// The parent should exist in the cluster
+	existing := `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  namespace: default
+`
 
 	apply := `
 apiVersion: v1
@@ -61,16 +67,17 @@ data:
 
 	force := true
 	patchOptions.Force = &force
-
-	parentGVK := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}
+	parent := h.ParseObjects(existing)[0]
+	parentGVK := parent.GroupVersionKind()
 	restmapping, err := h.RESTMapper().RESTMapping(parentGVK.GroupKind(), parentGVK.Version)
 	if err != nil {
 		h.Fatalf("error building parent restmappaing: %v", err)
 	}
 	s, err := New(Options{
-		Parent:        NewParentRef(parentGVK, "test", "default", restmapping),
+		Parent:        NewParentRef(parent, "test", "default", restmapping),
 		RESTMapper:    h.RESTMapper(),
 		Client:        h.DynamicClient(),
+		ParentClient:  h.Client(),
 		PatchOptions:  patchOptions,
 		DeleteOptions: metav1.DeleteOptions{},
 		Prune:         true,

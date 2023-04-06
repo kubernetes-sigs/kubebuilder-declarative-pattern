@@ -125,11 +125,11 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 }
 
 // NewParentRef maps a declarative object's information to the ParentRef defined in the applyset library.
-func NewParentRef(restMapper meta.RESTMapper, object runtime.Object, name, namespace string) applyset.Parent {
+func NewParentRef(restMapper meta.RESTMapper, object runtime.Object, name, namespace string) (applyset.Parent, error) {
 	gvk := object.GetObjectKind().GroupVersionKind()
 	restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return applyset.NewParentRef(object, name, namespace, restMapping)
+	return applyset.NewParentRef(object, name, namespace, restMapping), nil
 }

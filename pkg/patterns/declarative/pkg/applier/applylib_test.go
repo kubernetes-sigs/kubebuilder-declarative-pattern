@@ -10,16 +10,28 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
-	controllerrestmapper "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
+
+func fakeParent() runtime.Object {
+	parent := &unstructured.Unstructured{}
+	parent.SetKind("ConfigMap")
+	parent.SetAPIVersion("v1")
+	parent.SetName("test")
+	parent.SetNamespace("default")
+	return parent
+}
 
 func TestApplySetApplier(t *testing.T) {
 	patchOptions := metav1.PatchOptions{FieldManager: "kdp-test"}
@@ -78,20 +90,25 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 			t.Errorf("error parsing manifest %q: %v", p, err)
 		}
 
-		restMapper, err := controllerrestmapper.NewControllerRESTMapper(restConfig)
+		restMapper, err := restmapper.NewControllerRESTMapper(restConfig)
 		if err != nil {
 			t.Fatalf("error from controllerrestmapper.NewControllerRESTMapper: %v", err)
 		}
-		parentGVK := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}
-		restmapping, err := restMapper.RESTMapping(parentGVK.GroupKind(), parentGVK.Version)
+
+		parent := fakeParent()
+		gvk := parent.GetObjectKind().GroupVersionKind()
+		restmapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
 			t.Errorf("error getting restmapping for parent %v", err)
 		}
+
+		client := fake.NewClientBuilder().WithRuntimeObjects(parent).Build()
 		options := ApplierOptions{
 			Objects:    objects.GetItems(),
 			RESTConfig: restConfig,
 			RESTMapper: restMapper,
-			ParentRef:  applyset.NewParentRef(parentGVK, "test", "default", restmapping),
+			ParentRef:  applyset.NewParentRef(parent, "test", "default", restmapping),
+			Client:     client,
 		}
 		if err := applier.Apply(ctx, options); err != nil {
 			t.Fatalf("error from applier.Apply: %v", err)

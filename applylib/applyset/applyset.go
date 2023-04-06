@@ -94,7 +94,9 @@ func New(options Options) (*ApplySet, error) {
 	parent := options.Parent
 	parentRef := &kubectlapply.ApplySetParentRef{Name: parent.Name(), Namespace: parent.Namespace(), RESTMapping: parent.RESTMapping()}
 	kapplyset := kubectlapply.NewApplySet(parentRef, kubectlapply.ApplySetTooling{Name: options.Tooling}, options.RESTMapper)
-	options.PatchOptions.FieldManager = kapplyset.FieldManager()
+	if options.PatchOptions.FieldManager == "" {
+		options.PatchOptions.FieldManager = kapplyset.FieldManager()
+	}
 	a := &ApplySet{
 		parentClient:  options.ParentClient,
 		client:        options.Client,
@@ -176,7 +178,7 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		}
 	}
 	if err := a.WithParent(ctx, kapplyset); err != nil {
-		return results, fmt.Errorf("unable to update Parent %v", err)
+		return results, fmt.Errorf("unable to update Parent: %w", err)
 	}
 
 	for i := range trackers.items {
@@ -198,11 +200,11 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		if restMapping == nil {
 			// Should be impossible
 			results.applyError(gvk, nn, fmt.Errorf("rest mapping result not found for %v", gvk))
+			continue
 		}
 
 		if err := a.updateManifestLabel(obj, kapplyset.LabelsForMember()); err != nil {
-			klog.Errorf("unable to update label for %v/%v %v: %v", obj.GetName(), obj.GetNamespace(), gvk, err)
-			continue
+			return results, fmt.Errorf("unable to update label for %v/%v %v: %w", obj.GetName(), obj.GetNamespace(), gvk, err)
 		}
 
 		gvr := restMapping.Resource
@@ -252,40 +254,23 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 	// We want to be more cautions on pruning and only do it if all manifests are applied.
 	if a.prune && results.applyFailCount == 0 {
 		klog.V(4).Infof("Prune is enabled")
-		err := func() error {
-			pruneObjects, err := kapplyset.FindAllObjectsToPrune(ctx, a.client, visitedUids)
-			if err != nil {
-				return err
-			}
-			if err = a.deleteObjects(ctx, pruneObjects, results); err != nil {
-				return err
-			}
-			return nil
-		}()
+		pruneObjects, err := kapplyset.FindAllObjectsToPrune(ctx, a.client, visitedUids)
 		if err != nil {
-			klog.Errorf("encounter error on pruning %v", err)
-			if e := a.updateParentLabelsAndAnnotations(ctx, kapplyset, "superset"); e != nil {
-				return results, e
-			}
+			return results, err
 		}
-	}
-	if err := a.updateParentLabelsAndAnnotations(ctx, kapplyset, "latest"); err != nil {
-		klog.Errorf("update parent failed %v", err)
+		if err = a.deleteObjects(ctx, pruneObjects, results); err != nil {
+			return results, err
+		}
+		// "latest" mode updates the parent "applyset.kubernetes.io/contains-group-resources" annotations
+		// to only contain the current manifest GVRs.
+		if err := a.updateParentLabelsAndAnnotations(ctx, kapplyset, "latest"); err != nil {
+			klog.Errorf("update parent failed %v", err)
+		}
 	}
 	return results, nil
 }
 
-func mergeMap(from, to map[string]string) map[string]string {
-	if to == nil {
-		to = make(map[string]string)
-	}
-	for k, v := range from {
-		to[k] = v
-	}
-	return to
-}
-
-// updateLabel adds the "applyset.kubernetes.io/part-of: Parent-ID" label to the manifest.
+// updateManifestLabel adds the "applyset.kubernetes.io/part-of: Parent-ID" label to the manifest.
 func (a *ApplySet) updateManifestLabel(obj ApplyableObject, applysetLabels map[string]string) error {
 	u, ok := obj.(*unstructured.Unstructured)
 	if !ok {
@@ -296,14 +281,14 @@ func (a *ApplySet) updateManifestLabel(obj ApplyableObject, applysetLabels map[s
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	newLabels := mergeMap(applysetLabels, labels)
-	u.SetLabels(newLabels)
+	for k, v := range applysetLabels {
+		labels[k] = v
+	}
+	u.SetLabels(labels)
 	return nil
 }
 
 // updateParentLabelsAndAnnotations updates the parent labels and annotations.
-// This method leverages the kubectlapply to build the parent labels and annotations, but avoid using the
-// `resource.NewHelper` and cmdutil to patch the parent.
 func (a *ApplySet) updateParentLabelsAndAnnotations(ctx context.Context, kapplyset *kubectlapply.ApplySet, mode kubectlapply.ApplySetUpdateMode) error {
 	parent, err := meta.Accessor(a.parent.GetSubject())
 	if err != nil {
@@ -315,18 +300,39 @@ func (a *ApplySet) updateParentLabelsAndAnnotations(ctx context.Context, kapplys
 		return err
 	}
 	partialParent := kapplyset.BuildParentPatch(mode)
-	newAnnotations := mergeMap(partialParent.Annotations, parent.GetAnnotations())
-	parent.SetAnnotations(newAnnotations)
-	newLabels := mergeMap(partialParent.Labels, parent.GetLabels())
-	parent.SetLabels(newLabels)
 
-	return a.updateParent(ctx, original, parent)
+	// update annotation
+	annotations := parent.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	for k, v := range partialParent.Annotations {
+		annotations[k] = v
+	}
+	parent.SetAnnotations(annotations)
+
+	// update labels
+	labels := parent.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	for k, v := range partialParent.Labels {
+		labels[k] = v
+	}
+	parent.SetLabels(labels)
+
+	// update parent in the cluster.
+	if !reflect.DeepEqual(original.GetLabels(), parent.GetLabels()) || !reflect.DeepEqual(original.GetAnnotations(), parent.GetAnnotations()) {
+		if err := a.parentClient.Update(ctx, parent.(client.Object)); err != nil {
+			return fmt.Errorf("error updating parent %w", err)
+		}
+	}
+	return nil
 }
 
 func (a *ApplySet) deleteObjects(ctx context.Context, pruneObjects []kubectlapply.PruneObject, results *ApplyResults) error {
 	for i := range pruneObjects {
 		pruneObject := &pruneObjects[i]
-
 		name := pruneObject.Name
 		namespace := pruneObject.Namespace
 		mapping := pruneObject.Mapping
@@ -334,7 +340,6 @@ func (a *ApplySet) deleteObjects(ctx context.Context, pruneObjects []kubectlappl
 		nn := types.NamespacedName{Namespace: namespace, Name: name}
 
 		if err := a.client.Resource(mapping.Resource).Namespace(namespace).Delete(ctx, name, a.deleteOptions); err != nil {
-			klog.Error("unable to delete resource ")
 			results.pruneError(gvk, nn, fmt.Errorf("error from delete: %w", err))
 		} else {
 			klog.Infof("pruned resource %v", pruneObject.String())
@@ -344,13 +349,13 @@ func (a *ApplySet) deleteObjects(ctx context.Context, pruneObjects []kubectlappl
 	return nil
 }
 
+// WithParent guarantees the parent has the right applyset labels.
+// It uses "superset" mode to determine the "applyset.kubernetes.io/contains-group-resources" which contains both
+//
+//	previous manifests GVRs and the current manifests GVRs.
 func (a *ApplySet) WithParent(ctx context.Context, kapplyset *kubectlapply.ApplySet) error {
 	parent := a.parent.GetSubject()
 	object, err := meta.Accessor(parent)
-	if err != nil {
-		return err
-	}
-	original, err := meta.Accessor(parent.DeepCopyObject())
 	if err != nil {
 		return err
 	}
@@ -378,15 +383,5 @@ func (a *ApplySet) WithParent(ctx context.Context, kapplyset *kubectlapply.Apply
 		return err
 	}
 
-	return a.updateParent(ctx, original, object)
-}
-
-func (a *ApplySet) updateParent(ctx context.Context, original, current metav1.Object) error {
-	if !reflect.DeepEqual(original.GetLabels(), current.GetLabels()) || !reflect.DeepEqual(original.GetAnnotations(), current.GetAnnotations()) {
-		if err := a.parentClient.Update(ctx, current.(client.Object)); err != nil {
-			return fmt.Errorf("error updating parent %v", err)
-		}
-	}
-	klog.V(4).Infof("parent labels and annotations are not changed, skip updating")
-	return nil
+	return a.updateParentLabelsAndAnnotations(ctx, kapplyset, "superset")
 }

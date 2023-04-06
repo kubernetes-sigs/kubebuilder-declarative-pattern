@@ -72,27 +72,28 @@ type cachedGVR struct {
 	Scope    meta.RESTScope
 }
 
-// KindFromGVR finds out the Kind from the GVR in the cache. If the GVR version is not given, we will iterate all the matching
+// KindFor finds out the Kind from the GVR in the cache. If the GVR version is not given, we will iterate all the matching
 // GR in the cache and return the first matching one.
-// e.g. https://github.com/kubernetes/kubernetes/blob/a0cff30104ea950a5cc733a109e7f9084275e49e/staging/src/k8s.io/kubectl/pkg/cmd/apply/applyset.go#L353
-func (c *cache) KindFromGVR(gvr schema.GroupVersionResource) string {
+func (c *cache) KindsFor(gvr schema.GroupVersionResource) []string {
 	if gvr.Version != "" {
 		cachedgvr, ok := c.groupVersions[gvr.GroupVersion()]
 		if !ok {
-			return ""
+			return nil
 		}
-		return cachedgvr.toKind[gvr.Resource]
+		return []string{cachedgvr.toKind[gvr.Resource]}
 	}
+	var kinds []string
+
 	for keyGVR, cachedgvr := range c.groupVersions {
 		if keyGVR.Group != gvr.Group {
 			continue
 		}
 		kind, ok := cachedgvr.toKind[gvr.Resource]
 		if ok && kind != "" {
-			return kind
+			kinds = append(kinds, kind)
 		}
 	}
-	return ""
+	return kinds
 }
 
 // findRESTMapping returns the RESTMapping for the specified GVK, querying discovery if not cached.

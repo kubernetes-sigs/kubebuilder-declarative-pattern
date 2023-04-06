@@ -39,7 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
@@ -64,8 +63,6 @@ type Reconciler struct {
 
 	restMapper meta.RESTMapper
 	options    reconcilerParams
-	// preferredRestMapper caches all the RESTMappings for manifests since the Reconciler runs.
-	preferredRestMapper meta.RESTMapper
 }
 
 type DeclarativeObject interface {
@@ -119,10 +116,7 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 	r.dynamicClient = d
 
 	r.restMapper = mgr.GetRESTMapper()
-	r.preferredRestMapper, err = restmapper.NewControllerRESTMapper(r.config)
-	if err != nil {
-		return err
-	}
+
 	if err := r.applyOptions(opts...); err != nil {
 		return err
 	}
@@ -177,7 +171,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			}
 		}
 	}()
+
 	original := instance.DeepCopyObject().(DeclarativeObject)
+
 	if r.options.status != nil {
 		if err := r.options.status.Preflight(ctx, instance); err != nil {
 			log.Error(err, "preflight check failed, not reconciling")
@@ -363,11 +359,13 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}
 
-	parentRef := applier.NewParentRef(r.restMapper, instance, instance.GetName(), instance.GetNamespace())
-
+	parentRef, err := applier.NewParentRef(r.restMapper, instance, instance.GetName(), instance.GetNamespace())
+	if err != nil {
+		return statusInfo, err
+	}
 	applierOpt := applier.ApplierOptions{
 		RESTConfig:        r.config,
-		RESTMapper:        r.preferredRestMapper,
+		RESTMapper:        r.restMapper,
 		Namespace:         ns,
 		ParentRef:         parentRef,
 		Objects:           objects.GetItems(),
