@@ -17,8 +17,11 @@ package declarative
 import "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 
 type StatusInfo struct {
-	Subject     DeclarativeObject
-	Manifest    *manifest.Objects
+	Subject DeclarativeObject
+
+	// Manifest contains the set of desired-state for objects that we applied (or tried to).
+	Manifest *manifest.Objects
+
 	LiveObjects LiveObjectReader
 	KnownError  KnownErrorCode
 	Err         error
