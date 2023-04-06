@@ -9,19 +9,13 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
-	"k8s.io/klog/v2/klogr"
-	ctrl "sigs.k8s.io/controller-runtime"
 
-	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 
@@ -57,15 +51,8 @@ func TestSimpleReconciler(t *testing.T) {
 func testSimpleReconciler(h *testharness.Harness, testdir string, applier applier.Applier, status declarative.Status) {
 	ctx := context.Background()
 
-	k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
-	if err != nil {
-		h.Fatalf("error building mock kube-apiserver: %v", err)
-	}
+	k8s := h.StartKube()
 
-	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
-	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}, "configmaps", meta.RESTScopeNamespace)
-	k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Event"}, "events", meta.RESTScopeNamespace)
-	k8s.RegisterType(schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"}, "deployments", meta.RESTScopeNamespace)
 	k8s.RegisterType(schema.GroupVersionKind{Group: "addons.example.org", Version: "v1alpha1", Kind: "SimpleTest"}, "simpletests", meta.RESTScopeNamespace)
 
 	defer func() {
@@ -74,43 +61,16 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 		}
 	}()
 
-	addr, err := k8s.StartServing()
-	if err != nil {
-		h.Errorf("error starting mock kube-apiserver: %v", err)
-	}
-
-	klog.Infof("mock kubeapiserver will listen on %v", addr)
-
 	var requestLog httprecorder.RequestLog
 	wrapTransport := func(rt http.RoundTripper) http.RoundTripper {
 		return httprecorder.NewRecorder(rt, &requestLog)
 	}
 	restConfig := &rest.Config{
-		Host:          addr.String(),
+		Host:          k8s.ListenerAddress().String(),
 		WrapTransport: wrapTransport,
 	}
 
-	scheme := runtime.NewScheme()
-	if err := api.AddToScheme(scheme); err != nil {
-		h.Fatalf("error from AddToScheme: %v", err)
-	}
-
-	logger := klogr.New()
-
-	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: "",
-		Port:               0,
-		LeaderElection:     false,
-
-		// MapperProvider provides the rest mapper used to map go types to Kubernetes APIs
-		MapperProvider: restmapper.NewControllerRESTMapper,
-
-		Logger: logger,
-	})
-	if err != nil {
-		h.Fatalf("error starting manager: %v", err)
-	}
+	mgr := h.NewControllerManager(restConfig, api.AddToScheme)
 
 	reconciler := &SimpleTestReconciler{
 		Client:  mgr.GetClient(),
@@ -146,16 +106,5 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 		h.Fatalf("error starting manager: %v", err)
 	}
 
-	h.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
-	requestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
-	requestLog.RemoveUserAgent()
-	requestLog.SortGETs()
-	// Workaround for non-determinism in https://github.com/kubernetes/kubernetes/blob/79a62d62350fb600f97d1f6309c3274515b3587a/staging/src/k8s.io/client-go/tools/cache/reflector.go#L301
-	requestLog.RegexReplaceURL("&timeoutSeconds=.*&", "&timeoutSeconds=<replaced>&")
-	h.Logf("replacing real timestamp in request and response to a fake value")
-	requestLog.ReplaceTimestamp()
-
-	requests := requestLog.FormatHTTP()
-
-	h.CompareGoldenFile(filepath.Join(testdir, "expected-http.yaml"), requests)
+	h.CompareHTTPLog(filepath.Join(testdir, "expected-http.yaml"), &requestLog, restConfig)
 }

@@ -43,8 +43,9 @@ func NewMockKubeAPIServer(addr string) (*MockKubeAPIServer, error) {
 }
 
 type MockKubeAPIServer struct {
-	httpServer *http.Server
-	listener   net.Listener
+	httpServer   *http.Server
+	listener     net.Listener
+	listenerAddr net.Addr
 
 	storage *MemoryStorage
 
@@ -69,7 +70,12 @@ func (s *MockKubeAPIServer) StartServing() (net.Addr, error) {
 			}
 		}
 	}()
+	s.listenerAddr = addr
 	return addr, nil
+}
+
+func (s *MockKubeAPIServer) ListenerAddress() net.Addr {
+	return s.listenerAddr
 }
 
 func (s *MockKubeAPIServer) Stop() error {
