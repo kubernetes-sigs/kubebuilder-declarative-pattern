@@ -29,19 +29,31 @@ import (
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 	"sigs.k8s.io/yaml"
 )
+
+func fakeParent() runtime.Object {
+	parent := &unstructured.Unstructured{}
+	parent.SetKind("ConfigMap")
+	parent.SetAPIVersion("v1")
+	parent.SetName("test")
+	parent.SetNamespace("default")
+	return parent
+}
 
 // This test checks gvkString function
 func TestGVKString(t *testing.T) {
@@ -260,11 +272,6 @@ func TestAddIfNotPresent(t *testing.T) {
 
 	restConfig := &rest.Config{
 		Host: addr.String(),
-	}
-
-	restMapper, err := restmapper.NewControllerRESTMapper(restConfig)
-	if err != nil {
-		t.Fatalf("error getting rest mapper: %v", err)
 	}
 
 	// Create manager
@@ -526,9 +533,19 @@ func TestAddIfNotPresent(t *testing.T) {
 					var options applier.ApplierOptions
 					options.Namespace = st.defaultNamespace
 					options.Objects = objList
-					options.RESTMapper = restMapper
+					options.RESTMapper = mgr.GetRESTMapper()
 					options.RESTConfig = restConfig
-					applier := applier.NewApplySetApplier(metav1.PatchOptions{FieldManager: "kdp-test"})
+					parent := fakeParent()
+					options.Client = fake.NewClientBuilder().WithRuntimeObjects(parent).Build()
+					gvk := parent.GetObjectKind().GroupVersionKind()
+					restmapping, err := options.RESTMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+					if err != nil {
+						t.Fatalf("failed to get restmapping for parent: %v", err)
+					}
+					options.ParentRef = applyset.NewParentRef(parent, "kdp-test", "default", restmapping)
+					applier := applier.NewApplySetApplier(
+						metav1.PatchOptions{FieldManager: "kdp-test"}, metav1.DeleteOptions{}, applier.ApplysetOptions{})
+
 					if err := applier.Apply(ctx, options); err != nil {
 						t.Fatalf("failed to apply objects: %v", err)
 					}
@@ -538,7 +555,7 @@ func TestAddIfNotPresent(t *testing.T) {
 						t.Fatalf("error parsing manifest: %v", err)
 					}
 
-					if err := deleteObjects(ctx, restConfig, restMapper, st.defaultNamespace, objects); err != nil {
+					if err := deleteObjects(ctx, restConfig, mgr.GetRESTMapper(), st.defaultNamespace, objects); err != nil {
 						t.Fatalf("error deleting objects: %v", err)
 					}
 				} else {

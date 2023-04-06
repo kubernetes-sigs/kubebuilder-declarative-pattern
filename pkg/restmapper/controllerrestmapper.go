@@ -35,7 +35,14 @@ var _ meta.RESTMapper = &ControllerRESTMapper{}
 
 // KindFor takes a partial resource and returns the single match.  Returns an error if there are multiple matches
 func (m *ControllerRESTMapper) KindFor(resource schema.GroupVersionResource) (schema.GroupVersionKind, error) {
-	return schema.GroupVersionKind{}, fmt.Errorf("ControllerRESTMapper does not support KindFor operation")
+	kinds := m.cache.KindsFor(resource)
+	if len(kinds) == 0 {
+		return schema.GroupVersionKind{}, fmt.Errorf("ControllerRESTMaper does not have Kindfor %v", resource.String())
+	}
+	if len(kinds) > 1 {
+		return schema.GroupVersionKind{}, fmt.Errorf("ControllerRESTMaper finds multiple kinds for %v: %v", resource.String(), kinds)
+	}
+	return schema.GroupVersionKind{Group: resource.Group, Version: resource.Version, Kind: kinds[0]}, nil
 }
 
 // KindsFor takes a partial resource and returns the list of potential kinds in priority order
@@ -56,6 +63,23 @@ func (m *ControllerRESTMapper) ResourcesFor(input schema.GroupVersionResource) (
 // RESTMapping identifies a preferred resource mapping for the provided group kind.
 func (m *ControllerRESTMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
 	ctx := context.TODO()
+
+	// Since versions is optional string slice, it can be empty. If version is not given, we will iterate all the cached
+	// GV and find the first matching RESTMapping.
+	if len(versions) == 0 {
+		for keyGV := range m.cache.groupVersions {
+			if keyGV.Group != gk.Group {
+				continue
+			}
+			mapping, err := m.RESTMapping(gk, keyGV.Version)
+			if err != nil {
+				continue
+			}
+			if mapping != nil {
+				return mapping, nil
+			}
+		}
+	}
 
 	for _, version := range versions {
 		gv := schema.GroupVersion{Group: gk.Group, Version: version}

@@ -31,7 +31,14 @@ import (
 func TestApplySet(t *testing.T) {
 	h := testutils.NewHarness(t)
 
-	existing := ``
+	// The parent should exist in the cluster
+	existing := `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  namespace: default
+`
 
 	apply := `
 apiVersion: v1
@@ -60,11 +67,20 @@ data:
 
 	force := true
 	patchOptions.Force = &force
-
+	parent := h.ParseObjects(existing)[0]
+	parentGVK := parent.GroupVersionKind()
+	restmapping, err := h.RESTMapper().RESTMapping(parentGVK.GroupKind(), parentGVK.Version)
+	if err != nil {
+		h.Fatalf("error building parent restmappaing: %v", err)
+	}
 	s, err := New(Options{
-		RESTMapper:   h.RESTMapper(),
-		Client:       h.DynamicClient(),
-		PatchOptions: patchOptions,
+		Parent:        NewParentRef(parent, "test", "default", restmapping),
+		RESTMapper:    h.RESTMapper(),
+		Client:        h.DynamicClient(),
+		ParentClient:  h.Client(),
+		PatchOptions:  patchOptions,
+		DeleteOptions: metav1.DeleteOptions{},
+		Prune:         true,
 	})
 	if err != nil {
 		h.Fatalf("error building applyset object: %v", err)

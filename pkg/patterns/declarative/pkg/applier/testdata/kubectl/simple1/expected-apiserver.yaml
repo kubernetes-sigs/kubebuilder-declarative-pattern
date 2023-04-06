@@ -1,3 +1,12 @@
+GET /api/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
+
+
+
+
+---
+
 GET /openapi/v2?timeout=32s
 Accept: application/com.github.proto-openapi.spec.v2@v1.0+protobuf
 Accept-Encoding: gzip

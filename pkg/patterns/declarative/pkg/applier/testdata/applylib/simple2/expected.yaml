@@ -15,15 +15,15 @@ PATCH http://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kdp-test&force=fa
 Accept: application/json
 Content-Type: application/apply-patch+yaml
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns1"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"labels":{"applyset.kubernetes.io/part-of":"applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1"},"name":"ns1"}}
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 286
+Content-Length: 601
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"kubernetes.io/metadata.name":"ns1"},"name":"ns1","resourceVersion":"1","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"applyset.kubernetes.io/part-of":"applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1","kubernetes.io/metadata.name":"ns1"},"managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:apiVersion":{},"f:kind":{},"f:metadata":{"f:labels":{"f:applyset.kubernetes.io/part-of":{}},"f:name":{}}},"manager":"kdp-test","operation":"Apply"}],"name":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
 
 ---
 
@@ -31,12 +31,12 @@ PATCH http://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kdp-test&force=fa
 Accept: application/json
 Content-Type: application/apply-patch+yaml
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns2"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"labels":{"applyset.kubernetes.io/part-of":"applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1"},"name":"ns2"}}
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 286
+Content-Length: 601
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"kubernetes.io/metadata.name":"ns2"},"name":"ns2","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"applyset.kubernetes.io/part-of":"applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1","kubernetes.io/metadata.name":"ns2"},"managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:apiVersion":{},"f:kind":{},"f:metadata":{"f:labels":{"f:applyset.kubernetes.io/part-of":{}},"f:name":{}}},"manager":"kdp-test","operation":"Apply"}],"name":"ns2","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}

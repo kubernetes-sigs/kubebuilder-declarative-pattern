@@ -3,35 +3,52 @@ package applier
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
-
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
 )
 
+type ApplysetOptions struct {
+	Tooling string
+}
+
 type ApplySetApplier struct {
+	Tooling      string
 	patchOptions metav1.PatchOptions
+	// Optional: This deletion Options is for pruning. It will only be taken into consideration if pruning is enabled
+	// e.g. `options.WithApplyPrune()`.
+	deleteOptions metav1.DeleteOptions
 }
 
 var _ Applier = &ApplySetApplier{}
 
-func NewApplySetApplier(patchOptions metav1.PatchOptions) *ApplySetApplier {
-	return &ApplySetApplier{patchOptions: patchOptions}
+func NewApplySetApplier(patchOptions metav1.PatchOptions, deleteOptions metav1.DeleteOptions, option ApplysetOptions) *ApplySetApplier {
+	return &ApplySetApplier{patchOptions: patchOptions, deleteOptions: deleteOptions, Tooling: option.Tooling}
 }
 
 func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	patchOptions := a.patchOptions
 
-	for _, arg := range opt.ExtraArgs {
-		switch arg {
+	for i := 0; i < len(opt.ExtraArgs); i++ {
+		switch opt.ExtraArgs[i] {
 		case "--force":
 			opt.Force = true
-
+		case "--prune":
+			opt.Prune = true
+		case "--selector":
+			if i == len(opt.ExtraArgs)-1 || strings.HasPrefix(opt.ExtraArgs[i+1], "-") {
+				return fmt.Errorf("invalid `--selector` in args %q", opt.ExtraArgs)
+			}
+			klog.Warningf("skip `--selector` from args, selector value %v ", opt.ExtraArgs[i+1])
+			i++
 		default:
-			return fmt.Errorf("extraArg %q is not supported by the ApplySetApplier", arg)
+			return fmt.Errorf("extraArg %q is not supported by the ApplySetApplier", opt.ExtraArgs[i])
 		}
 	}
 
@@ -43,11 +60,20 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	}
 
 	restMapper := opt.RESTMapper
+	tooling := a.Tooling
+	if tooling == "" {
+		tooling = opt.ParentRef.GroupVersionKind().Kind
+	}
 
 	options := applyset.Options{
-		PatchOptions: patchOptions,
-		RESTMapper:   restMapper,
-		Client:       dynamicClient,
+		Parent:        opt.ParentRef,
+		PatchOptions:  patchOptions,
+		DeleteOptions: a.deleteOptions,
+		RESTMapper:    restMapper,
+		Client:        dynamicClient,
+		Prune:         opt.Prune,
+		Tooling:       tooling,
+		ParentClient:  opt.Client,
 	}
 	s, err := applyset.New(options)
 	if err != nil {
@@ -96,4 +122,14 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	// TODO: Check healthy
 
 	return nil
+}
+
+// NewParentRef maps a declarative object's information to the ParentRef defined in the applyset library.
+func NewParentRef(restMapper meta.RESTMapper, object runtime.Object, name, namespace string) (applyset.Parent, error) {
+	gvk := object.GetObjectKind().GroupVersionKind()
+	restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return nil, err
+	}
+	return applyset.NewParentRef(object, name, namespace, restMapping), nil
 }

@@ -359,15 +359,21 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}
 
+	parentRef, err := applier.NewParentRef(r.restMapper, instance, instance.GetName(), instance.GetNamespace())
+	if err != nil {
+		return statusInfo, err
+	}
 	applierOpt := applier.ApplierOptions{
 		RESTConfig:        r.config,
 		RESTMapper:        r.restMapper,
 		Namespace:         ns,
+		ParentRef:         parentRef,
 		Objects:           objects.GetItems(),
 		Validate:          r.options.validate,
 		ExtraArgs:         extraArgs,
 		Force:             true,
 		CascadingStrategy: r.options.cascadingStrategy,
+		Client:            r.client,
 	}
 
 	applyOperation := &ApplyOperation{
