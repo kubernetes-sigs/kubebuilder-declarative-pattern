@@ -35,14 +35,18 @@ var _ meta.RESTMapper = &ControllerRESTMapper{}
 
 // KindFor takes a partial resource and returns the single match.  Returns an error if there are multiple matches
 func (m *ControllerRESTMapper) KindFor(resource schema.GroupVersionResource) (schema.GroupVersionKind, error) {
-	kinds := m.cache.KindsFor(resource)
+	ctx := context.TODO()
+	kinds, err := m.cache.KindsFor(ctx, resource, m.uncached)
+	if err != nil {
+		return schema.GroupVersionKind{}, err
+	}
 	if len(kinds) == 0 {
-		return schema.GroupVersionKind{}, fmt.Errorf("ControllerRESTMaper does not have Kindfor %v", resource.String())
+		return schema.GroupVersionKind{}, fmt.Errorf("found no matching kinds for %v", resource.String())
 	}
 	if len(kinds) > 1 {
-		return schema.GroupVersionKind{}, fmt.Errorf("ControllerRESTMaper finds multiple kinds for %v: %v", resource.String(), kinds)
+		return schema.GroupVersionKind{}, fmt.Errorf("found multiple kinds for %v: %v", resource.String(), kinds)
 	}
-	return schema.GroupVersionKind{Group: resource.Group, Version: resource.Version, Kind: kinds[0]}, nil
+	return kinds[0], nil
 }
 
 // KindsFor takes a partial resource and returns the list of potential kinds in priority order
@@ -62,34 +66,14 @@ func (m *ControllerRESTMapper) ResourcesFor(input schema.GroupVersionResource) (
 
 // RESTMapping identifies a preferred resource mapping for the provided group kind.
 func (m *ControllerRESTMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
-	ctx := context.TODO()
-
-	// Since versions is optional string slice, it can be empty. If version is not given, we will iterate all the cached
-	// GV and find the first matching RESTMapping.
-	if len(versions) == 0 {
-		for keyGV := range m.cache.groupVersions {
-			if keyGV.Group != gk.Group {
-				continue
-			}
-			mapping, err := m.RESTMapping(gk, keyGV.Version)
-			if err != nil {
-				continue
-			}
-			if mapping != nil {
-				return mapping, nil
-			}
-		}
+	restMappings, err := m.RESTMappings(gk, versions...)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, version := range versions {
-		gv := schema.GroupVersion{Group: gk.Group, Version: version}
-		mapping, err := m.cache.findRESTMapping(ctx, m.uncached, gv, gk.Kind)
-		if err != nil {
-			return nil, err
-		}
-		if mapping != nil {
-			return mapping, nil
-		}
+	if len(restMappings) >= 1 {
+		// RESTMappings should return preferred version first.
+		return restMappings[0], nil
 	}
 
 	return nil, &meta.NoKindMatchError{GroupKind: gk, SearchedVersions: versions}
@@ -101,42 +85,55 @@ func (m *ControllerRESTMapper) RESTMapping(gk schema.GroupKind, versions ...stri
 func (m *ControllerRESTMapper) RESTMappings(gk schema.GroupKind, versions ...string) ([]*meta.RESTMapping, error) {
 	ctx := context.TODO()
 
-	if len(versions) != 0 {
-		return nil, fmt.Errorf("ControllerRESTMapper does not support RESTMappings operation with specified versions")
-	}
-
-	group, found, err := m.cache.findGroupInfo(ctx, m.uncached, gk.Group)
-	if err != nil {
-		return nil, err
-	}
-	if !found {
-		return nil, &meta.NoResourceMatchError{PartialResource: schema.GroupVersionResource{Group: gk.Group, Resource: gk.Kind}}
-	}
-
 	var mappings []*meta.RESTMapping
 
-	if group.PreferredVersion.Version != "" {
-		gv := schema.GroupVersion{Group: gk.Group, Version: group.PreferredVersion.Version}
-		mapping, err := m.cache.findRESTMapping(ctx, m.uncached, gv, gk.Kind)
+	if len(versions) == 0 {
+		allGroups, err := m.cache.fetchAllGroups(ctx, m.uncached)
 		if err != nil {
 			return nil, err
 		}
-		if mapping != nil {
-			mappings = append(mappings, mapping)
+		group, found := allGroups[gk.Group]
+		if err != nil {
+			return nil, err
 		}
-	}
+		if !found {
+			return nil, &meta.NoResourceMatchError{PartialResource: schema.GroupVersionResource{Group: gk.Group, Resource: gk.Kind}}
+		}
 
-	for i := range group.Versions {
-		gv := schema.GroupVersion{Group: gk.Group, Version: group.Versions[i].Version}
-		if gv.Version == group.PreferredVersion.Version {
-			continue
+		if group.PreferredVersion.Version != "" {
+			gv := schema.GroupVersion{Group: gk.Group, Version: group.PreferredVersion.Version}
+			mapping, err := m.cache.findRESTMapping(ctx, m.uncached, gv, gk.Kind)
+			if err != nil {
+				return nil, err
+			}
+			if mapping != nil {
+				mappings = append(mappings, mapping)
+			}
 		}
-		mapping, err := m.cache.findRESTMapping(ctx, m.uncached, gv, gk.Kind)
-		if err != nil {
-			return nil, err
+
+		for i := range group.Versions {
+			gv := schema.GroupVersion{Group: gk.Group, Version: group.Versions[i].Version}
+			if gv.Version == group.PreferredVersion.Version {
+				continue
+			}
+			mapping, err := m.cache.findRESTMapping(ctx, m.uncached, gv, gk.Kind)
+			if err != nil {
+				return nil, err
+			}
+			if mapping != nil {
+				mappings = append(mappings, mapping)
+			}
 		}
-		if mapping != nil {
-			mappings = append(mappings, mapping)
+	} else {
+		for _, version := range versions {
+			gv := schema.GroupVersion{Group: gk.Group, Version: version}
+			mapping, err := m.cache.findRESTMapping(ctx, m.uncached, gv, gk.Kind)
+			if err != nil {
+				return nil, err
+			}
+			if mapping != nil {
+				mappings = append(mappings, mapping)
+			}
 		}
 	}
 
