@@ -17,32 +17,32 @@ import (
 
 // cache is our cache of schema information.
 type cache struct {
-	mutex         sync.Mutex
-	groups        map[string]metav1.APIGroup
-	groupVersions map[schema.GroupVersion]*cachedGroupVersion
+	mutex               sync.Mutex
+	cachedAllGroups     map[string]metav1.APIGroup
+	cachedGroupVersions map[schema.GroupVersion]*cachedGroupVersion
 }
 
 // newCache is the constructor for a cache.
 func newCache() *cache {
 	return &cache{
-		groupVersions: make(map[schema.GroupVersion]*cachedGroupVersion),
+		cachedGroupVersions: make(map[schema.GroupVersion]*cachedGroupVersion),
 	}
 }
 
-// findGroupInfo returns the APIGroup for the specified group, querying discovery if not cached.
+// fetchAllGroups returns the APIGroup for the specified group, querying discovery if not cached.
 // If not found, returns APIGroup{}, false, nil
-func (c *cache) findGroupInfo(ctx context.Context, discovery discovery.DiscoveryInterface, groupName string) (metav1.APIGroup, bool, error) {
+func (c *cache) fetchAllGroups(ctx context.Context, discovery discovery.DiscoveryInterface) (map[string]metav1.APIGroup, error) {
 	log := log.FromContext(ctx)
 
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if c.groups == nil {
+	if c.cachedAllGroups == nil {
 		log.Info("discovering server groups")
 		serverGroups, err := discovery.ServerGroups()
 		if err != nil {
 			klog.Infof("unexpected error from ServerGroups: %v", err)
-			return metav1.APIGroup{}, false, fmt.Errorf("error from ServerGroups: %w", err)
+			return nil, fmt.Errorf("error from ServerGroups: %w", err)
 		}
 
 		groups := make(map[string]metav1.APIGroup)
@@ -50,91 +50,124 @@ func (c *cache) findGroupInfo(ctx context.Context, discovery discovery.Discovery
 			group := &serverGroups.Groups[i]
 			groups[group.Name] = *group
 		}
-		c.groups = groups
+		c.cachedAllGroups = groups
 	}
 
-	group, found := c.groups[groupName]
-	return group, found, nil
+	return c.cachedAllGroups, nil
 }
 
 // cachedGroupVersion caches (all) the resource information for a particular groupversion.
 type cachedGroupVersion struct {
-	gv    schema.GroupVersion
-	mutex sync.Mutex
-	kinds map[string]cachedGVR
-	// resource to kind
-	toKind map[string]string
+	gv                    schema.GroupVersion
+	mutex                 sync.Mutex
+	cachedServerResources map[string]cachedResource
 }
 
-// cachedGVR caches the information for a particular resource.
-type cachedGVR struct {
-	Resource string
-	Scope    meta.RESTScope
+// cachedResource caches the information for a particular resource.
+type cachedResource struct {
+	resource string
+	scope    meta.RESTScope
+	gvk      schema.GroupVersionKind
 }
 
-// KindFor finds out the Kind from the GVR in the cache. If the GVR version is not given, we will iterate all the matching
-// GR in the cache and return the first matching one.
-func (c *cache) KindsFor(gvr schema.GroupVersionResource) []string {
-	if gvr.Version != "" {
-		cachedgvr, ok := c.groupVersions[gvr.GroupVersion()]
-		if !ok {
-			return nil
-		}
-		return []string{cachedgvr.toKind[gvr.Resource]}
+func (r *cachedResource) GVR() schema.GroupVersionResource {
+	return r.gvk.GroupVersion().WithResource(r.resource)
+}
+
+func (r *cachedResource) GVK() schema.GroupVersionKind {
+	return r.gvk
+}
+
+func (r *cachedResource) RESTMapping() *meta.RESTMapping {
+	return &meta.RESTMapping{
+		Resource:         r.GVR(),
+		GroupVersionKind: r.GVK(),
+		Scope:            r.scope,
 	}
-	var kinds []string
+}
 
-	for keyGVR, cachedgvr := range c.groupVersions {
-		if keyGVR.Group != gvr.Group {
+// KindsFor finds out the Kind from the GVR in the cache. If the GVR version is not given, we will iterate all the matching
+// GR in the cache and return the first matching one.
+func (c *cache) KindsFor(ctx context.Context, gvr schema.GroupVersionResource, discovery discovery.DiscoveryInterface) ([]schema.GroupVersionKind, error) {
+	var matches []schema.GroupVersionKind
+	if gvr.Version != "" {
+		gv := gvr.GroupVersion()
+		cachedGV := c.cacheForGroupVersion(gv)
+
+		all, err := cachedGV.KindsFor(ctx, gvr, discovery)
+		if err != nil {
+			return nil, err
+		}
+
+		matches = append(matches, all...)
+
+		return matches, nil
+	}
+
+	allGroups, err := c.fetchAllGroups(ctx, discovery)
+	if err != nil {
+		return nil, err
+	}
+	for groupName, group := range allGroups {
+		if groupName != gvr.Group {
 			continue
 		}
-		kind, ok := cachedgvr.toKind[gvr.Resource]
-		if ok && kind != "" {
-			kinds = append(kinds, kind)
+		for _, version := range group.Versions {
+			gv := schema.GroupVersion{Group: groupName, Version: version.Version}
+			cachedGV := c.cacheForGroupVersion(gv)
+
+			all, err := cachedGV.KindsFor(ctx, gvr, discovery)
+			if err != nil {
+				return nil, err
+			}
+
+			matches = append(matches, all...)
 		}
 	}
-	return kinds
+	return matches, nil
+}
+
+func (c *cache) cacheForGroupVersion(gv schema.GroupVersion) *cachedGroupVersion {
+	c.mutex.Lock()
+	cached := c.cachedGroupVersions[gv]
+	if cached == nil {
+		cached = &cachedGroupVersion{gv: gv}
+		c.cachedGroupVersions[gv] = cached
+	}
+	c.mutex.Unlock()
+	return cached
 }
 
 // findRESTMapping returns the RESTMapping for the specified GVK, querying discovery if not cached.
 func (c *cache) findRESTMapping(ctx context.Context, discovery discovery.DiscoveryInterface, gv schema.GroupVersion, kind string) (*meta.RESTMapping, error) {
-	c.mutex.Lock()
-	cached := c.groupVersions[gv]
-	if cached == nil {
-		cached = &cachedGroupVersion{gv: gv, toKind: make(map[string]string)}
-		c.groupVersions[gv] = cached
-	}
-	c.mutex.Unlock()
-	return cached.findRESTMapping(ctx, discovery, kind)
+	cachedGV := c.cacheForGroupVersion(gv)
+	return cachedGV.findRESTMapping(ctx, discovery, kind)
 }
 
 // findRESTMapping returns the RESTMapping for the specified GVK, querying discovery if not cached.
 func (c *cachedGroupVersion) findRESTMapping(ctx context.Context, discovery discovery.DiscoveryInterface, kind string) (*meta.RESTMapping, error) {
-	kinds, err := c.fetch(ctx, discovery)
+	resources, err := c.fetchServerResources(ctx, discovery)
 	if err != nil {
 		return nil, err
 	}
 
-	cached, found := kinds[kind]
-	if !found {
-		return nil, nil
+	for _, resource := range resources {
+		if resource.GVK().Kind == kind {
+			return resource.RESTMapping(), nil
+		}
 	}
-	return &meta.RESTMapping{
-		Resource:         c.gv.WithResource(cached.Resource),
-		GroupVersionKind: c.gv.WithKind(kind),
-		Scope:            cached.Scope,
-	}, nil
+	return nil, nil
 }
 
 // fetch returns the metadata, fetching it if not cached.
-func (c *cachedGroupVersion) fetch(ctx context.Context, discovery discovery.DiscoveryInterface) (map[string]cachedGVR, error) {
+func (c *cachedGroupVersion) fetchServerResources(ctx context.Context, discovery discovery.DiscoveryInterface) (map[string]cachedResource, error) {
 	log := log.FromContext(ctx)
 
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if c.kinds != nil {
-		return c.kinds, nil
+	if c.cachedServerResources != nil {
+		return c.cachedServerResources, nil
 	}
 
 	log.Info("discovering server resources for group/version", "gv", c.gv.String())
@@ -149,7 +182,7 @@ func (c *cachedGroupVersion) fetch(ctx context.Context, discovery discovery.Disc
 		}
 	}
 
-	kinds := make(map[string]cachedGVR)
+	result := make(map[string]cachedResource)
 	for i := range resourceList.APIResources {
 		resource := resourceList.APIResources[i]
 
@@ -162,12 +195,36 @@ func (c *cachedGroupVersion) fetch(ctx context.Context, discovery discovery.Disc
 		if resource.Namespaced {
 			scope = meta.RESTScopeNamespace
 		}
-		kinds[resource.Kind] = cachedGVR{
-			Resource: resource.Name,
-			Scope:    scope,
+		result[resource.Name] = cachedResource{
+			resource: resource.Name,
+			scope:    scope,
+			gvk:      c.gv.WithKind(resource.Kind),
 		}
-		c.toKind[resource.Name] = resource.Kind
 	}
-	c.kinds = kinds
-	return kinds, nil
+	c.cachedServerResources = result
+	return result, nil
+}
+
+func (c *cachedGroupVersion) KindsFor(ctx context.Context, filterGVR schema.GroupVersionResource, discovery discovery.DiscoveryInterface) ([]schema.GroupVersionKind, error) {
+	serverResources, err := c.fetchServerResources(ctx, discovery)
+	if err != nil {
+		return nil, err
+	}
+	var matches []schema.GroupVersionKind
+	for _, resource := range serverResources {
+		resourceGVR := resource.GVR()
+
+		if resourceGVR.Group != filterGVR.Group {
+			continue
+		}
+		if filterGVR.Version != "" && resourceGVR.Version != filterGVR.Version {
+			continue
+		}
+		if filterGVR.Resource != "" && resourceGVR.Resource != filterGVR.Resource {
+			continue
+		}
+		matches = append(matches, resource.GVK())
+	}
+
+	return matches, nil
 }
