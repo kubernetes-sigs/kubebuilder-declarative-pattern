@@ -137,36 +137,33 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 }
 
 // +rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (result reconcile.Result, err error) {
-	var objects *manifest.Objects
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	var result reconcile.Result
+	statusInfo := &StatusInfo{}
 
 	log := log.FromContext(ctx)
-	defer r.collectMetrics(request, result, err)
+	defer func() {
+		r.collectMetrics(request, result, statusInfo.Err)
+	}()
 
 	// Fetch the object
 	instance := r.prototype.DeepCopyObject().(DeclarativeObject)
-	if err = r.client.Get(ctx, request.NamespacedName, instance); err != nil {
+	if err := r.client.Get(ctx, request.NamespacedName, instance); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
-			return reconcile.Result{}, nil
+			return result, nil
 		}
 		// Error reading the object - requeue the request.
 		log.Error(err, "error reading object")
-		return reconcile.Result{}, err
+		statusInfo.Err = err
+		return result, statusInfo.Err
 	}
 
 	// status.Reconciled should catch all error
 	defer func() {
-		// error is data
-		resultErr, ok := err.(*ErrorResult)
-		if ok {
-			result = resultErr.Result
-			err = resultErr.Err
-		}
-
 		if r.options.status != nil {
-			if statusErr := r.options.status.Reconciled(ctx, instance, objects, err); statusErr != nil {
+			if statusErr := r.options.status.Reconciled(ctx, instance, statusInfo.Manifest, statusInfo.Err); statusErr != nil {
 				log.Error(statusErr, "failed to reconcile status")
 			}
 		}
@@ -177,32 +174,46 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if r.options.status != nil {
 		if err := r.options.status.Preflight(ctx, instance); err != nil {
 			log.Error(err, "preflight check failed, not reconciling")
-			return reconcile.Result{}, err
+			statusInfo.Err = err
+			return result, statusInfo.Err
 		}
 	}
 
-	statusInfo, err := r.reconcileExists(ctx, request.NamespacedName, instance)
-	objects = statusInfo.Manifest // for the defer block
-	if err != nil {
-		statusInfo.Err = err
+	var reconcileErr error
+	statusInfo, reconcileErr = r.reconcileExists(ctx, request.NamespacedName, instance)
+	if reconcileErr != nil {
+		statusInfo.Err = reconcileErr
 	}
 
-	if err != nil {
-		r.recorder.Eventf(instance, "Warning", "InternalError", "internal error: %v", err)
+	// Unpack ErrorResult (for example a retry)
+	if errorResult, ok := statusInfo.Err.(*ErrorResult); ok {
+		result = errorResult.Result
+		statusInfo.Err = errorResult.Err
+	}
+
+	if statusInfo.Err != nil {
+		r.recorder.Eventf(instance, "Warning", "InternalError", "internal error: %v", statusInfo.Err)
 	}
 
 	if r.options.status != nil {
 		if err := r.options.status.BuildStatus(ctx, statusInfo); err != nil {
+			if statusInfo.Err == nil {
+				statusInfo.Err = err
+			}
+
 			log.Error(err, "error building status")
-			return result, err
+			return result, statusInfo.Err
 		}
 	}
 
 	if err := r.updateStatus(ctx, original, instance); err != nil {
-		return result, err
+		if statusInfo.Err == nil {
+			statusInfo.Err = err
+		}
+		log.Error(err, "error updating status")
 	}
 
-	return result, nil
+	return result, statusInfo.Err
 }
 
 func (r *Reconciler) updateStatus(ctx context.Context, original DeclarativeObject, instance DeclarativeObject) error {
