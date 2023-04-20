@@ -17,105 +17,34 @@ limitations under the License.
 package applyset
 
 import (
-	"encoding/json"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/kustomize/kstatus/status"
 )
 
 // isHealthy reports whether the object should be considered "healthy"
 // TODO: Replace with kstatus library
 func isHealthy(u *unstructured.Unstructured) bool {
-	// Check if the resource is scheduled for deletion
-	deletionTimestamp := u.GetDeletionTimestamp()
-	if deletionTimestamp != nil {
-		klog.Infof("object %s is scheduled for deletion", humanName(u))
+	result, err := status.Compute(u)
+	if err != nil {
+		klog.Infof("unable to compute condition for %s", humanName(u))
 		return false
 	}
-
-	gvk := u.GroupVersionKind()
-	switch gvk {
-	case schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"},
-		schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ServiceAccount"}:
-		// No ready signal; assume ready
-		return true
-	case schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "ClusterRole"},
-		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "ClusterRoleBinding"},
-		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "Role"},
-		schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "RoleBinding"}:
-		// No ready signal; assume ready
-		return true
-	case schema.GroupVersionKind{Group: "scheduling.k8s.io", Version: "v1", Kind: "PriorityClass"}:
-		// No ready signal; assume ready
-		return true
-	case schema.GroupVersionKind{Group: "storage.k8s.io", Version: "v1", Kind: "StorageClass"}:
-		// No ready signal; assume ready
+	switch result.Status {
+	case status.InProgressStatus:
+		return false
+	case status.FailedStatus:
+		return false
+	case status.TerminatingStatus:
+		return false
+	case status.UnknownStatus:
+		klog.Warningf("unknown status for %s", humanName(u))
+		return false
+	default: // status.CurrentStatus:
 		return true
 	}
-
-	ready := true
-	statusConditions, found, err := unstructured.NestedFieldNoCopy(u.Object, "status", "conditions")
-	if err != nil || !found {
-		klog.Infof("status conditions not found for %s", humanName(u))
-		return true
-	}
-
-	statusConditionsList, ok := statusConditions.([]interface{})
-	if !ok {
-		klog.Warningf("expected status.conditions to be list, got %T", statusConditions)
-		return true
-	}
-	for i := range statusConditionsList {
-		condition := statusConditionsList[i]
-		conditionMap, ok := condition.(map[string]interface{})
-		if !ok {
-			klog.Warningf("expected status.conditions[%d] to be map, got %T", i, condition)
-			return true
-		}
-
-		conditionType := ""
-		conditionStatus := ""
-		for k, v := range conditionMap {
-			switch k {
-			case "type":
-				s, ok := v.(string)
-				if !ok {
-					klog.Warningf("expected status.conditions[].type to be string, got %T", v)
-				} else {
-					conditionType = s
-				}
-			case "status":
-				s, ok := v.(string)
-				if !ok {
-					klog.Warningf("expected status.conditions[].status to be string, got %T", v)
-				} else {
-					conditionStatus = s
-				}
-			}
-		}
-
-		// TODO: Check conditionType?
-
-		switch conditionStatus {
-		case "True":
-			// ready
-
-		case "False":
-			j, _ := json.Marshal(condition)
-			klog.Infof("status.conditions indicates object %s is not ready: %v", humanName(u), string(j))
-			ready = false
-
-		case "":
-			klog.Warningf("ignoring status.conditions[] type %q with unknown status %q", conditionType, conditionStatus)
-		}
-	}
-
-	if !ready {
-		klog.Infof("object %s is not ready", humanName(u))
-	}
-	return ready
 }
 
 // humanName returns an identifier for the object suitable for printing in log messages
