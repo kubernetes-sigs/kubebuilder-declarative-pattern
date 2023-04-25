@@ -42,8 +42,11 @@ func isHealthy(u *unstructured.Unstructured) bool {
 	case status.UnknownStatus:
 		klog.Warningf("unknown status for %s", humanName(u))
 		return false
-	default: // status.CurrentStatus:
+	case status.CurrentStatus:
 		return true
+	default:
+		klog.Warningf("unknown status value %s", result.Status)
+		return false
 	}
 }
 
