@@ -40,7 +40,7 @@ instead of matching the namespace of the DeclarativeObject
 ## WithApplyKustomize
 WithApplyKustomize runs the kustomize build to create final manifest. This feature needs the go dependency `kustomize/api`.
 If you do not need kustomize or want to use a conflict version of `kustomize/api`, you can opt out the kustomize and 
-the `kustomize/api` dependency via go build tag `without-kustomize`. e.g. `go run ./main.go -tags without-kustomize`
+the `kustomize/api` dependency via go build tag `without_kustomize`. e.g. `go run ./main.go -tags without_kustomize`
 
 ## WithManagedApplication
 WithManagedApplication is a transform that will modify the Application object in the deployment to match the configuration of the rest of the deployment.
