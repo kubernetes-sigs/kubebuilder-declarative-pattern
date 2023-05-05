@@ -13,7 +13,7 @@ import (
 )
 
 // Run calls the kustomize/api library to run `kustomize build`. This method is differentiated by go build
-// tag `without-kustomize`
+// tag `without_kustomize`
 func Run(ctx context.Context, fs filesys.FileSystem, manifestPath string) ([]byte, error) {
 	log := log.FromContext(ctx)
 	log.WithValues("manifestPath", manifestPath).Info("running kustomize")
