@@ -1,3 +1,6 @@
+//go:build !without_exec_applier
+// +build !without_exec_applier
+
 /*
 Copyright 2018 The Kubernetes Authors.
 
