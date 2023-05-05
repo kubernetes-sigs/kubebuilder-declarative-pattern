@@ -4,11 +4,9 @@ import (
 	"context"
 	"net/http"
 	"path/filepath"
-	"testing"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
@@ -19,7 +17,6 @@ import (
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
@@ -27,33 +24,6 @@ import (
 
 	api "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testreconciler/simpletest/v1alpha1"
 )
-
-func TestSimpleReconciler(t *testing.T) {
-	appliers := []struct {
-		Key     string
-		Applier applier.Applier
-		Status  declarative.Status
-	}{
-		{
-			Key:     "direct",
-			Applier: applier.NewDirectApplier(),
-			Status:  status.NewBasic(nil),
-		},
-		{
-			Key: "ssa",
-			Applier: applier.NewApplySetApplier(
-				metav1.PatchOptions{FieldManager: "kdp-test"}, metav1.DeleteOptions{}, applier.ApplysetOptions{}),
-			Status: status.NewKstatusCheck(nil, nil),
-		},
-	}
-	for _, applier := range appliers {
-		t.Run(applier.Key, func(t *testing.T) {
-			testharness.RunGoldenTests(t, "testdata/reconcile/"+applier.Key+"/", func(h *testharness.Harness, testdir string) {
-				testSimpleReconciler(h, testdir, applier.Applier, applier.Status)
-			})
-		})
-	}
-}
 
 func testSimpleReconciler(h *testharness.Harness, testdir string, applier applier.Applier, status declarative.Status) {
 	ctx := context.Background()

@@ -1,3 +1,6 @@
+//go:build !without_exec_applier || !without_direct_applier
+// +build !without_exec_applier !without_direct_applier
+
 package applier
 
 import (
@@ -5,8 +8,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"k8s.io/kubectl/pkg/util/prune"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +21,7 @@ import (
 	"k8s.io/kubectl/pkg/cmd/apply"
 	cmdDelete "k8s.io/kubectl/pkg/cmd/delete"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"k8s.io/kubectl/pkg/util/prune"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 

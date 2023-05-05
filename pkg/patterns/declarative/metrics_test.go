@@ -543,9 +543,7 @@ func TestAddIfNotPresent(t *testing.T) {
 						t.Fatalf("failed to get restmapping for parent: %v", err)
 					}
 					options.ParentRef = applyset.NewParentRef(parent, "kdp-test", "default", restmapping)
-					applier := applier.NewApplySetApplier(
-						metav1.PatchOptions{FieldManager: "kdp-test"}, metav1.DeleteOptions{}, applier.ApplysetOptions{})
-
+					applier := applier.DefaultApplier
 					if err := applier.Apply(ctx, options); err != nil {
 						t.Fatalf("failed to apply objects: %v", err)
 					}
