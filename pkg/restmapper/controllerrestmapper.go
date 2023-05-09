@@ -93,9 +93,6 @@ func (m *ControllerRESTMapper) RESTMappings(gk schema.GroupKind, versions ...str
 			return nil, err
 		}
 		group, found := allGroups[gk.Group]
-		if err != nil {
-			return nil, err
-		}
 		if !found {
 			return nil, &meta.NoResourceMatchError{PartialResource: schema.GroupVersionResource{Group: gk.Group, Resource: gk.Kind}}
 		}
