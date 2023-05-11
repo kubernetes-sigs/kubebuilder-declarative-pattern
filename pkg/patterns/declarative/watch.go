@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
+	restclient "k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -71,7 +72,7 @@ type WatchChildrenOptions struct {
 
 // WatchAll creates a Watch on ctrl for all objects reconciled by recnl.
 // Deprecated: prefer WatchChildren (and consider setting ScopeWatchesToNamespace)
-func WatchAll(config *rest.Config, ctrl controller.Controller, reconciler hookableReconciler, labelMaker LabelMaker) (chan struct{}, error) {
+func WatchAll(config *rest.Config, ctrl controller.Controller, reconciler hookableReconciler, labelMaker LabelMaker) error {
 	options := WatchChildrenOptions{
 		RESTConfig:              config,
 		Controller:              ctrl,
@@ -83,16 +84,16 @@ func WatchAll(config *rest.Config, ctrl controller.Controller, reconciler hookab
 }
 
 // WatchChildren sets up watching of the objects applied by a controller.
-func WatchChildren(options WatchChildrenOptions) (chan struct{}, error) {
+func WatchChildren(options WatchChildrenOptions) error {
 	if options.LabelMaker == nil {
-		return nil, fmt.Errorf("labelMaker is required to scope watches")
+		return fmt.Errorf("labelMaker is required to scope watches")
 	}
 
 	if options.RESTConfig == nil {
 		if options.Manager != nil {
 			options.RESTConfig = options.Manager.GetConfig()
 		} else {
-			return nil, fmt.Errorf("RESTConfig or Manager should be set")
+			return fmt.Errorf("RESTConfig or Manager should be set")
 		}
 	}
 
@@ -100,30 +101,30 @@ func WatchChildren(options WatchChildrenOptions) (chan struct{}, error) {
 	if options.Manager != nil {
 		restMapper = options.Manager.GetRESTMapper()
 	} else {
-		rm, err := apiutil.NewDiscoveryRESTMapper(options.RESTConfig)
+		client, err := restclient.HTTPClientFor(options.RESTConfig)
 		if err != nil {
-			return nil, err
+			return err
+		}
+		rm, err := apiutil.NewDiscoveryRESTMapper(options.RESTConfig, client)
+		if err != nil {
+			return err
 		}
 		restMapper = rm
 	}
 
 	client, err := dynamic.NewForConfig(options.RESTConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	dw, events, err := watch.NewDynamicWatch(restMapper, client)
 	if err != nil {
-		return nil, fmt.Errorf("creating dynamic watch: %v", err)
+		return fmt.Errorf("creating dynamic watch: %v", err)
 	}
 
 	src := &source.Channel{Source: events}
-	// Inject a stop channel that will never close. The controller does not have a concept of
-	// shutdown, so there is no oppritunity to stop the watch.
-	stopCh := make(chan struct{})
-	src.InjectStopChannel(stopCh)
 	if err := options.Controller.Watch(src, &handler.EnqueueRequestForObject{}); err != nil {
-		return nil, fmt.Errorf("setting up dynamic watch on the controller: %w", err)
+		return fmt.Errorf("setting up dynamic watch on the controller: %w", err)
 	}
 
 	afterApplyHook := &clusterWatch{
@@ -135,7 +136,7 @@ func WatchChildren(options WatchChildrenOptions) (chan struct{}, error) {
 
 	options.Reconciler.AddHook(afterApplyHook)
 
-	return stopCh, nil
+	return nil
 }
 
 // clusterWatch watches the objects in one cluster

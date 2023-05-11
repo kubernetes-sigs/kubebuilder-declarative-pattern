@@ -94,15 +94,16 @@ func (r *SimpleTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		return err
 	}
+	
 
 	// Watch for changes to SimpleTest objects
-	err = c.Watch(&source.Kind{Type: &api.SimpleTest{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &api.SimpleTest{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// Watch for changes to deployed objects
-	_, err = declarative.WatchChildren(declarative.WatchChildrenOptions{Manager: mgr, Controller: c, Reconciler: r, LabelMaker: r.watchLabels})
+	err = declarative.WatchChildren(declarative.WatchChildrenOptions{Manager: mgr, Controller: c, Reconciler: r, LabelMaker: r.watchLabels})
 	if err != nil {
 		return err
 	}

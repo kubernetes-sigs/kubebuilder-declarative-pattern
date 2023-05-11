@@ -351,7 +351,7 @@ func newGVKTracker(mgr manager.Manager, obj *unstructured.Unstructured, namespac
 	gvkt = &gvkTracker{}
 	gvkt.list = newItems()
 	gvkt.recorder = objectRecorderFor(obj.GroupVersionKind())
-	gvkt.src = source.NewKindWithCache(obj, mgr.GetCache())
+	gvkt.src = source.Kind(mgr.GetCache(), obj)
 	gvkt.predicate = predicate.Funcs{}
 	gvkt.eventHandler = recordTrigger{gvkt.list, namespaced, gvkt.recorder}
 
@@ -539,7 +539,7 @@ type recordTrigger struct {
 	recorder   objectRecorder
 }
 
-func (rt recordTrigger) Create(ev event.CreateEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Create(ctx context.Context, ev event.CreateEvent, _ workqueue.RateLimitingInterface) {
 	ns, name := ev.Object.GetNamespace(), ev.Object.GetName()
 
 	if rt.namespaced {
@@ -555,7 +555,7 @@ func (rt recordTrigger) Create(ev event.CreateEvent, _ workqueue.RateLimitingInt
 	}
 }
 
-func (rt recordTrigger) Update(ev event.UpdateEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Update(ctx context.Context, ev event.UpdateEvent, _ workqueue.RateLimitingInterface) {
 	var nsnp nsnPairs = make(map[string][]string)
 	ons, oname := ev.ObjectOld.GetNamespace(), ev.ObjectOld.GetName()
 	nns, nname := ev.ObjectNew.GetNamespace(), ev.ObjectNew.GetName()
@@ -589,7 +589,7 @@ func (rt recordTrigger) Update(ev event.UpdateEvent, _ workqueue.RateLimitingInt
 	rt.recorder.Set(nns, nname, float64(1))
 }
 
-func (rt recordTrigger) Delete(ev event.DeleteEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Delete(ctx context.Context, ev event.DeleteEvent, _ workqueue.RateLimitingInterface) {
 	ns, name := ev.Object.GetNamespace(), ev.Object.GetName()
 
 	if rt.namespaced {
@@ -605,4 +605,4 @@ func (rt recordTrigger) Delete(ev event.DeleteEvent, _ workqueue.RateLimitingInt
 	}
 }
 
-func (rt recordTrigger) Generic(ev event.GenericEvent, _ workqueue.RateLimitingInterface) {}
+func (rt recordTrigger) Generic(ctx context.Context, ev event.GenericEvent, _ workqueue.RateLimitingInterface) {}
