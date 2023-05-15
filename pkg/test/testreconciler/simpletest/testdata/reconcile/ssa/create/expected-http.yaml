@@ -1,4 +1,4 @@
-GET http://kube-apiserver/apis/addons.example.org/v1alpha1?timeout=32s
+GET http://kube-apiserver/apis/addons.example.org/v1alpha1
 Accept: application/json, */*
 
 200 OK
@@ -36,7 +36,7 @@ Date: (removed)
 
 ---
 
-GET http://kube-apiserver/api/v1?timeout=32s
+GET http://kube-apiserver/api/v1
 Accept: application/json, */*
 
 200 OK
@@ -49,7 +49,7 @@ Date: (removed)
 
 ---
 
-GET http://kube-apiserver/apis/apps/v1?timeout=32s
+GET http://kube-apiserver/apis/apps/v1
 Accept: application/json, */*
 
 200 OK
@@ -231,7 +231,7 @@ Date: (removed)
 
 ---
 
-GET http://kube-apiserver/api?timeout=32s
+GET http://kube-apiserver/api
 Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
 
 200 OK
@@ -244,7 +244,7 @@ Date: (removed)
 
 ---
 
-GET http://kube-apiserver/apis?timeout=32s
+GET http://kube-apiserver/apis
 Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
 
 200 OK
