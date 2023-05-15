@@ -30,6 +30,7 @@ import (
 
 const (
 	commandInit  = "init"
+	commandApi   = "create api"
 	commandFlags = "flags"
 )
 
@@ -68,6 +69,8 @@ func Run() {
 	switch pluginRequest.Command {
 	case commandInit:
 		response = scaffolds.InitCmd(pluginRequest)
+	case commandApi:
+		response = scaffolds.ApiCmd(pluginRequest)
 	case commandFlags:
 		response = FlagsCmd(pluginRequest)
 	default:

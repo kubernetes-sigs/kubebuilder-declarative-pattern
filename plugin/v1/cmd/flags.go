@@ -32,13 +32,17 @@ func FlagsCmd(pr *external.PluginRequest) external.PluginResponse {
 
 	flagsToParse := pflag.NewFlagSet("flags", pflag.ContinueOnError)
 	flagsToParse.Bool("init", false, "sets the init flag to true")
+	flagsToParse.Bool("api", false, "sets the api flag to true")
 
 	flagsToParse.Parse(pr.Args)
 
 	initFlag, _ := flagsToParse.GetBool("init")
+	apiFlag, _ := flagsToParse.GetBool("api")
 
 	if initFlag {
 		pluginResponse.Flags = scaffolds.InitFlags
+	} else if apiFlag {
+		pluginResponse.Flags = scaffolds.ApiFlags
 	} else {
 		pluginResponse.Error = true
 		pluginResponse.ErrorMsgs = []string{
