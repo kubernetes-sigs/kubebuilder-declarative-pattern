@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -70,7 +71,7 @@ type ApplySet struct {
 	// deployment manifests.
 	parent Parent
 	// If not given, the tooling value will be the `Parent` Kind.
-	tooling string
+	tooling kubectlapply.ApplySetTooling
 }
 
 // Options holds the parameters for building an ApplySet.
@@ -93,7 +94,13 @@ type Options struct {
 func New(options Options) (*ApplySet, error) {
 	parent := options.Parent
 	parentRef := &kubectlapply.ApplySetParentRef{Name: parent.Name(), Namespace: parent.Namespace(), RESTMapping: parent.RESTMapping()}
-	kapplyset := kubectlapply.NewApplySet(parentRef, kubectlapply.ApplySetTooling{Name: options.Tooling}, options.RESTMapper)
+
+	// The tooling string slash cutting is to support the ApplySetTooling struct that kubectlapply.NewApplySet() expects.
+	// For instance, 'kpt/v1.0.0' will map to ApplySetTooling{Name: "kpt", Version: "v1.0.0"}.
+	toolName, toolVersion, _ := strings.Cut(options.Tooling, "/")
+	tooling := kubectlapply.ApplySetTooling{Name: toolName, Version: toolVersion}
+
+	kapplyset := kubectlapply.NewApplySet(parentRef, tooling, options.RESTMapper)
 	if options.PatchOptions.FieldManager == "" {
 		options.PatchOptions.FieldManager = kapplyset.FieldManager()
 	}
@@ -105,7 +112,7 @@ func New(options Options) (*ApplySet, error) {
 		deleteOptions: options.DeleteOptions,
 		prune:         options.Prune,
 		parent:        parent,
-		tooling:       options.Tooling,
+		tooling:       tooling,
 	}
 	a.trackers = &objectTrackerList{}
 	return a, nil
@@ -149,7 +156,7 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 	// single actuation and not for reconciliation.
 	// Note: The Kubectl ApplySet will share the RESTMapper with k-d-p/ApplySet, which caches all the manifests in the past.
 	parentRef := &kubectlapply.ApplySetParentRef{Name: a.parent.Name(), Namespace: a.parent.Namespace(), RESTMapping: a.parent.RESTMapping()}
-	kapplyset := kubectlapply.NewApplySet(parentRef, kubectlapply.ApplySetTooling{Name: a.tooling}, a.restMapper)
+	kapplyset := kubectlapply.NewApplySet(parentRef, a.tooling, a.restMapper)
 
 	// Cache the current RESTMappings to avoid re-fetching the bad ones.
 	restMappings := make(map[schema.GroupVersionKind]restMappingResult)
@@ -365,7 +372,7 @@ func (a *ApplySet) WithParent(ctx context.Context, kapplyset *kubectlapply.Apply
 		if annotations == nil {
 			annotations = make(map[string]string)
 		}
-		annotations[kubectlapply.ApplySetToolingAnnotation] = a.tooling
+		annotations[kubectlapply.ApplySetToolingAnnotation] = a.tooling.String()
 		if _, ok := annotations[kubectlapply.ApplySetGRsAnnotation]; !ok {
 			annotations[kubectlapply.ApplySetGRsAnnotation] = ""
 		}
