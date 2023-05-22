@@ -98,6 +98,9 @@ func New(options Options) (*ApplySet, error) {
 	// The tooling string slash cutting is to support the ApplySetTooling struct that kubectlapply.NewApplySet() expects.
 	// For instance, 'kpt/v1.0.0' will map to ApplySetTooling{Name: "kpt", Version: "v1.0.0"}.
 	toolName, toolVersion, _ := strings.Cut(options.Tooling, "/")
+	if toolName == "" {
+		toolName = parent.GetSubject().GetObjectKind().GroupVersionKind().Kind
+	}
 	tooling := kubectlapply.ApplySetTooling{Name: toolName, Version: toolVersion}
 
 	kapplyset := kubectlapply.NewApplySet(parentRef, tooling, options.RESTMapper)
