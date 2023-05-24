@@ -84,7 +84,8 @@ func (r *GuestbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to deployed objects
-	err = declarative.WatchChildren(declarative.WatchChildrenOptions{Manager: mgr, Controller: c, Reconciler: r, LabelMaker: r.watchLabels})	if err != nil {
+	err = declarative.WatchChildren(declarative.WatchChildrenOptions{Manager: mgr, Controller: c, Reconciler: r, LabelMaker: r.watchLabels})
+	if err != nil {
 		return err
 	}
 
