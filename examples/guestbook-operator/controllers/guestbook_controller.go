@@ -78,13 +78,13 @@ func (r *GuestbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to Guestbook
-	err = c.Watch(&source.Kind{Type: &api.Guestbook{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &api.Guestbook{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// Watch for changes to deployed objects
-	_, err = declarative.WatchChildren(declarative.WatchChildrenOptions{Manager: mgr, Controller: c, Reconciler: r, LabelMaker: r.watchLabels})
+	err = declarative.WatchChildren(declarative.WatchChildrenOptions{Manager: mgr, Controller: c, Reconciler: r, LabelMaker: r.watchLabels})
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
@@ -90,7 +91,12 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 			t.Errorf("error parsing manifest %q: %v", p, err)
 		}
 
-		restMapper, err := restmapper.NewControllerRESTMapper(restConfig)
+		c, err := restclient.HTTPClientFor(restConfig)
+		if err != nil {
+			t.Fatalf("error from HTTClientFor: %v", err)
+		}
+
+		restMapper, err := restmapper.NewControllerRESTMapper(restConfig, c)
 		if err != nil {
 			t.Fatalf("error from controllerrestmapper.NewControllerRESTMapper: %v", err)
 		}

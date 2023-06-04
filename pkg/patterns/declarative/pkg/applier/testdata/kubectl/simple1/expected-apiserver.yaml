@@ -1,4 +1,4 @@
-GET /api/v1?timeout=32s
+GET /api/v1
 Accept: application/json, */*
 Accept-Encoding: gzip
 

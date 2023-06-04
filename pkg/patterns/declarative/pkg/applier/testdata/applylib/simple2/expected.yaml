@@ -1,4 +1,4 @@
-GET http://kube-apiserver/api/v1?timeout=32s
+GET http://kube-apiserver/api/v1
 Accept: application/json, */*
 
 200 OK
