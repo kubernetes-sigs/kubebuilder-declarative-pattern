@@ -605,4 +605,5 @@ func (rt recordTrigger) Delete(ctx context.Context, ev event.DeleteEvent, _ work
 	}
 }
 
-func (rt recordTrigger) Generic(ctx context.Context, ev event.GenericEvent, _ workqueue.RateLimitingInterface) {}
+func (rt recordTrigger) Generic(ctx context.Context, ev event.GenericEvent, _ workqueue.RateLimitingInterface) {
+}
