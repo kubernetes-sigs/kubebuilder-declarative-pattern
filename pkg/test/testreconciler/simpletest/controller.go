@@ -94,7 +94,6 @@ func (r *SimpleTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		return err
 	}
-	
 
 	// Watch for changes to SimpleTest objects
 	err = c.Watch(source.Kind(mgr.GetCache(), &api.SimpleTest{}), &handler.EnqueueRequestForObject{})
