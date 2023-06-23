@@ -63,8 +63,7 @@ func (r *resourceStorage) watch(ctx context.Context, opt WatchOptions, callback 
 
 	// TODO: Only send list if no rv specified?
 
-	// TODO: Locking on r.objects
-
+	r.mutex.Lock()
 	for _, obj := range r.objects {
 		if opt.Namespace != "" {
 			if obj.GetNamespace() != opt.Namespace {
@@ -77,13 +76,12 @@ func (r *resourceStorage) watch(ctx context.Context, opt WatchOptions, callback 
 			klog.Warningf("error sending backfill watch notification; stopping watch: %v", err)
 
 			// remove watch from list
-			r.mutex.Lock()
 			r.watches[pos] = nil
-			r.mutex.Unlock()
 
 			return err
 		}
 	}
+	r.mutex.Unlock()
 
 	return <-w.errChan
 }
