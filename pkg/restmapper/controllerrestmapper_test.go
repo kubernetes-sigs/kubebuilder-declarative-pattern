@@ -9,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
-	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 )
@@ -39,13 +38,9 @@ func TestRESTMapping(t *testing.T) {
 		Host: addr.String(),
 	}
 
-	client, err := restclient.HTTPClientFor(restConfig)
+	restMapper, err := NewForTest(restConfig)
 	if err != nil {
-		t.Fatalf("error from HTTClientFor: %v", err)
-	}
-	restMapper, err := NewControllerRESTMapper(restConfig, client)
-	if err != nil {
-		t.Fatalf("error from NewControllerRESTMapper: %v", err)
+		t.Fatalf("error from NewForTest: %v", err)
 	}
 	gvk := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}
 	restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)

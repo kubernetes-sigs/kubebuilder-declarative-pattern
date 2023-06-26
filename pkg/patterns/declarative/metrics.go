@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
@@ -351,9 +352,9 @@ func newGVKTracker(mgr manager.Manager, obj *unstructured.Unstructured, namespac
 	gvkt = &gvkTracker{}
 	gvkt.list = newItems()
 	gvkt.recorder = objectRecorderFor(obj.GroupVersionKind())
-	gvkt.src = source.Kind(mgr.GetCache(), obj)
+	gvkt.src = commonclient.SourceKind(mgr.GetCache(), obj)
 	gvkt.predicate = predicate.Funcs{}
-	gvkt.eventHandler = recordTrigger{gvkt.list, namespaced, gvkt.recorder}
+	gvkt.eventHandler = commonclient.WrapEventHandler(recordTrigger{gvkt.list, namespaced, gvkt.recorder})
 
 	return
 }
@@ -531,7 +532,7 @@ func (r record) DeleteIfNeeded(name string, limit int) bool {
 	return false
 }
 
-var _ handler.EventHandler = recordTrigger{}
+var _ commonclient.EventHandler = recordTrigger{}
 
 type recordTrigger struct {
 	list       *items

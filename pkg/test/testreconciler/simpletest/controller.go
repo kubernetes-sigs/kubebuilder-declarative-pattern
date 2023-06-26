@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
@@ -96,7 +96,7 @@ func (r *SimpleTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to SimpleTest objects
-	err = c.Watch(source.Kind(mgr.GetCache(), &api.SimpleTest{}), &handler.EnqueueRequestForObject{})
+	err = c.Watch(commonclient.SourceKind(mgr.GetCache(), &api.SimpleTest{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
