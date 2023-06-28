@@ -29,11 +29,11 @@ import (
 	"k8s.io/client-go/rest"
 	restclient "k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/watch"
 )
 
@@ -105,7 +105,7 @@ func WatchChildren(options WatchChildrenOptions) error {
 		if err != nil {
 			return err
 		}
-		rm, err := apiutil.NewDiscoveryRESTMapper(options.RESTConfig, client)
+		rm, err := commonclient.NewDiscoveryRESTMapper(options.RESTConfig, client)
 		if err != nil {
 			return err
 		}

@@ -3,26 +3,11 @@ package restmapper
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/rest"
 )
-
-// NewControllerRESTMapper is the constructor for a ControllerRESTMapper
-func NewControllerRESTMapper(cfg *rest.Config, httpClient *http.Client) (meta.RESTMapper, error) {
-	discoveryClient, err := discovery.NewDiscoveryClientForConfigAndClient(cfg, httpClient)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ControllerRESTMapper{
-		uncached: discoveryClient,
-		cache:    newCache(),
-	}, nil
-}
 
 // ControllerRESTMapper is a meta.RESTMapper that is optimized for controllers.
 // It caches results in memory, and minimizes discovery because we don't need shortnames etc in controllers.
