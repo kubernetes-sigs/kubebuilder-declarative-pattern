@@ -48,13 +48,21 @@ const (
 	// Example value: "kube-system,ns1,ns2".
 	ApplySetAdditionalNamespacesAnnotation = "applyset.kubernetes.io/additional-namespaces"
 
-	// ApplySetGRsAnnotation is a list of group-resources used to optimize listing of ApplySet member objects.
+	// Deprecated: ApplySetGRsAnnotation is a list of group-resources used to optimize listing of ApplySet member objects.
+	// It is optional in the ApplySet specification, as tools can perform discovery or use a different optimization.
+	// However, it is currently required in kubectl.
+	// When present, the value of this annotation must be a comma separated list of the group-resources,
+	// in the fully-qualified name format, i.e. <resourcename>.<group>.
+	// Example value: "certificates.cert-manager.io,configmaps,deployments.apps,secrets,services"
+	DeprecatedApplySetGRsAnnotation = "applyset.kubernetes.io/contains-group-resources"
+
+	// ApplySetGKsAnnotation is a list of group-kinds used to optimize listing of ApplySet member objects.
 	// It is optional in the ApplySet specification, as tools can perform discovery or use a different optimization.
 	// However, it is currently required in kubectl.
 	// When present, the value of this annotation must be a comma separated list of the group-kinds,
-	// in the fully-qualified name format, i.e. <resourcename>.<group>.
-	// Example value: "certificates.cert-manager.io,configmaps,deployments.apps,secrets,services"
-	ApplySetGRsAnnotation = "applyset.kubernetes.io/contains-group-resources"
+	// in the fully-qualified name format, i.e. <kind>.<group>.
+	// Example value: "Certificate.cert-manager.io,ConfigMap,deployments.apps,Secret,Service"
+	ApplySetGKsAnnotation = "applyset.kubernetes.io/contains-group-kinds"
 
 	// ApplySetParentIDLabel is the key of the label that makes object an ApplySet parent object.
 	// Its value MUST use the format specified in V1ApplySetIdFormat below
@@ -86,13 +94,13 @@ type ApplySet struct {
 	toolingID ApplySetTooling
 
 	// currentResources is the set of resources that are part of the sever-side set as of when the current operation started.
-	currentResources map[schema.GroupVersionResource]*meta.RESTMapping
+	currentResources map[schema.GroupKind]*kindInfo
 
 	// currentNamespaces is the set of namespaces that contain objects in this applyset as of when the current operation started.
 	currentNamespaces sets.Set[string]
 
 	// updatedResources is the set of resources that will be part of the set as of when the current operation completes.
-	updatedResources map[schema.GroupVersionResource]*meta.RESTMapping
+	updatedResources map[schema.GroupKind]*kindInfo
 
 	// updatedNamespaces is the set of namespaces that will contain objects in this applyset as of when the current operation completes.
 	updatedNamespaces sets.Set[string]
@@ -138,9 +146,9 @@ func (t ApplySetTooling) String() string {
 func NewApplySet(parent *ApplySetParentRef, tooling ApplySetTooling, mapper meta.RESTMapper) *ApplySet {
 	// func NewApplySet(parent *ApplySetParentRef, tooling ApplySetTooling, mapper meta.RESTMapper, client resource.RESTClient) *ApplySet {
 	return &ApplySet{
-		currentResources:  make(map[schema.GroupVersionResource]*meta.RESTMapping),
+		currentResources:  make(map[schema.GroupKind]*kindInfo),
 		currentNamespaces: make(sets.Set[string]),
-		updatedResources:  make(map[schema.GroupVersionResource]*meta.RESTMapping),
+		updatedResources:  make(map[schema.GroupKind]*kindInfo),
 		updatedNamespaces: make(sets.Set[string]),
 		parentRef:         parent,
 		toolingID:         tooling,
@@ -283,7 +291,7 @@ func (a *ApplySet) FetchParent(obj runtime.Object) error {
 		return fmt.Errorf("ApplySet parent object %q exists and has incorrect value for label %q (got: %s, want: %s)", a.parentRef, ApplySetParentIDLabel, idLabel, a.ID())
 	}
 
-	if a.currentResources, err = parseResourcesAnnotation(annotations, a.restMapper); err != nil {
+	if a.currentResources, err = parseKindAnnotation(annotations, a.restMapper); err != nil {
 		// TODO: handle GVRs for now-deleted CRDs
 		return fmt.Errorf("parsing ApplySet annotation on %q: %w", a.parentRef, err)
 	}
@@ -302,8 +310,8 @@ func (a *ApplySet) LabelSelectorForMembers() string {
 
 // AllPrunableResources returns the list of all resources that should be considered for pruning.
 // This is potentially a superset of the resources types that actually contain resources.
-func (a *ApplySet) AllPrunableResources() []*meta.RESTMapping {
-	var ret []*meta.RESTMapping
+func (a *ApplySet) AllPrunableResources() []*kindInfo {
+	var ret []*kindInfo
 	for _, m := range a.currentResources {
 		ret = append(ret, m)
 	}
@@ -336,14 +344,46 @@ func toolingBaseName(toolAnnotation string) string {
 	return toolAnnotation
 }
 
-func parseResourcesAnnotation(annotations map[string]string, mapper meta.RESTMapper) (map[schema.GroupVersionResource]*meta.RESTMapping, error) {
-	annotation, ok := annotations[ApplySetGRsAnnotation]
+type kindInfo struct {
+	restMapping *meta.RESTMapping
+}
+
+func parseKindAnnotation(annotations map[string]string, mapper meta.RESTMapper) (map[schema.GroupKind]*kindInfo, error) {
+	annotation, ok := annotations[ApplySetGKsAnnotation]
 	if !ok {
+		if annotations[DeprecatedApplySetGRsAnnotation] != "" {
+			return parseDeprecatedResourceAnnotation(annotations[DeprecatedApplySetGRsAnnotation], mapper)
+		}
+
 		// The spec does not require this annotation. However, 'missing' means 'perform discovery'.
 		// We return an error because we do not currently support dynamic discovery in kubectl apply.
-		return nil, fmt.Errorf("kubectl requires the %q annotation to be set on all ApplySet parent objects", ApplySetGRsAnnotation)
+		return nil, fmt.Errorf("kubectl requires the %q annotation to be set on all ApplySet parent objects", ApplySetGKsAnnotation)
 	}
-	mappings := make(map[schema.GroupVersionResource]*meta.RESTMapping)
+	mappings := make(map[schema.GroupKind]*kindInfo)
+	// Annotation present but empty means that this is currently an empty set.
+	if annotation == "" {
+		return mappings, nil
+	}
+	for _, grString := range strings.Split(annotation, ",") {
+		gk := schema.ParseGroupKind(grString)
+		// gvk, err := mapper.KindFor(gr.WithVersion(""))
+		// if err != nil {
+		// 	return nil, fmt.Errorf("invalid group resource in %q annotation: %w", ApplySetGKsAnnotation, err)
+		// }
+		restMapping, err := mapper.RESTMapping(gk)
+		if err != nil {
+			return nil, fmt.Errorf("could not find mapping for kind in %q annotation: %w", ApplySetGKsAnnotation, err)
+		}
+		mappings[gk] = &kindInfo{
+			restMapping: restMapping,
+		}
+	}
+
+	return mappings, nil
+}
+
+func parseDeprecatedResourceAnnotation(annotation string, mapper meta.RESTMapper) (map[schema.GroupKind]*kindInfo, error) {
+	mappings := make(map[schema.GroupKind]*kindInfo)
 	// Annotation present but empty means that this is currently an empty set.
 	if annotation == "" {
 		return mappings, nil
@@ -352,13 +392,15 @@ func parseResourcesAnnotation(annotations map[string]string, mapper meta.RESTMap
 		gr := schema.ParseGroupResource(grString)
 		gvk, err := mapper.KindFor(gr.WithVersion(""))
 		if err != nil {
-			return nil, fmt.Errorf("invalid group resource in %q annotation: %w", ApplySetGRsAnnotation, err)
+			return nil, fmt.Errorf("invalid group resource in %q annotation: %w", DeprecatedApplySetGRsAnnotation, err)
 		}
-		mapping, err := mapper.RESTMapping(gvk.GroupKind())
+		restMapping, err := mapper.RESTMapping(gvk.GroupKind())
 		if err != nil {
-			return nil, fmt.Errorf("could not find kind for resource in %q annotation: %w", ApplySetGRsAnnotation, err)
+			return nil, fmt.Errorf("could not find kind for resource in %q annotation: %w", DeprecatedApplySetGRsAnnotation, err)
 		}
-		mappings[mapping.Resource] = mapping
+		mappings[gvk.GroupKind()] = &kindInfo{
+			restMapping: restMapping,
+		}
 	}
 	return mappings, nil
 }
@@ -378,9 +420,14 @@ func parseNamespacesAnnotation(annotations map[string]string) sets.Set[string] {
 // Modified. change private to public
 // addResource registers the given resource and namespace as being part of the updated set of
 // resources being applied by the current operation.
-func (a *ApplySet) AddResource(resource *meta.RESTMapping, namespace string) {
-	a.updatedResources[resource.Resource] = resource
-	if resource.Scope == meta.RESTScopeNamespace && namespace != "" {
+func (a *ApplySet) AddResource(restMapping *meta.RESTMapping, namespace string) {
+	gk := restMapping.GroupVersionKind.GroupKind()
+	if _, found := a.updatedResources[gk]; !found {
+		a.updatedResources[gk] = &kindInfo{
+			restMapping: restMapping,
+		}
+	}
+	if restMapping.Scope == meta.RESTScopeNamespace && namespace != "" {
 		a.updatedNamespaces.Insert(namespace)
 	}
 }
@@ -433,17 +480,17 @@ func serverSideApplyRequest(a *ApplySet, data []byte, dryRun cmdutil.DryRunStrat
 
 // Modified from private to public buildParentPatch --> BuildParentPatch
 func (a *ApplySet) BuildParentPatch(mode ApplySetUpdateMode) *metav1.PartialObjectMetadata {
-	var newGRsAnnotation, newNsAnnotation string
+	var newGKsAnnotation, newNsAnnotation string
 	switch mode {
 	case updateToSuperset:
 		// If the apply succeeded but pruning failed, the set of group resources that
 		// the ApplySet should track is the superset of the previous and current resources.
 		// This ensures that the resources that failed to be pruned are not orphaned from the set.
 		grSuperset := sets.KeySet(a.currentResources).Union(sets.KeySet(a.updatedResources))
-		newGRsAnnotation = generateResourcesAnnotation(grSuperset)
+		newGKsAnnotation = generateResourcesAnnotation(grSuperset)
 		newNsAnnotation = generateNamespacesAnnotation(a.currentNamespaces.Union(a.updatedNamespaces), a.parentRef.Namespace)
 	case updateToLatestSet:
-		newGRsAnnotation = generateResourcesAnnotation(sets.KeySet(a.updatedResources))
+		newGKsAnnotation = generateResourcesAnnotation(sets.KeySet(a.updatedResources))
 		newNsAnnotation = generateNamespacesAnnotation(a.updatedNamespaces, a.parentRef.Namespace)
 	}
 
@@ -457,7 +504,7 @@ func (a *ApplySet) BuildParentPatch(mode ApplySetUpdateMode) *metav1.PartialObje
 			Namespace: a.parentRef.Namespace,
 			Annotations: map[string]string{
 				ApplySetToolingAnnotation:              a.toolingID.String(),
-				ApplySetGRsAnnotation:                  newGRsAnnotation,
+				ApplySetGKsAnnotation:                  newGKsAnnotation,
 				ApplySetAdditionalNamespacesAnnotation: newNsAnnotation,
 			},
 			Labels: map[string]string{
@@ -473,13 +520,13 @@ func generateNamespacesAnnotation(namespaces sets.Set[string], skip string) stri
 	return strings.Join(nsList, ",")
 }
 
-func generateResourcesAnnotation(resources sets.Set[schema.GroupVersionResource]) string {
-	var grs []string
-	for gvr := range resources {
-		grs = append(grs, gvr.GroupResource().String())
+func generateResourcesAnnotation(resources sets.Set[schema.GroupKind]) string {
+	var gks []string
+	for gk := range resources {
+		gks = append(gks, gk.String())
 	}
-	sort.Strings(grs)
-	return strings.Join(grs, ",")
+	sort.Strings(gks)
+	return strings.Join(gks, ",")
 }
 
 func (a ApplySet) FieldManager() string {

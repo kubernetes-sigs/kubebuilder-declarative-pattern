@@ -75,7 +75,9 @@ func (a *ApplySet) FindAllObjectsToPrune(ctx context.Context, dynamicClient dyna
 
 	// We run discovery in parallel, in as many goroutines as priority and fairness will allow
 	// (We don't expect many requests in real-world scenarios - maybe tens, unlikely to be hundreds)
-	for _, restMapping := range a.AllPrunableResources() {
+	for _, kindInfo := range a.AllPrunableResources() {
+		restMapping := kindInfo.restMapping
+
 		switch restMapping.Scope.Name() {
 		case meta.RESTScopeNameNamespace:
 			for _, namespace := range a.AllPrunableNamespaces() {

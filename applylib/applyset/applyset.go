@@ -319,6 +319,9 @@ func (a *ApplySet) updateParentLabelsAndAnnotations(ctx context.Context, kapplys
 	for k, v := range partialParent.Annotations {
 		annotations[k] = v
 	}
+	if v, found := annotations[kubectlapply.DeprecatedApplySetGRsAnnotation]; found && v == "" {
+		delete(annotations, kubectlapply.DeprecatedApplySetGRsAnnotation)
+	}
 	parent.SetAnnotations(annotations)
 
 	// update labels
@@ -376,8 +379,8 @@ func (a *ApplySet) WithParent(ctx context.Context, kapplyset *kubectlapply.Apply
 			annotations = make(map[string]string)
 		}
 		annotations[kubectlapply.ApplySetToolingAnnotation] = a.tooling.String()
-		if _, ok := annotations[kubectlapply.ApplySetGRsAnnotation]; !ok {
-			annotations[kubectlapply.ApplySetGRsAnnotation] = ""
+		if _, ok := annotations[kubectlapply.ApplySetGKsAnnotation]; !ok {
+			annotations[kubectlapply.ApplySetGKsAnnotation] = ""
 		}
 		object.SetAnnotations(annotations)
 
