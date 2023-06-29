@@ -5,6 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
@@ -17,6 +18,8 @@ type Applier interface {
 
 type ApplierOptions struct {
 	Objects []*manifest.Object
+
+	DynamicClient dynamic.Interface
 
 	RESTConfig *rest.Config
 	RESTMapper meta.RESTMapper
@@ -37,6 +40,8 @@ type ApplierOptions struct {
 	// @deprecated: prefer using explicit arguments (Force etc)
 	ExtraArgs []string
 
+	// TODO: Can we remove?
 	ParentRef applyset.Parent
-	Client    client.Client
+
+	Client client.Client
 }
