@@ -366,10 +366,6 @@ func parseKindAnnotation(annotations map[string]string, mapper meta.RESTMapper) 
 	}
 	for _, grString := range strings.Split(annotation, ",") {
 		gk := schema.ParseGroupKind(grString)
-		// gvk, err := mapper.KindFor(gr.WithVersion(""))
-		// if err != nil {
-		// 	return nil, fmt.Errorf("invalid group resource in %q annotation: %w", ApplySetGKsAnnotation, err)
-		// }
 		restMapping, err := mapper.RESTMapping(gk)
 		if err != nil {
 			return nil, fmt.Errorf("could not find mapping for kind in %q annotation: %w", ApplySetGKsAnnotation, err)
