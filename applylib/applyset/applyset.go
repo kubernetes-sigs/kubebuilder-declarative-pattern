@@ -33,7 +33,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	kubectlapply "sigs.k8s.io/kubebuilder-declarative-pattern/applylib/third_party/forked/github.com/kubernetes/kubectl/pkg/cmd/apply"
+	kubectlapply "sigs.k8s.io/kubebuilder-declarative-pattern/applylib/forked/github.com/kubernetes/kubectl/pkg/cmd/apply"
 )
 
 // ApplySet is a set of objects that we want to apply to the cluster.
