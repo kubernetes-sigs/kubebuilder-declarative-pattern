@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
-	restclient "k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -101,7 +100,7 @@ func WatchChildren(options WatchChildrenOptions) error {
 	if options.Manager != nil {
 		restMapper = options.Manager.GetRESTMapper()
 	} else {
-		client, err := restclient.HTTPClientFor(options.RESTConfig)
+		client, err := rest.HTTPClientFor(options.RESTConfig)
 		if err != nil {
 			return err
 		}
