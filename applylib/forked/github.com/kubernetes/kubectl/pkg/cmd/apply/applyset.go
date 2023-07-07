@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/dynamic"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/third_party/forked/k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/forked/k8s.io/apimachinery/pkg/util/sets"
 )
 
 // Label and annotation keys from the ApplySet specification.
