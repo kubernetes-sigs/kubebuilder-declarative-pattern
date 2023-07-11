@@ -160,6 +160,7 @@ func (a *ApplySet) findObjectsToPrune(ctx context.Context, dynamicClient dynamic
 		if visitedUids.Has(uid) {
 			continue
 		}
+
 		name := obj.GetName()
 		pruneObjects = append(pruneObjects, PruneObject{
 			Name:      name,

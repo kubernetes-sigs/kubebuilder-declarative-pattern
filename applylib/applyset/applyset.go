@@ -72,6 +72,9 @@ type ApplySet struct {
 	parent Parent
 	// If not given, the tooling value will be the `Parent` Kind.
 	tooling kubectlapply.ApplySetTooling
+
+	// beforePruneHooks is a list of BeforePruneHook that are called before pruning
+	beforePruneHooks []BeforePruneHook
 }
 
 // Options holds the parameters for building an ApplySet.
@@ -88,6 +91,9 @@ type Options struct {
 	Prune         bool
 	Parent        Parent
 	Tooling       string
+
+	// BeforePruneHooks is a list of BeforePruneHook callbacks called before each prune object
+	BeforePruneHooks []BeforePruneHook
 }
 
 // New constructs a new ApplySet
@@ -108,14 +114,15 @@ func New(options Options) (*ApplySet, error) {
 		options.PatchOptions.FieldManager = kapplyset.FieldManager()
 	}
 	a := &ApplySet{
-		parentClient:  options.ParentClient,
-		client:        options.Client,
-		restMapper:    options.RESTMapper,
-		patchOptions:  options.PatchOptions,
-		deleteOptions: options.DeleteOptions,
-		prune:         options.Prune,
-		parent:        parent,
-		tooling:       tooling,
+		parentClient:     options.ParentClient,
+		client:           options.Client,
+		restMapper:       options.RESTMapper,
+		patchOptions:     options.PatchOptions,
+		deleteOptions:    options.DeleteOptions,
+		prune:            options.Prune,
+		parent:           parent,
+		tooling:          tooling,
+		beforePruneHooks: options.BeforePruneHooks,
 	}
 	a.trackers = &objectTrackerList{}
 	return a, nil
@@ -268,6 +275,23 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		if err != nil {
 			return results, err
 		}
+
+		if len(a.beforePruneHooks) != 0 {
+			op := BeforePrune{pruneObjects: newObjectSet(pruneObjects...)}
+			for _, beforePruneHook := range a.beforePruneHooks {
+				if err := beforePruneHook(ctx, op); err != nil {
+					return results, err
+				}
+			}
+
+			// TODO: What if the hook removes some objects from the prune set,
+			// so that the kinds should still be in the annotation?
+			pruneObjects = make([]kubectlapply.PruneObject, 0)
+			for _, obj := range op.pruneObjects.objects {
+				pruneObjects = append(pruneObjects, obj.obj)
+			}
+		}
+
 		if err = a.deleteObjects(ctx, pruneObjects, results); err != nil {
 			return results, err
 		}
