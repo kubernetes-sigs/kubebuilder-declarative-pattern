@@ -1,0 +1,36 @@
+XNamespace:
+  openAPIV3Schema:
+    properties:
+      spec:
+        properties:
+          containers:
+            items:
+              properties:
+                image:
+                  description: The container image to run
+                  pattern: '"image.*"'
+                  type: string
+                name:
+                  description: The identifier for this container
+                  type: string
+              type: object
+            type: array
+            x-kubernetes-list-map-keys:
+            - name
+            x-kubernetes-list-type: map
+          instanceType:
+            description: instanceType is an instanceType
+            type: string
+          labels:
+            description: labels is some labels
+            type: object
+          maxReplicas:
+            description: maxReplicas is the maximum number of replicas
+            minimum: 0
+            type: integer
+          minReplicas:
+            description: minReplicas is the minimum number of replicas
+            minimum: 0
+            type: integer
+        type: object
+    type: object

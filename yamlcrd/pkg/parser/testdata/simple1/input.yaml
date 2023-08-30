@@ -1,0 +1,22 @@
+XNamespace:
+  spec:
+    # labels is some labels
+    labels: map(key=string,value=string)
+
+    # instanceType is an instanceType
+    instanceType: string
+
+    # minReplicas is the minimum number of replicas
+    minReplicas: int(min=0)
+
+    # maxReplicas is the maximum number of replicas
+    maxReplicas: int(min=0)
+
+    containers(map-key=name):
+    - name: string # The identifier for this container
+      image: string(regex="image.*") # The container image to run
+
+
+# Could maybe evaluate CEL and convert to constraints
+# XNamespace.spec.minReplicas > 0
+# XNamespace.spec.maxReplicas > 0
