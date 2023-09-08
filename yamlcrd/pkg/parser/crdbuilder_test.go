@@ -19,16 +19,21 @@ func TestReadSimpleCRD(t *testing.T) {
 			t.Errorf("error from Parse: %v", err)
 		}
 
-		schemas, err := buildOpenAPISchema(ctx, node)
+		openapis, err := buildOpenAPISchema(ctx, node)
 		if err != nil {
 			t.Errorf("error from buildOpenAPISchema: %v", err)
 		}
 
-		schemasYAML, err := yaml.Marshal(schemas)
+		crds, err := buildCRDs(ctx, openapis)
+		if err != nil {
+			t.Errorf("error from buildCRDs: %v", err)
+		}
+
+		crdsYAML, err := yaml.Marshal(crds)
 		if err != nil {
 			t.Errorf("error building yaml: %v", err)
 		}
-		h.CompareGoldenFile(filepath.Join(dir, "expected.yaml"), string(schemasYAML))
+		h.CompareGoldenFile(filepath.Join(dir, "expected.yaml"), string(crdsYAML))
 	})
 
 }

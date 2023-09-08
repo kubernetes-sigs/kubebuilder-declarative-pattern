@@ -1,4 +1,4 @@
-XNamespace:
+XSimple(group="example.com"):
   spec:
     # labels is some labels
     labels: map(key=string,value=string)

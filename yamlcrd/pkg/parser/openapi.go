@@ -3,12 +3,20 @@ package parser
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 )
 
-func buildOpenAPISchema(ctx context.Context, n Node) (map[string]*OpenAPI, error) {
+type TypeDefinition struct {
+	Kind  string
+	Group string
+
+	Scope string
+
+	Schema *OpenAPI
+}
+
+func buildOpenAPISchema(ctx context.Context, n Node) ([]TypeDefinition, error) {
 	b := &openAPIBuilder{}
 
 	schemas := b.buildOpenAPISchema(n)
@@ -20,39 +28,50 @@ func buildOpenAPISchema(ctx context.Context, n Node) (map[string]*OpenAPI, error
 }
 
 type openAPIBuilder struct {
-	errors []error
+	builder
 }
 
-func (p *openAPIBuilder) errorf(format string, args ...any) {
-	err := fmt.Errorf(format, args...)
-	p.errors = append(p.errors, err)
-}
-
-func (b *openAPIBuilder) buildOpenAPISchema(node Node) map[string]*OpenAPI {
-	if len(b.errors) != 0 {
+func (b *openAPIBuilder) buildOpenAPISchema(node Node) []TypeDefinition {
+	if b.Err() != nil {
 		return nil
 	}
 
-	schemas := make(map[string]*OpenAPI)
+	var schemas []TypeDefinition
 
 	switch node := node.(type) {
 	case *ObjectNode:
 		for _, entry := range node.Entries {
-			name := b.expectString(entry.Key)
+			name, args := b.parseArgs(b.expectString(entry.Key))
 			v := b.expectObject(entry.Value)
 
 			schema := b.buildOpenAPIObject(v)
-			schemas[name] = &OpenAPI{Schema: schema}
+			info := TypeDefinition{
+				Kind:   name,
+				Schema: &OpenAPI{Schema: schema},
+			}
+
+			for k, v := range args {
+				switch k {
+				case "group":
+					info.Group = b.argToString(v)
+				case "scope":
+					info.Scope = b.argToString(v)
+				default:
+					b.Errorf("unknown parameter %q", k)
+				}
+			}
+
+			schemas = append(schemas, info)
 		}
 
 	default:
-		b.errorf("expected object, got %T", node)
+		b.Errorf("expected object, got %T", node)
 	}
 	return schemas
 }
 
 func (b *openAPIBuilder) expectObject(node Node) *ObjectNode {
-	if len(b.errors) != 0 {
+	if b.Err() != nil {
 		return nil
 	}
 
@@ -60,13 +79,13 @@ func (b *openAPIBuilder) expectObject(node Node) *ObjectNode {
 	case *ObjectNode:
 		return node
 	default:
-		b.errorf("unexpected type, want object, got %T", node)
+		b.Errorf("unexpected type, want object, got %T", node)
 	}
 	return nil
 }
 
 func (b *openAPIBuilder) expectString(node Node) string {
-	if len(b.errors) != 0 {
+	if b.Err() != nil {
 		return ""
 	}
 
@@ -74,17 +93,36 @@ func (b *openAPIBuilder) expectString(node Node) string {
 	case *ScalarNode:
 		return node.Value
 	default:
-		b.errorf("unexpected type, want string, got %T", node)
+		b.Errorf("unexpected type, want string, got %T", node)
+		return ""
+	}
+}
+
+func (b *openAPIBuilder) argToString(arg any) string {
+	if b.Err() != nil {
+		return ""
+	}
+
+	switch arg := arg.(type) {
+	case string:
+		// TODO: Move to parser (and de-escape there?)
+		if len(arg) != 0 && arg[0] == '"' && arg[len(arg)-1] == '"' {
+			arg = arg[1 : len(arg)-1]
+		}
+		return arg
+	default:
+		b.Errorf("unexpected type, want string, got %T", arg)
 		return ""
 	}
 }
 
 func (b *openAPIBuilder) buildOpenAPIProperty(v Node) *Property {
-	if len(b.errors) != 0 {
-		return nil
+	prop := &Property{}
+
+	if b.Err() != nil {
+		return prop
 	}
 
-	var prop *Property
 	switch v := v.(type) {
 	case *ScalarNode:
 		s := v.Value
@@ -98,16 +136,16 @@ func (b *openAPIBuilder) buildOpenAPIProperty(v Node) *Property {
 		case "string":
 			prop = &Property{Type: "string"}
 		default:
-			b.errorf("unhandled string value %q", s)
+			b.Errorf("unhandled string value %q", s)
 		}
 
 		for k, v := range args {
 			switch k {
 			case "min":
-				sv := v.(string)
+				sv := b.argToString(v)
 				n, err := strconv.Atoi(sv)
 				if err != nil {
-					b.errorf("invalid min value (not an integer) %q", sv)
+					b.Errorf("invalid min value (not an integer) %q", sv)
 				}
 				prop.Minimum = &n
 			case "key":
@@ -116,11 +154,11 @@ func (b *openAPIBuilder) buildOpenAPIProperty(v Node) *Property {
 				// TODO: prop.AdditionalProperties.Type = "string"
 
 			case "regex":
-				sv := v.(string)
+				sv := b.argToString(v)
 				prop.Pattern = &sv
 
 			default:
-				b.errorf("unknown parameter %q", k)
+				b.Errorf("unknown parameter %q", k)
 			}
 		}
 	case *ObjectNode:
@@ -132,15 +170,15 @@ func (b *openAPIBuilder) buildOpenAPIProperty(v Node) *Property {
 		prop = p
 
 	default:
-		b.errorf("unhandled type %T", v)
+		b.Errorf("unhandled type %T", v)
 	}
 
 	return prop
 }
 
 func (b *openAPIBuilder) buildOpenAPIObject(def *ObjectNode) *Property {
-	if len(b.errors) != 0 {
-		return nil
+	if b.Err() != nil {
+		return &Property{}
 	}
 
 	schema := &Property{
@@ -163,9 +201,9 @@ func (b *openAPIBuilder) buildOpenAPIObject(def *ObjectNode) *Property {
 			switch k {
 			case "map-key":
 				prop.XKubernetesListType = "map"
-				prop.XKubernetesListMapKeys = []string{v.(string)}
+				prop.XKubernetesListMapKeys = []string{b.argToString(v)}
 			default:
-				b.errorf("unknown parameter %q", k)
+				b.Errorf("unknown parameter %q", k)
 			}
 		}
 	}
@@ -174,12 +212,12 @@ func (b *openAPIBuilder) buildOpenAPIObject(def *ObjectNode) *Property {
 }
 
 func (b *openAPIBuilder) buildOpenAPIArray(def *SequenceNode) *Property {
-	if len(b.errors) != 0 {
-		return nil
+	if b.Err() != nil {
+		return &Property{}
 	}
 
 	if len(def.Entries) != 1 {
-		b.errorf("expected exactly one entry in array, got %v", def)
+		b.Errorf("expected exactly one entry in array, got %v", def)
 		return nil
 	}
 
@@ -228,12 +266,12 @@ func (b *openAPIBuilder) parseArgs(s string) (string, map[string]any) {
 	name := s[:ix]
 	s = s[ix:]
 	if !strings.HasPrefix(s, "(") {
-		b.errorf("expected args to start with '('")
+		b.Errorf("expected args to start with '('")
 		return name, nil
 	}
 	s = s[1:]
 	if !strings.HasSuffix(s, ")") {
-		b.errorf("expected args to end with ')'")
+		b.Errorf("expected args to end with ')'")
 		return name, nil
 	}
 	s = s[:len(s)-1]
@@ -245,7 +283,7 @@ func (b *openAPIBuilder) parseArgs(s string) (string, map[string]any) {
 		token = strings.TrimSpace(token)
 		ix := strings.Index(token, "=")
 		if ix == -1 {
-			b.errorf("cannot parse parameter %q (expected key = value)", token)
+			b.Errorf("cannot parse parameter %q (expected key = value)", token)
 			return name, nil
 		}
 		k := strings.TrimSpace(token[:ix])
