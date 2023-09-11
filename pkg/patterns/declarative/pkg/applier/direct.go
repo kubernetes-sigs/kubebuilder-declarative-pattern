@@ -95,21 +95,8 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	}
 
 	if opt.Validate {
-		// validation likely makes redundant apiserver requests and is less optimized than the non-validation case,
-		// but validation isn't the common path
-
-		dynamicClient, err := f.DynamicClient()
-		if err != nil {
-			return err
-		}
-		nqpv := resource.NewQueryParamVerifier(dynamicClient, f.OpenAPIGetter(), resource.QueryParamFieldValidation)
-
-		v, err := d.inner.NewFactory(opt).Validator(metav1.FieldValidationStrict, nqpv)
-
-		if err != nil {
-			return err
-		}
-		b.Schema(v)
+		// client-side validation is no longer recommended, in favor of server-side apply/validation
+		return fmt.Errorf("client-side validation is no longer supported")
 	}
 
 	var errs []error
