@@ -11,6 +11,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -135,8 +136,8 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	printFlags := genericclioptions.NewPrintFlags("apply")
 	applyOpts := &apply.ApplyOptions{
 		Recorder:            &genericclioptions.NoopRecorder{},
-		VisitedUids:         sets.NewString(),
-		VisitedNamespaces:   sets.NewString(),
+		VisitedUids:         sets.New[types.UID](),
+		VisitedNamespaces:   sets.New[string](),
 		PrintFlags:          printFlags,
 		IOStreams:           ioStreams,
 		FieldManager:        "kubectl-client-side-apply",

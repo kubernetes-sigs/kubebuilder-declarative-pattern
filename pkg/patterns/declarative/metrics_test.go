@@ -38,12 +38,14 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
+
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
-	"sigs.k8s.io/yaml"
 )
 
 func fakeParent() runtime.Object {
@@ -276,7 +278,9 @@ func TestAddIfNotPresent(t *testing.T) {
 
 	// Create manager
 	mgrOpt := manager.Options{
-		MetricsBindAddress: "0", // Don't open unneeded ports
+		Metrics: metricsserver.Options{
+			BindAddress: "0", // Disable the metrics server, don't open unneeded ports
+		},
 	}
 	mgr, err := manager.New(restConfig, mgrOpt)
 	if err != nil {
