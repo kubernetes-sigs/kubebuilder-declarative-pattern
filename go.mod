@@ -23,7 +23,7 @@ require (
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kubectl v0.26.3
 	sigs.k8s.io/cli-utils v0.33.0
-	sigs.k8s.io/controller-runtime v0.15.0
+	sigs.k8s.io/controller-runtime v0.15.2
 	sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20230420203711-4abaa68e1923
 	sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20230303024857-d1f76c15e05b
 	sigs.k8s.io/kustomize/api v0.12.1
