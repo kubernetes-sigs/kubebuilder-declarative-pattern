@@ -1,6 +1,6 @@
-## Reconciler Options in Kubebuilder-declarative-pattern
+## Reconciler Options in kubebuilder-declarative-pattern
 
-Kubebuilder-declarative-pattern is structured in a way that makes it easy for you to turn functionality(provided in kubebuilder-declarative-patter) on and off in the operator you have created. This also makes it easy to add new functionality to your operator. This README serves as a references for these functionalities and indicates which ones are enabled by default.
+kubebuilder-declarative-pattern is structured in a way that makes it easy for you to turn functionality (provided in kubebuilder-declarative-pattern) on and off in the operator you have created. This also makes it easy to add new functionality to your operator. This README serves as a reference for these functionalities and indicates which ones are enabled by default.
 
 The options are:
 ## WithRawManifestOperation
@@ -22,7 +22,7 @@ WithManifestController overrides the default source for loading manifests.
 
 ## WithApplyPrune
 WithApplyPrune turns on the --prune behavior of kubectl apply. This behavior deletes any objects that exist in the API server that are not deployed by the current version of the manifest which match a label specific to the addon instance.
-This option requires (WithLabels)[#withLabels] to be used.
+This option requires [WithLabels](#withlabels) to be used.
 
 ## WithOwner
 WithOwner sets an owner ref on each deployed object by the [OwnerSelector].
