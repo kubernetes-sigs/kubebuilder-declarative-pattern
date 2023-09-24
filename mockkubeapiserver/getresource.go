@@ -52,7 +52,7 @@ func (req *getResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 
 	id := types.NamespacedName{Namespace: req.Namespace, Name: req.Name}
 
-	object, found, err := s.storage.GetObject(ctx, resource, id)
+	object, found, err := resource.GetObject(ctx, id)
 	if err != nil {
 		return err
 	}

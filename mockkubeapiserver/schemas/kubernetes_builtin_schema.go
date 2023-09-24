@@ -1,4 +1,4 @@
-package mockkubeapiserver
+package schemas
 
 import (
 	"fmt"

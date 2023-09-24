@@ -1,4 +1,4 @@
-package mockkubeapiserver
+package storage
 
 import (
 	"fmt"

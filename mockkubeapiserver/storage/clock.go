@@ -1,4 +1,4 @@
-package mockkubeapiserver
+package storage
 
 import (
 	"time"
@@ -29,6 +29,7 @@ func NewTestClock() *TestClock {
 	t := time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 	return &TestClock{t: t}
 }
+
 func (c *TestClock) Now() metav1.Time {
 	t := c.t
 	c.t = t.Add(time.Second)

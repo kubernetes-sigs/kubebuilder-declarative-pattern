@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/schemas"
 	"sigs.k8s.io/yaml"
 )
 
@@ -62,10 +62,10 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("error parsing %q: %w", p, err)
 	}
 
-	schemaMeta := &mockkubeapiserver.SchemaMeta{}
+	schemaMeta := &schemas.SchemaMeta{}
 
 	// Go through the paths to determine if resources are cluster or namespace scoped.  We look at the "list" endpoint.
-	pathInfo := make(map[openapiGVK]mockkubeapiserver.SchemaMetaResource)
+	pathInfo := make(map[openapiGVK]schemas.SchemaMetaResource)
 	for url, path := range schema.Paths {
 		if path.Get == nil {
 			continue
@@ -131,7 +131,7 @@ func run(ctx context.Context) error {
 				}
 				return fmt.Errorf("key %q, gvk %#v not found in paths", k, gvk)
 			}
-			resource := mockkubeapiserver.SchemaMetaResource{
+			resource := schemas.SchemaMetaResource{
 				Group:    gvk.Group,
 				Version:  gvk.Version,
 				Kind:     gvk.Kind,

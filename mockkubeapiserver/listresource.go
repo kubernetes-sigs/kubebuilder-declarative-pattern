@@ -20,12 +20,10 @@ import (
 	"context"
 	"net/http"
 	"strings"
-	"sync"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/storage"
 )
 
 // listResource is a request to list resources
@@ -61,35 +59,19 @@ func (req *listResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return req.doWatch(ctx, s, resource, partialObjectMetadata)
 	}
 
-	var filter ListFilter
+	var filter storage.ListFilter
 	filter.Namespace = req.Namespace
-	objects, err := s.storage.ListObjects(ctx, resource, filter)
+	objects, err := resource.ListObjects(ctx, filter)
 	if err != nil {
 		return err
 	}
 
-	objects.SetGroupVersionKind(resource.ListGVK)
+	objects.SetGroupVersionKind(resource.ListGVK())
 
 	return req.writeResponse(objects)
 }
 
-type watchEvent struct {
-	internalObject *unstructured.Unstructured
-	eventType      string
-
-	Namespace string
-
-	mutex                     sync.Mutex
-	partialObjectMetadataJSON []byte
-	json                      []byte
-}
-
-type messageV1 struct {
-	Type   string         `json:"type"`
-	Object runtime.Object `json:"object"`
-}
-
-func (req *listResource) doWatch(ctx context.Context, s *MockKubeAPIServer, resource *ResourceInfo, partialObjectMetadata bool) error {
+func (req *listResource) doWatch(ctx context.Context, s *MockKubeAPIServer, resource storage.ResourceInfo, partialObjectMetadata bool) error {
 	w := req.w
 
 	contentType := "application/json"
@@ -100,7 +82,7 @@ func (req *listResource) doWatch(ctx context.Context, s *MockKubeAPIServer, reso
 	w.Header().Add("Content-Type", contentType)
 	w.Header().Add("Cache-Control", "no-cache, private")
 
-	var opt WatchOptions
+	var opt storage.WatchOptions
 	opt.Namespace = req.Namespace
 
 	w.WriteHeader(200)
@@ -108,7 +90,7 @@ func (req *listResource) doWatch(ctx context.Context, s *MockKubeAPIServer, reso
 		f.Flush()
 	}
 
-	return s.storage.Watch(ctx, resource, opt, func(ev *watchEvent) error {
+	return resource.Watch(ctx, opt, func(ev *storage.WatchEvent) error {
 		klog.V(2).Infof("sending watch event %s", string(ev.JSON()))
 		if partialObjectMetadata {
 			if _, err := w.Write(ev.PartialObjectMetadataJSON()); err != nil {

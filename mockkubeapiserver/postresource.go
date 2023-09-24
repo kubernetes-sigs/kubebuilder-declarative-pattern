@@ -69,7 +69,7 @@ func (req *postResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return fmt.Errorf("name must be provided in payload")
 	}
 
-	if err := s.storage.CreateObject(ctx, resource, id, obj); err != nil {
+	if err := resource.CreateObject(ctx, id, obj); err != nil {
 		return err
 	}
 	return req.writeResponse(obj)

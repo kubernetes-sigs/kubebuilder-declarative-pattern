@@ -1,4 +1,4 @@
-package mockkubeapiserver
+package memorystorage
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/storage"
 	"sigs.k8s.io/yaml"
 )
 
@@ -16,12 +17,12 @@ func TestApply(t *testing.T) {
 	ctx := context.TODO()
 
 	gvk := schema.GroupVersionKind{Version: "v1", Kind: "ConfigMap"}
-	storage, err := NewMemoryStorage(NewTestClock(), NewTestUIDGenerator())
+	memoryStorage, err := NewMemoryStorage(storage.NewTestClock(), storage.NewTestUIDGenerator())
 	if err != nil {
 		t.Fatalf("NewMemoryStorage failed: %v", err)
 	}
 
-	resource := storage.findResourceByGVK(gvk)
+	resource := memoryStorage.findResourceByGVK(gvk)
 	if resource == nil {
 		t.Fatalf("findResourceByGVK(%v) unexpectedly returned nil", gvk)
 	}
@@ -55,7 +56,7 @@ data:
 		FieldManager: "foo",
 	}
 
-	mergedObject, changed, err := resource.DoServerSideApply(ctx, liveObj, []byte(patchYAML), applyOptions)
+	mergedObject, changed, err := storage.DoServerSideApply(ctx, resource, liveObj, []byte(patchYAML), applyOptions)
 	if err != nil {
 		t.Fatalf("DoServerSideApply gave error: %v", err)
 	}
