@@ -9,10 +9,10 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/yaml"
 )
 
@@ -93,8 +93,9 @@ func resetTimestamp(body string) string {
 	conditions := status["conditions"].([]interface{})
 	for _, condition := range conditions {
 		cond := condition.(map[string]interface{})
-		// mockkubeapiserver provides a mock timestamp.
-		cond["lastTransitionTime"] = mockkubeapiserver.NewTestClock().Now().Format("2006-01-02T15:04:05Z07:00")
+		// Use a fixed timestamp for golden tests.
+		t := time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+		cond["lastTransitionTime"] = t.Format("2006-01-02T15:04:05Z07:00")
 	}
 	b, _ := json.Marshal(u)
 	return string(b)

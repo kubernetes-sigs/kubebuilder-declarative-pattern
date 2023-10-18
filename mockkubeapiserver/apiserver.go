@@ -22,9 +22,12 @@ import (
 	"strings"
 
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/hooks"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/storage"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/storage/memorystorage"
 )
 
-func NewMockKubeAPIServer(addr string) (*MockKubeAPIServer, error) {
+func NewMockKubeAPIServer(addr string, options ...Option) (*MockKubeAPIServer, error) {
 	s := &MockKubeAPIServer{}
 	if addr == "" {
 		addr = ":http"
@@ -32,12 +35,25 @@ func NewMockKubeAPIServer(addr string) (*MockKubeAPIServer, error) {
 
 	s.httpServer = &http.Server{Addr: addr, Handler: s}
 
-	var err error
-
-	s.storage, err = NewMemoryStorage(NewTestClock(), NewTestUIDGenerator())
-	if err != nil {
-		return nil, err
+	for _, option := range options {
+		if err := option(s); err != nil {
+			return nil, err
+		}
 	}
+
+	// If storage wasn't set with an option, default to memory storage
+	if s.storage == nil {
+		storage, err := memorystorage.NewMemoryStorage(storage.NewTestClock(), storage.NewTestUIDGenerator())
+		if err != nil {
+			return nil, err
+		}
+		s.storage = storage
+	}
+
+	// These hooks mock behaviour that would otherwise require full controllers
+	s.storage.AddStorageHook(&hooks.CRDHook{})
+	s.storage.AddStorageHook(&hooks.NamespaceHook{})
+	s.storage.AddStorageHook(&hooks.DeploymentHook{})
 
 	return s, nil
 }
@@ -46,7 +62,7 @@ type MockKubeAPIServer struct {
 	httpServer *http.Server
 	listener   net.Listener
 
-	storage *MemoryStorage
+	storage storage.Storage
 
 	hooks []Hook
 }
@@ -335,5 +351,15 @@ func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		klog.Warningf("internal error for %s %s: %v", r.Method, r.URL, err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+type Option func(config *MockKubeAPIServer) error
+
+// WithStorage is an Option that allows specifying the storage implementation.
+func WithStorage(storage storage.Storage) Option {
+	return func(config *MockKubeAPIServer) error {
+		config.storage = storage
+		return nil
 	}
 }

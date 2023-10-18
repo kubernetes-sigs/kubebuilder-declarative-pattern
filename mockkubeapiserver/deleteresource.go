@@ -44,7 +44,7 @@ func (req *deleteResource) Run(ctx context.Context, s *MockKubeAPIServer) error 
 		return fmt.Errorf("unexpected subresource on delete %q", req.SubResource)
 	}
 
-	deletedObject, err := s.storage.DeleteObject(ctx, resource, id)
+	deletedObject, err := resource.DeleteObject(ctx, id)
 	if err != nil {
 		return err
 	}

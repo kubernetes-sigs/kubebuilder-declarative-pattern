@@ -44,7 +44,7 @@ func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 
 	id := types.NamespacedName{Namespace: req.Namespace, Name: req.Name}
 
-	existingObj, found, err := s.storage.GetObject(ctx, resource, id)
+	existingObj, found, err := resource.GetObject(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return req.writeResponse(original)
 	}
 
-	if err := s.storage.UpdateObject(ctx, resource, id, updated); err != nil {
+	if err := resource.UpdateObject(ctx, id, updated); err != nil {
 		return err
 	}
 	return req.writeResponse(updated)

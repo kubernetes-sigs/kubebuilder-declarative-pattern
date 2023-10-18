@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/storage"
 )
 
 // patchResource is a request to patch a single resource
@@ -45,7 +46,7 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	}
 
 	id := types.NamespacedName{Namespace: req.Namespace, Name: req.Name}
-	existingObj, found, err := s.storage.GetObject(ctx, resource, id)
+	existingObj, found, err := resource.GetObject(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -78,7 +79,7 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		// TODO: Should we treat this like an apply to an empty object?
 
 		patched := body
-		if err := s.storage.CreateObject(ctx, resource, id, patched); err != nil {
+		if err := resource.CreateObject(ctx, id, patched); err != nil {
 			return err
 		}
 
@@ -88,7 +89,7 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	var updated *unstructured.Unstructured
 	changed := true
 	if req.SubResource == "" {
-		if resource.TypeInfo != nil {
+		if resource.ParseableType() != nil {
 			patchOptions := metav1.PatchOptions{}
 			if fieldManager := req.r.URL.Query().Get("fieldManager"); fieldManager != "" {
 				patchOptions.FieldManager = fieldManager
@@ -100,7 +101,7 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 				}
 				patchOptions.Force = &forceBool
 			}
-			updated, changed, err = resource.DoServerSideApply(ctx, existingObj, bodyBytes, patchOptions)
+			updated, changed, err = storage.DoServerSideApply(ctx, resource, existingObj, bodyBytes, patchOptions)
 			if err != nil {
 				klog.Warningf("error from DoServerSideApply: %v", err)
 				return err
@@ -123,7 +124,7 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		klog.Infof("skipping write, object not changed")
 		return req.writeResponse(existingObj)
 	} else {
-		if err := s.storage.UpdateObject(ctx, resource, id, updated); err != nil {
+		if err := resource.UpdateObject(ctx, id, updated); err != nil {
 			return err
 		}
 		return req.writeResponse(updated)
