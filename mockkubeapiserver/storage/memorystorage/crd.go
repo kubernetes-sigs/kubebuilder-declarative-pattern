@@ -62,9 +62,10 @@ func (s *MemoryStorage) UpdateCRD(ev *storage.WatchEvent) error {
 		gr := gvr.GroupResource()
 
 		storage := &resourceStorage{
-			GroupResource: gr,
-			objects:       make(map[types.NamespacedName]*unstructured.Unstructured),
-			parent:        s,
+			GroupResource:        gr,
+			objects:              make(map[types.NamespacedName]*unstructured.Unstructured),
+			parent:               s,
+			resourceVersionClock: &s.resourceVersionClock,
 		}
 
 		// TODO: share storage across different versions
