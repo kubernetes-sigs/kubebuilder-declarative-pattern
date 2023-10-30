@@ -51,7 +51,7 @@ func NewMockKubeAPIServer(addr string, options ...Option) (*MockKubeAPIServer, e
 	}
 
 	// These hooks mock behaviour that would otherwise require full controllers
-	s.storage.AddStorageHook(&hooks.CRDHook{})
+	s.storage.AddStorageHook(&hooks.CRDHook{Storage: s.storage})
 	s.storage.AddStorageHook(&hooks.NamespaceHook{})
 	s.storage.AddStorageHook(&hooks.DeploymentHook{})
 
