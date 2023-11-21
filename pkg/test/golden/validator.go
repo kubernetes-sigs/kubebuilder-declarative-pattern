@@ -321,7 +321,7 @@ func (v *validator) Validate(r declarative.Reconciler) {
 
 			for i, o := range objects.Items {
 				if i != 0 {
-					b.WriteString("\n---\n\n")
+					b.WriteString("---\n")
 				}
 				u := o.UnstructuredObject()
 				if err := yamlizer.Encode(u, &b); err != nil {
