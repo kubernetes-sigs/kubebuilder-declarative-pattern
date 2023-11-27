@@ -29,9 +29,7 @@ spec:
           requests:
             cpu: 100m
             memory: 100Mi
-
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -62,9 +60,7 @@ spec:
           requests:
             cpu: 100m
             memory: 100Mi
-
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -98,9 +94,7 @@ spec:
           requests:
             cpu: 100m
             memory: 100Mi
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -117,9 +111,7 @@ spec:
     app: guestbook
     tier: frontend
   type: NodePort
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -138,9 +130,7 @@ spec:
     app: redis
     role: master
     tier: backend
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
