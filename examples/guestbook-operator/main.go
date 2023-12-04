@@ -30,7 +30,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
 
 	addonsv1alpha1 "sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator/api/v1alpha1"
@@ -51,10 +51,8 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -68,15 +66,17 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	addon.Init()
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme: scheme,
-		Metrics: metricsserver.Options{
-			BindAddress: "0", // Disable the metrics server
-		},
+	mgrOpt := ctrl.Options{
+		Scheme:                 scheme,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "c3cffa1a.example.org",
-	})
+	}
+	err := commonclient.SetMetricsBindAddress(&mgrOpt, "0")
+	if err != nil {
+		setupLog.Error(err, "unable to configure manager")
+	}
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), mgrOpt)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)

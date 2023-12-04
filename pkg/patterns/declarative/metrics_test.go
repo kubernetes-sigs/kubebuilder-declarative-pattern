@@ -38,11 +38,11 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
@@ -277,10 +277,10 @@ func TestAddIfNotPresent(t *testing.T) {
 	}
 
 	// Create manager
-	mgrOpt := manager.Options{
-		Metrics: metricsserver.Options{
-			BindAddress: "0", // Disable the metrics server, don't open unneeded ports
-		},
+	mgrOpt := manager.Options{}
+	err = commonclient.SetMetricsBindAddress(&mgrOpt, "0")
+	if err != nil {
+		t.Error(err)
 	}
 	mgr, err := manager.New(restConfig, mgrOpt)
 	if err != nil {

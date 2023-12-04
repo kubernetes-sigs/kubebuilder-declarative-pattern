@@ -13,8 +13,8 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
@@ -68,18 +68,20 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 	}
 
 	logger := klogr.New()
-	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
-		Scheme: scheme,
-		Metrics: metricsserver.Options{
-			BindAddress: "0", // Disable the metrics server
-		},
+	mgrOpt := ctrl.Options{
+		Scheme:         scheme,
 		LeaderElection: false,
 
 		// MapperProvider provides the rest mapper used to map go types to Kubernetes APIs
 		MapperProvider: restmapper.NewControllerRESTMapper,
 
 		Logger: logger,
-	})
+	}
+	err = commonclient.SetMetricsBindAddress(&mgrOpt, "0")
+	if err != nil {
+		h.Errorf("error configuring manager: %v", err)
+	}
+	mgr, err := ctrl.NewManager(restConfig, mgrOpt)
 	if err != nil {
 		h.Fatalf("error starting manager: %v", err)
 	}
