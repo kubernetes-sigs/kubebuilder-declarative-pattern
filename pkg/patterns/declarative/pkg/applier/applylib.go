@@ -54,9 +54,13 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	patchOptions.Force = &opt.Force
 
-	dynamicClient, err := dynamic.NewForConfig(opt.RESTConfig)
-	if err != nil {
-		return fmt.Errorf("error building dynamic client: %w", err)
+	dynamicClient := opt.DynamicClient
+	if dynamicClient == nil {
+		dc, err := dynamic.NewForConfig(opt.RESTConfig)
+		if err != nil {
+			return fmt.Errorf("error building dynamic client: %w", err)
+		}
+		dynamicClient = dc
 	}
 
 	restMapper := opt.RESTMapper

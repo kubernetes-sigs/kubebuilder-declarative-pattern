@@ -1,0 +1,20 @@
+apiVersion: addons.kpt.io/v1alpha1
+kind: CompositeDefinition
+metadata:
+  name: xnamespaces.justinsb.com
+spec:
+  actsOn:
+    apiVersion: justinsb.com/v1alpha1
+    kind: XNamespace
+  engine: yaml
+  definition: |
+    kind: Namespace
+    apiVersion: v1
+    metadata:
+      name: foo
+---
+apiVersion: justinsb.com/v1alpha1
+kind: XNamespace
+metadata:
+  name: test1
+spec:
