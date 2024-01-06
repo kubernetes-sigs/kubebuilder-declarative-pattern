@@ -5,6 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
@@ -39,4 +40,8 @@ type ApplierOptions struct {
 
 	ParentRef applyset.Parent
 	Client    client.Client
+
+	// DynamicClient, if set, will be used for applying additional objects.
+	// If not set, a dynamic client will be built from RESTConfig.
+	DynamicClient dynamic.Interface
 }
