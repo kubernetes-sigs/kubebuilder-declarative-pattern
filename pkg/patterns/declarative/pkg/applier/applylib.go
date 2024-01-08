@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
@@ -125,8 +126,7 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 }
 
 // NewParentRef maps a declarative object's information to the ParentRef defined in the applyset library.
-func NewParentRef(restMapper meta.RESTMapper, object runtime.Object, name, namespace string) (applyset.Parent, error) {
-	gvk := object.GetObjectKind().GroupVersionKind()
+func NewParentRef(restMapper meta.RESTMapper, object runtime.Object, gvk schema.GroupVersionKind, name, namespace string) (applyset.Parent, error) {
 	restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return nil, err
