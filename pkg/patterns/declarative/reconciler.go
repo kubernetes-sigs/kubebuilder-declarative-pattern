@@ -370,9 +370,13 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		}
 	}
 
-	parentRef, err := applier.NewParentRef(r.restMapper, instance, instance.GetName(), instance.GetNamespace())
+	gvk, err := apiutil.GVKForObject(instance, r.mgr.GetScheme())
 	if err != nil {
-		return statusInfo, err
+		return statusInfo, fmt.Errorf("getting GVK for %T: %w", instance, err)
+	}
+	parentRef, err := applier.NewParentRef(r.restMapper, instance, gvk, instance.GetName(), instance.GetNamespace())
+	if err != nil {
+		return statusInfo, fmt.Errorf("building applyset parent: %w", err)
 	}
 	applierOpt := applier.ApplierOptions{
 		RESTConfig:        r.config,
