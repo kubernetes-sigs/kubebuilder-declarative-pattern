@@ -43,5 +43,6 @@ type ApplierOptions struct {
 
 	// DynamicClient, if set, will be used for applying additional objects.
 	// If not set, a dynamic client will be built from RESTConfig.
+	// If the caller can provide a cached DynamicClient, that is more efficient.
 	DynamicClient dynamic.Interface
 }

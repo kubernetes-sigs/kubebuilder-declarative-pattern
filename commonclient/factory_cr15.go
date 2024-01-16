@@ -3,8 +3,11 @@
 package commonclient
 
 import (
+	"net/http"
+
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -17,6 +20,11 @@ func SourceKind(cache cache.Cache, obj client.Object) source.Source {
 // WrapEventHandler is a version-indendenent abstraction over handler.EventHandler
 func WrapEventHandler(h handler.EventHandler) handler.EventHandler {
 	return h
+}
+
+// GetHTTPClient returns the http.Client associated with the Cluster
+func GetHTTPClient(c cluster.Cluster) (*http.Client, error) {
+	return c.GetHTTPClient(), nil
 }
 
 type EventHandler = handler.EventHandler
