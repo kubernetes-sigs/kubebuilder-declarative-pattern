@@ -43,11 +43,11 @@ type kstatusAggregator struct {
 //
 // e.g.
 // computMethods := make(map[string]GetConditionsFn)
-// conditionsMethods := make(map[string]AbnormalConditionsMethod)
+// abnormalConditionsMethods := make(map[string]AbnormalConditionsMethod)
 //
 // resourceGVK := schema.GroupVersionKind{...}
 // computMethods[resourceGVK.String()] = <user supplied gvk specific 'Compute' method>
-// conditionsMethods[resourceGVK.String()] = <user supplied gvk specific Abnormal Conditions method>
+// abnormalConditionsMethods[resourceGVK.String()] = <user supplied gvk specific Abnormal Conditions method>
 //
 //	statusBuilder := &declarative.StatusBuilder  {
 //		BuildStatusImpl: status.NewOpenKStatusAggregator(computeMethods, abnormalConditionsMethods),
