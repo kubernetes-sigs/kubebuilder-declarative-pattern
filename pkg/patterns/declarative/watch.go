@@ -151,8 +151,8 @@ type clusterWatch struct {
 	registered map[string]struct{}
 }
 
-// BeforeApply is called by the controller before an apply. We establish any new watches that will be needed by the apply.
-func (w *clusterWatch) BeforeApply(ctx context.Context, op *ApplyOperation) error {
+// AfterApply is called by the controller after an apply. We establish any new watches that will be needed by the apply.
+func (w *clusterWatch) AfterApply(ctx context.Context, op *ApplyOperation) error {
 	log := log.FromContext(ctx)
 
 	labelSelector, err := labels.ValidatedSelectorFromSet(w.labelMaker(ctx, op.Subject))
