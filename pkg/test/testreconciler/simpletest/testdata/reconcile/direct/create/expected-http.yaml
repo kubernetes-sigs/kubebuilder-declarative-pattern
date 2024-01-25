@@ -20,11 +20,11 @@ Content-Length: 364
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","items":[{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"}}],"kind":"SimpleTestList","metadata":{"resourceVersion":"2"}}
+{"apiVersion":"addons.example.org/v1alpha1","items":[{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"}}],"kind":"SimpleTestList","metadata":{"resourceVersion":"3"}}
 
 ---
 
-GET http://kube-apiserver/apis/addons.example.org/v1alpha1/simpletests?allowWatchBookmarks=true&resourceVersion=2&timeoutSeconds=<replaced>&watch=true
+GET http://kube-apiserver/apis/addons.example.org/v1alpha1/simpletests?allowWatchBookmarks=true&resourceVersion=3&timeoutSeconds=<replaced>&watch=true
 Accept: application/json, */*
 
 200 OK
@@ -49,6 +49,19 @@ Date: (removed)
 
 ---
 
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1
+Accept: application/json, */*
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 266
+Content-Type: application/json
+Date: (removed)
+
+{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"apiextensions.k8s.io/v1","resources":[{"name":"customresourcedefinitions","singularName":"","namespaced":false,"group":"apiextensions.k8s.io","version":"v1","kind":"CustomResourceDefinition","verbs":null}]}
+
+---
+
 GET http://kube-apiserver/apis/apps/v1
 Accept: application/json, */*
 
@@ -59,6 +72,33 @@ Content-Type: application/json
 Date: (removed)
 
 {"kind":"APIResourceList","apiVersion":"v1","groupVersion":"apps/v1","resources":[{"name":"controllerrevisions","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"ControllerRevision","verbs":null},{"name":"daemonsets","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"DaemonSet","verbs":null},{"name":"deployments","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"Deployment","verbs":null},{"name":"deployments","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"Deployment","verbs":null},{"name":"replicasets","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"ReplicaSet","verbs":null},{"name":"statefulsets","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"StatefulSet","verbs":null}]}
+
+---
+
+GET http://kube-apiserver/apis/example.com/v1alpha1
+Accept: application/json, */*
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 99
+Content-Type: application/json
+Date: (removed)
+
+{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"example.com/v1alpha1","resources":null}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
 
 ---
 
@@ -90,6 +130,18 @@ Not Found
 
 ---
 
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Type: application/json
+Date: (removed)
+
+<streaming response not included>
+
+---
+
 GET http://kube-apiserver/api/v1/configmaps?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
 Accept: application/json
 
@@ -111,6 +163,37 @@ Content-Type: application/json
 Date: (removed)
 
 <streaming response not included>
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+POST http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions?fieldManager=kubectl-client-side-apply&fieldValidation=Strict
+Accept: application/json
+Content-Type: application/json
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
 
 ---
 
@@ -154,7 +237,7 @@ Content-Length: 1025
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
 
 ---
 
@@ -194,24 +277,11 @@ Content-Type: application/json
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 1680
+Content-Length: 1397
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
-
----
-
-GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
-Accept: application/json
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 1680
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
 
 ---
 
@@ -219,16 +289,46 @@ PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simple
 Accept: application/json, */*
 Content-Type: application/json
 
-{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false}}
 
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 276
+Content-Length: 277
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"6","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false}}
+
+---
+
+POST http://kube-apiserver/api/v1/namespaces/ns1/events
+Accept: application/json, */*
+Content-Type: application/json
+
+{"kind":"Event","apiVersion":"v1","metadata":{"name":"simple1.17adb0b63b1fcdbf","namespace":"ns1","creationTimestamp":null},"involvedObject":{"kind":"SimpleTest","namespace":"ns1","name":"simple1","uid":"00000000-0000-0000-0000-000000000002","apiVersion":"addons.example.org/v1alpha1","resourceVersion":"2"},"reason":"InternalError","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing","source":{"component":"addon-controller"},"firstTimestamp":"2024-01-25T20:22:10Z","lastTimestamp":"2024-01-25T20:22:10Z","count":1,"type":"Warning","eventTime":null,"reportingComponent":"addon-controller","reportingInstance":""}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 783
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":1,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:10Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:10Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:05Z","name":"simple1.17adb0b63b1fcdbf","namespace":"ns1","resourceVersion":"7","uid":"00000000-0000-0000-0000-000000000006"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
 
 ---
 
@@ -241,7 +341,7 @@ Content-Length: 1025
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
 
 ---
 
@@ -250,11 +350,24 @@ Accept: application/json
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 1680
+Content-Length: 1397
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
 
 ---
 
@@ -267,7 +380,7 @@ Content-Length: 1025
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"}}
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
 
 ---
 
@@ -276,24 +389,11 @@ Accept: application/json
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 1680
+Content-Length: 1397
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
-
----
-
-GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
-Accept: application/json
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 1680
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
 
 ---
 
@@ -301,13 +401,439 @@ PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simple
 Accept: application/json, */*
 Content-Type: application/json
 
-{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"5","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"6","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false}}
 
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 276
+Content-Length: 277
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":true}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"6","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false}}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b63b1fcdbf
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":2,"lastTimestamp":"2024-01-25T20:22:10Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing"}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 927
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":2,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:10Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:10Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:05Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b63b1fcdbf","namespace":"ns1","resourceVersion":"8","uid":"00000000-0000-0000-0000-000000000006"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
+Accept: application/json, */*
+Content-Type: application/json
+
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"6","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false}}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 277
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"6","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false}}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b63b1fcdbf
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":3,"lastTimestamp":"2024-01-25T20:22:10Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing"}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 927
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":3,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:10Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:10Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:05Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b63b1fcdbf","namespace":"ns1","resourceVersion":"9","uid":"00000000-0000-0000-0000-000000000006"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
+Accept: application/json, */*
+Content-Type: application/json
+
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"6","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false}}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 277
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"6","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false}}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b63b1fcdbf
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":4,"lastTimestamp":"2024-01-25T20:22:10Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing"}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 928
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":4,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:10Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:10Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:05Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b63b1fcdbf","namespace":"ns1","resourceVersion":"10","uid":"00000000-0000-0000-0000-000000000006"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b63b1fcdbf
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":5,"lastTimestamp":"2024-01-25T20:22:11Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing"}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 928
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":5,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:10Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:11Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:05Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b63b1fcdbf","namespace":"ns1","resourceVersion":"11","uid":"00000000-0000-0000-0000-000000000006"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 2759
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"things.example.com\"},\"spec\":{\"group\":\"example.com\",\"names\":{\"kind\":\"Thing\",\"listKind\":\"ThingList\",\"plural\":\"things\",\"singular\":\"thing\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1alpha1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"apiVersion\":{\"description\":\"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\",\"type\":\"string\"},\"kind\":{\"description\":\"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\",\"type\":\"string\"},\"metadata\":{\"type\":\"object\"},\"spec\":{\"properties\":{\"location\":{\"type\":\"string\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}\n"},"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"things.example.com","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"spec":{"group":"example.com","names":{"kind":"Thing","listKind":"ThingList","plural":"things","singular":"thing"},"scope":"Namespaced","versions":[{"name":"v1alpha1","schema":{"openAPIV3Schema":{"properties":{"apiVersion":{"description":"APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources","type":"string"},"kind":{"description":"Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds","type":"string"},"metadata":{"type":"object"},"spec":{"properties":{"location":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true,"storage":true}]}}
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1025
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k1\":\"v1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\",\"l1\":\"v1\"},\"name\":\"foo\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]}}\n"},"creationTimestamp":"2022-01-01T00:00:03Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000004"}}
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1397
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"addons.example.org/simpletest\":\"simple1\",\"example-app\":\"simpletest\"},\"name\":\"mydeployment\",\"namespace\":\"ns1\",\"ownerReferences\":[{\"apiVersion\":\"addons.example.org/v1alpha1\",\"blockOwnerDeletion\":true,\"controller\":true,\"kind\":\"SimpleTest\",\"name\":\"simple1\",\"uid\":\"00000000-0000-0000-0000-000000000002\"}]},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"bar\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"bar\"}},\"spec\":{\"containers\":[{\"image\":\"registry.k8s.io/pause:3.9\",\"name\":\"main\"}]}}}}\n"},"creationTimestamp":"2022-01-01T00:00:04Z","labels":{"addons.example.org/simpletest":"simple1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000005"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b63b1fcdbf
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":6,"lastTimestamp":"2024-01-25T20:22:12Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing"}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 928
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":6,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:10Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:12Z","message":"internal error: error applying manifest: unable to recognize \"manifestString\": no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:05Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b63b1fcdbf","namespace":"ns1","resourceVersion":"12","uid":"00000000-0000-0000-0000-000000000006"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}

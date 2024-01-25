@@ -6,7 +6,9 @@ metadata:
     l1: v1
 data:
   k1: v1
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,3 +26,52 @@ spec:
       containers:
       - name: main
         image: registry.k8s.io/pause:3.9
+
+---
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: things.example.com
+spec:
+  group: example.com
+  names:
+    kind: Thing
+    listKind: ThingList
+    plural: things
+    singular: thing
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              location:
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+
+---
+
+apiVersion: example.com/v1alpha1
+kind: Thing
+metadata:
+  name: thing1
+spec:
+  location: here
