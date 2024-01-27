@@ -88,10 +88,13 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 	b := d.inner.NewBuilder(opt)
 	f := d.inner.NewFactory(opt)
 
-	// TODO can we just reuse this
-	dynamicClient, err := f.DynamicClient()
-	if err != nil {
-		return err
+	dynamicClient := opt.DynamicClient
+	if dynamicClient == nil {
+		dc, err := f.DynamicClient()
+		if err != nil {
+			return err
+		}
+		dynamicClient = dc
 	}
 
 	if opt.Validate {
