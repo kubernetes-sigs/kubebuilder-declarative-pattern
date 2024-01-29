@@ -40,9 +40,9 @@ const (
     // WatchDelay is the time between a Watch being dropped and attempting to resume it
 	WatchDelay = 30 * time.Second
     // WatchTimeout sets a timeout for Watch call under normal operation
-	WatchTimeout = 300 * time.Second
+	WatchTimeout = 300
 	// WatchQuickTimeout sets a timeout for Watch in an Apply path
-	WatchQuickTimeout = 10 * time.Second
+	WatchQuickTimeout = 10
 )
 // NewDynamicWatch constructs a watcher for unstructured objects.
 // Deprecated: avoid using directly; will move to internal in future.
