@@ -35,9 +35,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// WatchDelay is the time between a Watch being dropped and attempting to resume it
-const WatchDelay = 30 * time.Second
 
+const (
+    // WatchDelay is the time between a Watch being dropped and attempting to resume it
+	WatchDelay = 30 * time.Second
+    // WatchTimeout sets a timeout for Watch call under normal operation
+	WatchTimeout = 300 * time.Second
+	// WatchQuickTimeout sets a timeout for Watch in an Apply path
+	WatchQuickTimeout = 10 * time.Second
+)
 // NewDynamicWatch constructs a watcher for unstructured objects.
 // Deprecated: avoid using directly; will move to internal in future.
 func NewDynamicWatch(restMapper meta.RESTMapper, client dynamic.Interface) (*dynamicWatch, chan event.GenericEvent, error) {
@@ -143,9 +149,9 @@ func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget met
 	options := w.FilterOptions
 	// Though we don't use the resource version, we allow bookmarks to help keep TCP connections healthy.
 	options.AllowWatchBookmarks = true
-	var watchTimeout int64 = 300
+	var watchTimeout int64 = WatchTimeout
 	if watchStarted != nil {
-		watchTimeout = 10
+		watchTimeout = WatchQuickTimeout
 	}
 	options.TimeoutSeconds = &watchTimeout
 
