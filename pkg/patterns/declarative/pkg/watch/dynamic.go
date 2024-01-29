@@ -143,11 +143,16 @@ func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget met
 	options := w.FilterOptions
 	// Though we don't use the resource version, we allow bookmarks to help keep TCP connections healthy.
 	options.AllowWatchBookmarks = true
+	var watchTimeout int64 = 300
+	if watchStarted != nil {
+		watchTimeout = 10
+	}
+	options.TimeoutSeconds = &watchTimeout
 
+	events, err := w.resource.Watch(context.TODO(), options)
 	if watchStarted != nil {
 		watchStarted.Done()
 	}
-	events, err := w.resource.Watch(context.TODO(), options)
 	if err != nil {
 		log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).Error(err, "failed to add watch to dynamic client")
 		return
