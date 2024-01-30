@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"atomic"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,12 +38,12 @@ import (
 
 
 const (
-    // WatchDelay is the time between a Watch being dropped and attempting to resume it
+	// WatchDelay is the time between a Watch being dropped and attempting to resume it
 	WatchDelay = 30 * time.Second
-    // WatchTimeout sets a timeout for Watch call under normal operation
-	WatchTimeout = 300
-	// WatchQuickTimeout sets a timeout for Watch in an Apply path
-	WatchQuickTimeout = 10
+	// WatchActivityTimeout sets a timeout for a Watch activity  under normal operation
+	WatchActivityTimeout = 300 * time.Second
+	// WatchActivityFastTimeout sets a timeout for Watch activity in an Apply path
+	WatchActivityFastTimeout = 10 * time.Second
 )
 // NewDynamicWatch constructs a watcher for unstructured objects.
 // Deprecated: avoid using directly; will move to internal in future.
@@ -144,18 +145,41 @@ type clientObject struct {
 //
 // [1] https://github.com/kubernetes/kubernetes/issues/54878#issuecomment-357575276
 func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget metav1.ObjectMeta, watchStarted *sync.WaitGroup) {
+	var sawActivity atomic.Bool
 	log := log.FromContext(ctx)
 
 	options := w.FilterOptions
 	// Though we don't use the resource version, we allow bookmarks to help keep TCP connections healthy.
 	options.AllowWatchBookmarks = true
-	var watchTimeout int64 = WatchTimeout
+	activityTimeout := WatchActivityTimeout
 	if watchStarted != nil {
-		watchTimeout = WatchQuickTimeout
+		activityTimeout = WatchActivityFastTimeout
 	}
-	options.TimeoutSeconds = &watchTimeout
 
-	events, err := w.resource.Watch(context.TODO(), options)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	// Check for events periodically
+	ticker := time.NewTicker(activityTimeout)
+	sawActivity.Store(false)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if !sawActivity.Load() {
+					log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).Info("no activity seen for a while, cancelling watch")
+					cancel()
+					return
+				}
+				sawActivity.Store(false)
+			}
+		}
+	}()
+
+	events, err := w.resource.Watch(ctx, options)
+	sawActivity.Store(true)
 	if watchStarted != nil {
 		watchStarted.Done()
 	}
@@ -170,6 +194,7 @@ func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget met
 	defer events.Stop()
 
 	for clientEvent := range events.ResultChan() {
+		sawActivity.Store(true)
 		switch clientEvent.Type {
 		case watch.Bookmark:
 			// not an object change, we ignore it
