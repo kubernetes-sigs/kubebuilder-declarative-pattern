@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -41,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
+	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/utils"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/kustomize"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
@@ -51,18 +53,20 @@ var _ reconcile.Reconciler = &Reconciler{}
 
 type Reconciler struct {
 	prototype DeclarativeObject
-	client    client.Client
-	config    *rest.Config
+
+	client        client.Client
+	restConfig    *rest.Config
+	httpClient    *http.Client
+	dynamicClient dynamic.Interface
+	restMapper    meta.RESTMapper
 
 	metrics reconcileMetrics
 	mgr     manager.Manager
 
 	// recorder is the EventRecorder for creating k8s events
-	recorder      recorder.EventRecorder
-	dynamicClient dynamic.Interface
+	recorder recorder.EventRecorder
 
-	restMapper meta.RESTMapper
-	options    reconcilerParams
+	options reconcilerParams
 }
 
 type DeclarativeObject interface {
@@ -105,11 +109,17 @@ func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts
 	r.recorder = mgr.GetEventRecorderFor(controllerName)
 
 	r.client = mgr.GetClient()
-	r.config = mgr.GetConfig()
+	r.restConfig = mgr.GetConfig()
+	httpClient, err := commonclient.GetHTTPClient(mgr)
+	if err != nil {
+		return fmt.Errorf("getting HTTP client: %w", err)
+	}
+	r.httpClient = httpClient
+
 	r.mgr = mgr
 	globalObjectTracker.mgr = mgr
 
-	d, err := dynamic.NewForConfig(r.config)
+	d, err := dynamic.NewForConfigAndClient(r.restConfig, r.httpClient)
 	if err != nil {
 		return err
 	}
@@ -379,7 +389,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		return statusInfo, fmt.Errorf("building applyset parent: %w", err)
 	}
 	applierOpt := applier.ApplierOptions{
-		RESTConfig:        r.config,
+		RESTConfig:        r.restConfig,
 		RESTMapper:        r.restMapper,
 		Namespace:         ns,
 		ParentRef:         parentRef,
@@ -389,6 +399,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		Force:             true,
 		CascadingStrategy: r.options.cascadingStrategy,
 		Client:            r.client,
+		DynamicClient:     r.dynamicClient,
 	}
 
 	applyOperation := &ApplyOperation{

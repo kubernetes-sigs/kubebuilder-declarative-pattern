@@ -4,10 +4,13 @@ package commonclient
 
 import (
 	"context"
+	"net/http"
 
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -21,6 +24,12 @@ func SourceKind(cache cache.Cache, obj client.Object) source.SyncingSource {
 // WrapEventHandler is a version-indendenent abstraction over handler.EventHandler
 func WrapEventHandler(h EventHandler) handler.EventHandler {
 	return &eventHandlerWithoutContext{h: h}
+}
+
+// GetHTTPClient returns the http.Client associated with the Cluster
+func GetHTTPClient(c cluster.Cluster) (*http.Client, error) {
+	// This is a "polyfill", later versions of controller-runtime do it better.
+	return rest.HTTPClientFor(c.GetConfig())
 }
 
 type eventHandlerWithoutContext struct {
