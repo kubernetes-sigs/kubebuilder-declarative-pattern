@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 	"sync/atomic"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +47,7 @@ const (
 	// WatchDelay is the time between a Watch being dropped and attempting to resume it
 	WatchDelay = 30 * time.Second
 )
+
 // NewDynamicWatch constructs a watcher for unstructured objects.
 // Deprecated: avoid using directly; will move to internal in future.
 func NewDynamicWatch(restMapper meta.RESTMapper, client dynamic.Interface) (*dynamicWatch, chan event.GenericEvent, error) {
