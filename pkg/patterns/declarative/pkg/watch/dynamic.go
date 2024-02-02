@@ -36,14 +36,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+	// WatchActivityTimeout sets a timeout for a Watch activity  under normal operation
+	WatchActivityTimeout = 300 * time.Second
+	// WatchActivityFirstTimeout sets a timeout for Watch activity in an Apply path
+	WatchActivityFirstTimeout = 300 * time.Second
+)
 
 const (
 	// WatchDelay is the time between a Watch being dropped and attempting to resume it
 	WatchDelay = 30 * time.Second
-	// WatchActivityTimeout sets a timeout for a Watch activity  under normal operation
-	WatchActivityTimeout = 300 * time.Second
-	// WatchActivityFastTimeout sets a timeout for Watch activity in an Apply path
-	WatchActivityFastTimeout = 10 * time.Second
 )
 // NewDynamicWatch constructs a watcher for unstructured objects.
 // Deprecated: avoid using directly; will move to internal in future.
@@ -153,7 +155,7 @@ func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget met
 	options.AllowWatchBookmarks = true
 	activityTimeout := WatchActivityTimeout
 	if watchStarted != nil {
-		activityTimeout = WatchActivityFastTimeout
+		activityTimeout = WatchActivityFirstTimeout
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
