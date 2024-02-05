@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/hints"
 )
 
 type ApplysetOptions struct {
@@ -57,6 +58,7 @@ func (a *ApplySetApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 
 	dynamicClient := opt.DynamicClient
 	if dynamicClient == nil {
+		hints.DeveloperRecommendation(context.Background(), "consider setting ApplierOptions.DynamicClient", "applierOptions", opt)
 		d, err := dynamic.NewForConfig(opt.RESTConfig)
 		if err != nil {
 			return fmt.Errorf("error building dynamic client: %w", err)
