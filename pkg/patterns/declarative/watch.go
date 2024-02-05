@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/hints"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/watch"
 )
 
@@ -96,6 +97,7 @@ func WatchChildren(options WatchChildrenOptions) error {
 		httpClient = options.HTTPClient
 	} else {
 		if options.RESTConfig != nil {
+			hints.DeveloperRecommendation(context.Background(), "consider setting WatchChildrenOptions.HTTPClient, if setting RESTConfig", "options", options)
 			hc, err := rest.HTTPClientFor(options.RESTConfig)
 			if err != nil {
 				return err
