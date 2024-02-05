@@ -55,6 +55,9 @@ type WatchChildrenOptions struct {
 	// RESTConfig is the configuration for connecting to the cluster.
 	RESTConfig *rest.Config
 
+	// HTTPClient is the HTTP client to use for requests.
+	HTTPClient *http.Client
+
 	// LabelMaker is used to build the labels we should watch on.
 	LabelMaker LabelMaker
 
@@ -88,6 +91,21 @@ func WatchChildren(options WatchChildrenOptions) error {
 		return fmt.Errorf("labelMaker is required to scope watches")
 	}
 
+	var httpClient *http.Client
+	if options.HTTPClient != nil {
+		httpClient = options.HTTPClient
+	} else {
+		if options.RESTConfig != nil {
+			hc, err := rest.HTTPClientFor(options.RESTConfig)
+			if err != nil {
+				return err
+			}
+			httpClient = hc
+		} else if options.Manager != nil {
+			httpClient = options.Manager.GetHTTPClient()
+		}
+	}
+
 	if options.RESTConfig == nil {
 		if options.Manager != nil {
 			options.RESTConfig = options.Manager.GetConfig()
@@ -100,23 +118,19 @@ func WatchChildren(options WatchChildrenOptions) error {
 	if options.Manager != nil {
 		restMapper = options.Manager.GetRESTMapper()
 	} else {
-		client, err := rest.HTTPClientFor(options.RESTConfig)
-		if err != nil {
-			return err
-		}
-		rm, err := commonclient.NewDiscoveryRESTMapper(options.RESTConfig, client)
+		rm, err := commonclient.NewDiscoveryRESTMapper(options.RESTConfig, httpClient)
 		if err != nil {
 			return err
 		}
 		restMapper = rm
 	}
 
-	client, err := dynamic.NewForConfig(options.RESTConfig)
+	dynamicClient, err := dynamic.NewForConfigAndClient(options.RESTConfig, httpClient)
 	if err != nil {
 		return err
 	}
 
-	dw, events, err := watch.NewDynamicWatch(restMapper, client)
+	dw, events, err := watch.NewDynamicWatch(restMapper, dynamicClient)
 	if err != nil {
 		return fmt.Errorf("creating dynamic watch: %v", err)
 	}
