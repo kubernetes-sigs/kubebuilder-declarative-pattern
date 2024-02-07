@@ -24,8 +24,8 @@ require (
 	k8s.io/kubectl v0.28.1
 	sigs.k8s.io/cli-utils v0.33.0
 	sigs.k8s.io/controller-runtime v0.16.1
-	sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20230420203711-4abaa68e1923
-	sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20230303024857-d1f76c15e05b
+	sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20231204193316-6f379365565f
+	sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20231204193316-6f379365565f
 	sigs.k8s.io/kustomize/api v0.14.0
 	sigs.k8s.io/kustomize/kyaml v0.14.3
 	sigs.k8s.io/yaml v1.3.0
