@@ -10,7 +10,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
-// NewDiscoveryRESTMapper is a version-independent wrapper around apiutil.NewDiscoveryRESTMapper
+// NewDiscoveryRESTMapper is a version-independent wrapper around creating a meta.RESTMapper
+// It calls NewDynamicRESTMapper as of kubebuilder-declarative-pattern 0.17.
+// Deprecated: prefer NewDynamicRESTMapper
 func NewDiscoveryRESTMapper(c *rest.Config, httpClient *http.Client) (meta.RESTMapper, error) {
-	return apiutil.NewDiscoveryRESTMapper(c, httpClient)
+	return NewDynamicRESTMapper(c, httpClient)
+}
+
+// NewDynamicRESTMapper is a version-independent wrapper around apiutil.NewDynamicRESTMapper
+func NewDynamicRESTMapper(c *rest.Config, httpClient *http.Client) (meta.RESTMapper, error) {
+	return apiutil.NewDynamicRESTMapper(c, httpClient)
 }
