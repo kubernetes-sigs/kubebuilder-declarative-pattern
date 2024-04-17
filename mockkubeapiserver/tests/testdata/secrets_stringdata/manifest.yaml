@@ -1,0 +1,16 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: default
+
+---
+
+kind: Secret
+apiVersion: v1
+metadata:
+  name: secret
+  namespace: default
+type: Opaque
+stringData:
+  foo: bar
+  foo2: bar2
