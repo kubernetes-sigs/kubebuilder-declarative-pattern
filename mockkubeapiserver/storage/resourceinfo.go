@@ -22,6 +22,9 @@ type ResourceInfo interface {
 	ListGVK() schema.GroupVersionKind
 	ParseableType() *typed.ParseableType
 
+	// SetsGeneration is true if we should automatically set metadata.generation for this resource kind.
+	SetsGeneration() bool
+
 	GetObject(ctx context.Context, id types.NamespacedName) (*unstructured.Unstructured, bool, error)
 
 	ListObjects(ctx context.Context, filter ListFilter) (*unstructured.UnstructuredList, error)

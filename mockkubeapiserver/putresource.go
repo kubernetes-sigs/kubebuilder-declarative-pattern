@@ -89,6 +89,15 @@ func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		return req.writeResponse(original)
 	}
 
+	if resource.SetsGeneration() {
+		specIsSame := reflect.DeepEqual(original.Object["spec"], updated.Object["spec"])
+		if !specIsSame {
+			generation := updated.GetGeneration()
+			generation++
+			updated.SetGeneration(generation)
+		}
+	}
+
 	if err := resource.UpdateObject(ctx, id, updated); err != nil {
 		return err
 	}

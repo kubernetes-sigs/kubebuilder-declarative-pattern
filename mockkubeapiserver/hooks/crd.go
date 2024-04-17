@@ -57,12 +57,6 @@ func (s *CRDHook) updateCRDConditions(ev *storage.WatchEvent) error {
 		return fmt.Errorf("status was of unexpected type %T", statusObj)
 	}
 
-	generation := u.GetGeneration()
-	if generation == 0 {
-		generation = 1
-		u.SetGeneration(generation)
-	}
-
 	var conditions []interface{}
 	conditions = append(conditions, map[string]interface{}{
 		"type":    "NamesAccepted",

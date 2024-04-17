@@ -33,3 +33,19 @@ func (r *memoryResourceInfo) ListGVK() schema.GroupVersionKind {
 func (r *memoryResourceInfo) ParseableType() *typed.ParseableType {
 	return r.parseableType
 }
+
+func (r *memoryResourceInfo) SetsGeneration() bool {
+	// Not all resources support metadata.generation; it looks like only those with status do (?)
+	// For now, exclude some well-known types that do not set metadata.generation.
+	switch r.gvk.GroupKind() {
+	case schema.GroupKind{Group: "", Kind: "ConfigMap"}:
+		return false
+	case schema.GroupKind{Group: "", Kind: "Secret"}:
+		return false
+	case schema.GroupKind{Group: "", Kind: "Namespace"}:
+		return false
+
+	default:
+		return true
+	}
+}
