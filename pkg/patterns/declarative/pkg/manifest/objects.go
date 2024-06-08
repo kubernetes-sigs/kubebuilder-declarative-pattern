@@ -161,12 +161,24 @@ func nestedFieldNoCopy(obj map[string]interface{}, fields ...string) (interface{
 	return val, true, nil
 }
 
+func (o *Object) podSpecPath() []string {
+	switch o.object.GetKind() {
+	case "CronJob":
+		return []string{"spec", "jobTemplate", "spec", "template", "spec"}
+	default: // Default to try the path used by common types such as Deployment, StatefulSet, etc.
+		return []string{"spec", "template", "spec"}
+	}
+}
+
 func (o *Object) MutateContainers(fn func(map[string]interface{}) error) error {
 	if o.object.Object == nil {
 		o.object.Object = make(map[string]interface{})
 	}
 
-	containers, found, err := nestedFieldNoCopy(o.object.Object, "spec", "template", "spec", "containers")
+	podSpecPath := o.podSpecPath()
+
+	containersPath := append(podSpecPath, "containers")
+	containers, found, err := nestedFieldNoCopy(o.object.Object, containersPath...)
 	if err != nil {
 		return fmt.Errorf("error reading containers: %v", err)
 	}
@@ -180,7 +192,8 @@ func (o *Object) MutateContainers(fn func(map[string]interface{}) error) error {
 		return fmt.Errorf("containers was not a list")
 	}
 
-	initContainers, found, err := nestedFieldNoCopy(o.object.Object, "spec", "template", "spec", "initContainers")
+	initContainersPath := append(podSpecPath, "initContainers")
+	initContainers, found, err := nestedFieldNoCopy(o.object.Object, initContainersPath...)
 	if err != nil {
 		return fmt.Errorf("error reading init containers: %v", err)
 	}
@@ -215,7 +228,7 @@ func (o *Object) MutatePodSpec(fn func(map[string]interface{}) error) error {
 		o.object.Object = make(map[string]interface{})
 	}
 
-	sp, found, err := nestedFieldNoCopy(o.object.Object, "spec", "template", "spec")
+	sp, found, err := nestedFieldNoCopy(o.object.Object, o.podSpecPath()...)
 	if err != nil {
 		return fmt.Errorf("error reading containers: %v", err)
 	}

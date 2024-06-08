@@ -29,7 +29,7 @@ import (
 // ImageRegistryTransform modifies all Pods to use registry for the image source and adds the imagePullSecret
 func ImageRegistryTransform(registry, imagePullSecret string) ObjectTransform {
 	return func(c context.Context, o DeclarativeObject, m *manifest.Objects) error {
-		return applyImageRegistry(c, o, m, registry, imagePullSecret, applyPrivateRegistryToImage)
+		return applyImageRegistry(c, m, registry, imagePullSecret, applyPrivateRegistryToImage)
 	}
 }
 
@@ -38,11 +38,11 @@ type ImageFunc func(registry, image string) string
 // PrivateRegistryTransform modifies all Pods to use registry for the image source and adds the imagePullSecret
 func PrivateRegistryTransform(registry, imagePullSecret string, imageFunc ImageFunc) ObjectTransform {
 	return func(c context.Context, o DeclarativeObject, m *manifest.Objects) error {
-		return applyImageRegistry(c, o, m, registry, imagePullSecret, imageFunc)
+		return applyImageRegistry(c, m, registry, imagePullSecret, imageFunc)
 	}
 }
 
-func applyImageRegistry(ctx context.Context, operatorObject DeclarativeObject, manifest *manifest.Objects, registry, secret string, imageFunc ImageFunc) error {
+func applyImageRegistry(ctx context.Context, manifest *manifest.Objects, registry, secret string, imageFunc ImageFunc) error {
 	log := log.FromContext(ctx)
 	if registry == "" && secret == "" {
 		return nil
