@@ -95,7 +95,11 @@ type ErrorResult struct {
 }
 
 func (e *ErrorResult) Error() string {
-	return e.Err.Error()
+	if e.Err != nil {
+		return e.Err.Error()
+	}
+
+	return ""
 }
 
 // For mocking
@@ -183,6 +187,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	if r.options.status != nil {
 		if err := r.options.status.Preflight(ctx, instance); err != nil {
+			if errorResult, ok := err.(*ErrorResult); ok {
+				// the user was specific about what they wanted to return; respect that
+				return errorResult.Result, errorResult.Err
+			}
+
 			log.Error(err, "preflight check failed, not reconciling")
 			statusInfo.Err = err
 			return result, statusInfo.Err
