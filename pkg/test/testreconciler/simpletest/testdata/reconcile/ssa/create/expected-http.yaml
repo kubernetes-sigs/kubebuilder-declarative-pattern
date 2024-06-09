@@ -20,11 +20,11 @@ Content-Length: 364
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","items":[{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"}}],"kind":"SimpleTestList","metadata":{"resourceVersion":"2"}}
+{"apiVersion":"addons.example.org/v1alpha1","items":[{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"}}],"kind":"SimpleTestList","metadata":{"resourceVersion":"3"}}
 
 ---
 
-GET http://kube-apiserver/apis/addons.example.org/v1alpha1/simpletests?allowWatchBookmarks=true&resourceVersion=2&timeoutSeconds=<replaced>&watch=true
+GET http://kube-apiserver/apis/addons.example.org/v1alpha1/simpletests?allowWatchBookmarks=true&resourceVersion=3&timeoutSeconds=<replaced>&watch=true
 Accept: application/json, */*
 
 200 OK
@@ -49,6 +49,19 @@ Date: (removed)
 
 ---
 
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1
+Accept: application/json, */*
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 266
+Content-Type: application/json
+Date: (removed)
+
+{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"apiextensions.k8s.io/v1","resources":[{"name":"customresourcedefinitions","singularName":"","namespaced":false,"group":"apiextensions.k8s.io","version":"v1","kind":"CustomResourceDefinition","verbs":null}]}
+
+---
+
 GET http://kube-apiserver/apis/apps/v1
 Accept: application/json, */*
 
@@ -59,6 +72,33 @@ Content-Type: application/json
 Date: (removed)
 
 {"kind":"APIResourceList","apiVersion":"v1","groupVersion":"apps/v1","resources":[{"name":"controllerrevisions","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"ControllerRevision","verbs":null},{"name":"daemonsets","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"DaemonSet","verbs":null},{"name":"deployments","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"Deployment","verbs":null},{"name":"deployments","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"Deployment","verbs":null},{"name":"replicasets","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"ReplicaSet","verbs":null},{"name":"statefulsets","singularName":"","namespaced":true,"group":"apps","version":"v1","kind":"StatefulSet","verbs":null}]}
+
+---
+
+GET http://kube-apiserver/apis/example.com/v1alpha1
+Accept: application/json, */*
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 99
+Content-Type: application/json
+Date: (removed)
+
+{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"example.com/v1alpha1","resources":null}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
 
 ---
 
@@ -87,6 +127,18 @@ X-Content-Type-Options: nosniff
 
 Not Found
 
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
+Accept: application/json
+
+200 OK
+Cache-Control: no-cache, private
+Content-Type: application/json
+Date: (removed)
+
+<streaming response not included>
 
 ---
 
@@ -114,201 +166,324 @@ Date: (removed)
 
 ---
 
-PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1
-Accept: application/json, */*
-Content-Type: application/json
-
-{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z","labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"}},"spec":{"channel":"stable"},"status":{"healthy":false}}
-
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 561
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"name":"simple1","namespace":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false}}
-
----
-
-PATCH http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo?fieldManager=kdp-test&force=true
-Accept: application/json
-Content-Type: application/apply-patch+yaml
-
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]}}
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 583
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000003"}}
-
----
-
-PATCH http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment?fieldManager=kdp-test&force=true
-Accept: application/json
-Content-Type: application/apply-patch+yaml
-
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 1040
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
-
----
-
-GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
-Accept: application/json
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 583
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000003"}}
-
----
-
-GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
-Accept: application/json
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 1040
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
-
----
-
 PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simpletests/simple1/status
 Accept: application/json, */*
 Content-Type: application/json
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"name":"simple1","namespace":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"all manifests are reconciled.","reason":"Normal","status":"True","type":"Ready"}],"healthy":true,"phase":"Current"}}
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","creationTimestamp":"2022-01-01T00:00:01Z"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Applying"}}
+
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 730
+Content-Length: 296
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"name":"simple1","namespace":"ns1","resourceVersion":"6","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"all manifests are reconciled.","reason":"Normal","status":"True","type":"Ready"}],"healthy":true,"phase":"Current"}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","name":"simple1","namespace":"ns1","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false,"phase":"Applying"}}
+
+---
+
+POST http://kube-apiserver/api/v1/namespaces/ns1/events
+Accept: application/json, */*
+Content-Type: application/json
+
+{"kind":"Event","apiVersion":"v1","metadata":{"name":"simple1.17adb0b6a298428a","namespace":"ns1","creationTimestamp":null},"involvedObject":{"kind":"SimpleTest","namespace":"ns1","name":"simple1","uid":"00000000-0000-0000-0000-000000000002","apiVersion":"addons.example.org/v1alpha1","resourceVersion":"2"},"reason":"InternalError","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing","source":{"component":"addon-controller"},"firstTimestamp":"2024-01-25T20:22:12Z","lastTimestamp":"2024-01-25T20:22:12Z","count":1,"type":"Warning","eventTime":null,"reportingComponent":"addon-controller","reportingInstance":""}
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 808
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":1,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:12Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:12Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","name":"simple1.17adb0b6a298428a","namespace":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000003"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
 
 ---
 
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
 Accept: application/json
 
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 583
-Content-Type: application/json
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
 Date: (removed)
+X-Content-Type-Options: nosniff
 
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000003"}}
+Not Found
+
 
 ---
 
 GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
 
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 1040
-Content-Type: application/json
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
 Date: (removed)
+X-Content-Type-Options: nosniff
 
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
+Not Found
+
 
 ---
 
-GET http://kube-apiserver/api
-Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b6a298428a
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":2,"lastTimestamp":"2024-01-25T20:22:12Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing"}
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 74
+Content-Length: 952
 Content-Type: application/json
 Date: (removed)
 
-{"kind":"APIVersions","versions":["v1"],"serverAddressByClientCIDRs":null}
+{"apiVersion":"v1","count":2,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:12Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:12Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b6a298428a","namespace":"ns1","resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000003"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
 
 ---
 
-GET http://kube-apiserver/apis
-Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 3521
-Content-Type: application/json
-Date: (removed)
-
-{"kind":"APIGroupList","apiVersion":"v1","groups":[{"name":"","versions":[{"groupVersion":"/v1","version":"v1"}],"preferredVersion":{"groupVersion":"/v1","version":"v1"}},{"name":"addons.example.org","versions":[{"groupVersion":"addons.example.org/v1alpha1","version":"v1alpha1"}],"preferredVersion":{"groupVersion":"addons.example.org/v1alpha1","version":"v1alpha1"}},{"name":"admissionregistration.k8s.io","versions":[{"groupVersion":"admissionregistration.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"admissionregistration.k8s.io/v1","version":"v1"}},{"name":"apiextensions.k8s.io","versions":[{"groupVersion":"apiextensions.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"apiextensions.k8s.io/v1","version":"v1"}},{"name":"apiregistration.k8s.io","versions":[{"groupVersion":"apiregistration.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"apiregistration.k8s.io/v1","version":"v1"}},{"name":"apps","versions":[{"groupVersion":"apps/v1","version":"v1"}],"preferredVersion":{"groupVersion":"apps/v1","version":"v1"}},{"name":"autoscaling","versions":[{"groupVersion":"autoscaling/v1","version":"v1"},{"groupVersion":"autoscaling/v2","version":"v2"},{"groupVersion":"autoscaling/v2beta2","version":"v2beta2"}],"preferredVersion":{"groupVersion":"autoscaling/v2beta2","version":"v2beta2"}},{"name":"batch","versions":[{"groupVersion":"batch/v1","version":"v1"}],"preferredVersion":{"groupVersion":"batch/v1","version":"v1"}},{"name":"certificates.k8s.io","versions":[{"groupVersion":"certificates.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"certificates.k8s.io/v1","version":"v1"}},{"name":"coordination.k8s.io","versions":[{"groupVersion":"coordination.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"coordination.k8s.io/v1","version":"v1"}},{"name":"discovery.k8s.io","versions":[{"groupVersion":"discovery.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"discovery.k8s.io/v1","version":"v1"}},{"name":"events.k8s.io","versions":[{"groupVersion":"events.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"events.k8s.io/v1","version":"v1"}},{"name":"flowcontrol.apiserver.k8s.io","versions":[{"groupVersion":"flowcontrol.apiserver.k8s.io/v1beta1","version":"v1beta1"},{"groupVersion":"flowcontrol.apiserver.k8s.io/v1beta2","version":"v1beta2"}],"preferredVersion":{"groupVersion":"flowcontrol.apiserver.k8s.io/v1beta2","version":"v1beta2"}},{"name":"networking.k8s.io","versions":[{"groupVersion":"networking.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"networking.k8s.io/v1","version":"v1"}},{"name":"node.k8s.io","versions":[{"groupVersion":"node.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"node.k8s.io/v1","version":"v1"}},{"name":"policy","versions":[{"groupVersion":"policy/v1","version":"v1"}],"preferredVersion":{"groupVersion":"policy/v1","version":"v1"}},{"name":"rbac.authorization.k8s.io","versions":[{"groupVersion":"rbac.authorization.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"rbac.authorization.k8s.io/v1","version":"v1"}},{"name":"scheduling.k8s.io","versions":[{"groupVersion":"scheduling.k8s.io/v1","version":"v1"}],"preferredVersion":{"groupVersion":"scheduling.k8s.io/v1","version":"v1"}},{"name":"storage.k8s.io","versions":[{"groupVersion":"storage.k8s.io/v1","version":"v1"},{"groupVersion":"storage.k8s.io/v1beta1","version":"v1beta1"}],"preferredVersion":{"groupVersion":"storage.k8s.io/v1beta1","version":"v1beta1"}}]}
-
----
-
-PATCH http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo?fieldManager=kdp-test&force=true
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
 Accept: application/json
-Content-Type: application/apply-patch+yaml
 
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]}}
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 583
-Content-Type: application/json
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
 Date: (removed)
+X-Content-Type-Options: nosniff
 
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000003"}}
+Not Found
 
----
-
-PATCH http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment?fieldManager=kdp-test&force=true
-Accept: application/json
-Content-Type: application/apply-patch+yaml
-
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}]},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}}}
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 1040
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
 
 ---
 
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
 Accept: application/json
 
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 583
-Content-Type: application/json
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
 Date: (removed)
+X-Content-Type-Options: nosniff
 
-{"apiVersion":"v1","data":{"k1":"v1"},"kind":"ConfigMap","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest","l1":"v1"},"name":"foo","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000003"}}
+Not Found
+
 
 ---
 
 GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
 
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b6a298428a
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":3,"lastTimestamp":"2024-01-25T20:22:12Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing"}
+
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 1040
+Content-Length: 952
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"creationTimestamp":"2022-01-01T00:00:03Z","generation":1,"labels":{"addons.example.org/simpletest":"simple1","applyset.kubernetes.io/part-of":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1","example-app":"simpletest"},"name":"mydeployment","namespace":"ns1","ownerReferences":[{"apiVersion":"addons.example.org/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"SimpleTest","name":"simple1","uid":"00000000-0000-0000-0000-000000000002"}],"resourceVersion":"5","uid":"00000000-0000-0000-0000-000000000004"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"bar"}},"template":{"metadata":{"labels":{"app":"bar"}},"spec":{"containers":[{"image":"registry.k8s.io/pause:3.9","name":"main"}]}}},"status":{"availableReplicas":3,"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"MinimumReplicasAvailable","status":"True","type":"Available"},{"lastTransitionTime":"2022-01-01T00:00:00Z","reason":"NewReplicaSetAvailable","status":"True","type":"Progressing"}],"observedGeneration":1,"readyReplicas":3,"replicas":3,"updatedReplicas":3}}
+{"apiVersion":"v1","count":3,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:12Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:12Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b6a298428a","namespace":"ns1","resourceVersion":"6","uid":"00000000-0000-0000-0000-000000000003"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b6a298428a
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":4,"lastTimestamp":"2024-01-25T20:22:12Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing"}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 952
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":4,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:12Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:12Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b6a298428a","namespace":"ns1","resourceVersion":"7","uid":"00000000-0000-0000-0000-000000000003"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b6a298428a
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":5,"lastTimestamp":"2024-01-25T20:22:13Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing"}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 952
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":5,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:12Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:13Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b6a298428a","namespace":"ns1","resourceVersion":"8","uid":"00000000-0000-0000-0000-000000000003"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
+
+---
+
+GET http://kube-apiserver/apis/apiextensions.k8s.io/v1/customresourcedefinitions/things.example.com
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
+Accept: application/json
+
+404 Not Found
+Content-Length: 10
+Content-Type: text/plain; charset=utf-8
+Date: (removed)
+X-Content-Type-Options: nosniff
+
+Not Found
+
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/ns1/events/simple1.17adb0b6a298428a
+Accept: application/json, */*
+Content-Type: application/strategic-merge-patch+json
+
+{"count":6,"lastTimestamp":"2024-01-25T20:22:13Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing"}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 952
+Content-Type: application/json
+Date: (removed)
+
+{"apiVersion":"v1","count":6,"eventTime":null,"firstTimestamp":"2024-01-25T20:22:12Z","involvedObject":{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","name":"simple1","namespace":"ns1","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"kind":"Event","lastTimestamp":"2024-01-25T20:22:13Z","message":"internal error: error applying manifest: error getting rest mapping for example.com/v1alpha1, Kind=Thing: no matches for example.com/, Resource=Thing","metadata":{"creationTimestamp":"2022-01-01T00:00:02Z","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:count":{},"f:lastTimestamp":{},"f:message":{}},"operation":"Apply"}],"name":"simple1.17adb0b6a298428a","namespace":"ns1","resourceVersion":"9","uid":"00000000-0000-0000-0000-000000000003"},"reason":"InternalError","reportingComponent":"addon-controller","reportingInstance":"","source":{"component":"addon-controller"},"type":"Warning"}
