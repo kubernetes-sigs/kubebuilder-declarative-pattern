@@ -125,6 +125,10 @@ func (s *MemoryStorage) AddObject(obj *unstructured.Unstructured) error {
 		return fmt.Errorf("object group/version/kind %v not known", gvk)
 	}
 
+	if resource.SetsGeneration() {
+		obj.SetGeneration(1)
+	}
+
 	return resource.CreateObject(ctx, id, obj)
 }
 

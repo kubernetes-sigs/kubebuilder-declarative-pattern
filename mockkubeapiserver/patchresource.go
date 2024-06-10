@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,6 +80,11 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		// TODO: Should we treat this like an apply to an empty object?
 
 		patched := body
+
+		if resource.SetsGeneration() {
+			patched.SetGeneration(1)
+		}
+
 		if err := resource.CreateObject(ctx, id, patched); err != nil {
 			return err
 		}
@@ -124,6 +130,15 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		klog.Infof("skipping write, object not changed")
 		return req.writeResponse(existingObj)
 	} else {
+		if resource.SetsGeneration() {
+			specIsSame := reflect.DeepEqual(existingObj.Object["spec"], updated.Object["spec"])
+			if !specIsSame {
+				generation := updated.GetGeneration()
+				generation++
+				updated.SetGeneration(generation)
+			}
+		}
+
 		if err := resource.UpdateObject(ctx, id, updated); err != nil {
 			return err
 		}

@@ -53,12 +53,6 @@ func (s *DeploymentHook) deploymentChanged(ev *storage.WatchEvent) error {
 		return fmt.Errorf("status was of unexpected type %T", statusObj)
 	}
 
-	generation := u.GetGeneration()
-	if generation == 0 {
-		generation = 1
-		u.SetGeneration(generation)
-	}
-
 	replicasVal, _, err := unstructured.NestedFieldNoCopy(u.Object, "spec", "replicas")
 	if err != nil {
 		return fmt.Errorf("error getting spec.replicas: %w", err)
@@ -91,7 +85,7 @@ func (s *DeploymentHook) deploymentChanged(ev *storage.WatchEvent) error {
 	status["replicas"] = replicas
 	status["updatedReplicas"] = replicas
 
-	observedGeneration := generation
+	observedGeneration := u.GetGeneration()
 	status["observedGeneration"] = observedGeneration
 
 	return nil
