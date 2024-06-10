@@ -257,16 +257,6 @@ Kubectl-Command: kubectl apply
 
 ---
 
-GET /apis/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
-
----
-
 GET /api/v1/namespaces/ns1
 Accept: application/json
 Accept-Encoding: gzip

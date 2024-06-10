@@ -71,7 +71,7 @@ data:
 	parentGVK := parent.GroupVersionKind()
 	restmapping, err := h.RESTMapper().RESTMapping(parentGVK.GroupKind(), parentGVK.Version)
 	if err != nil {
-		h.Fatalf("error building parent restmappaing: %v", err)
+		h.Fatalf("error building parent restmapping: %v", err)
 	}
 	s, err := New(Options{
 		Parent:        NewParentRef(parent, "test", "default", restmapping),
