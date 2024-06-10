@@ -32,6 +32,10 @@ type apiGroupList struct {
 func (r *apiGroupList) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	groupMap := make(map[string]*metav1.APIGroup)
 	for _, resource := range s.storage.AllResources() {
+		if resource.Group == "" {
+			// core API does not appear in this list
+			continue
+		}
 		group := groupMap[resource.Group]
 		if group == nil {
 			group = &metav1.APIGroup{Name: resource.Group}
