@@ -35,6 +35,9 @@ var DefaultManifestLoader ManifestLoaderFunc
 // ReconcilerOption implements the options pattern for reconcilers
 type ReconcilerOption func(params reconcilerParams) reconcilerParams
 
+// NestedManifestFunc returns the path to any nested manifests in the object, if any.
+type NestedManifestFunc func(m *manifest.Object) ([][]string, error)
+
 // Options are a set of reconcilerOptions applied to all controllers
 var Options struct {
 	// Begin options are applied before evaluating controller specific options
@@ -64,6 +67,12 @@ type reconcilerParams struct {
 
 	// hooks allow for interception of events during the reconciliation lifecycle
 	hooks []Hook
+
+	// nestedManifestFn allows specifying whether the object contains nested
+	// manifests. A nested manifest is a field which contains its own yaml bundle.
+	// The nested manifest will be unmarshalled, object transforms will be applied,
+	// and the result is then marshalled back to the parent object.
+	nestedManifestFn NestedManifestFunc
 }
 
 type ManifestController interface {
@@ -249,6 +258,19 @@ func WithReconcileMetrics(metricsDuration int, ot *ObjectTracker) ReconcilerOpti
 func WithHook(hook Hook) ReconcilerOption {
 	return func(p reconcilerParams) reconcilerParams {
 		p.hooks = append(p.hooks, hook)
+		return p
+	}
+}
+
+// WithNestedManifestFunc allows specifying whether the object contains nested
+// manifests. A nested manifest is a field which contains its own yaml bundle.
+// The nested manifest will be unmarshalled, object transforms will be applied,
+// and the result is then marshalled back to the parent object.
+// The provided function should return a list of field paths where nested manifests
+// are expected to be found.
+func WithNestedManifestFunc(nestedManifestFn NestedManifestFunc) ReconcilerOption {
+	return func(p reconcilerParams) reconcilerParams {
+		p.nestedManifestFn = nestedManifestFn
 		return p
 	}
 }

@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 )
 
 // Objects holds a collection of objects, so that we can filter / sequence them
@@ -360,6 +361,23 @@ func (o *Objects) JSONManifest() (string, error) {
 		b.Write(json)
 	}
 
+	return b.String(), nil
+}
+
+// ToYAML marshals the list of objects to a yaml manifest
+func (o *Objects) ToYAML() (string, error) {
+	var b bytes.Buffer
+
+	for i, item := range o.Items {
+		objYaml, err := yaml.Marshal(item.UnstructuredObject().Object)
+		if err != nil {
+			return "", err
+		}
+		b.Write(objYaml)
+		if i < len(o.Items)-1 {
+			b.WriteString("---\n")
+		}
+	}
 	return b.String(), nil
 }
 
