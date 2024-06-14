@@ -1269,3 +1269,135 @@ func Test_Sort(t *testing.T) {
 		})
 	}
 }
+
+func Test_ToYAML(t *testing.T) {
+	deployment := &Object{
+		object: &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "apps/v1",
+				"kind":       "Deployment",
+				"metadata": map[string]interface{}{
+					"name": "frontend111",
+				},
+				"spec": map[string]interface{}{
+					"template": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"containers": []map[string]interface{}{
+								{
+									"name":  "php-redis",
+									"image": "gcr.io/google-samples/gb-frontend:v4",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		name:  "frontend111",
+		Kind:  "Deployment",
+		Group: "apps",
+	}
+	service := &Object{
+		object: &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Service",
+				"metadata": map[string]interface{}{
+					"name": "frontend-service",
+				},
+			},
+		},
+		name:  "frontend-service",
+		Kind:  "Service",
+		Group: "",
+	}
+	serviceAccount := &Object{
+		object: &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "ServiceAccount",
+				"metadata": map[string]interface{}{
+					"name": "serviceaccount",
+				},
+			},
+		},
+		name:  "serviceaccount",
+		Kind:  "ServiceAccount",
+		Group: "",
+	}
+	tests := []struct {
+		name           string
+		inputObjects   *Objects
+		expectedOutput string
+	}{
+		{
+			name: "multiple objects",
+			inputObjects: &Objects{
+				Items: []*Object{
+					deployment,
+					service,
+					serviceAccount,
+				},
+			},
+			expectedOutput: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend111
+spec:
+  template:
+    spec:
+      containers:
+      - image: gcr.io/google-samples/gb-frontend:v4
+        name: php-redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: serviceaccount
+`,
+		},
+		{
+			name: "empty list",
+			inputObjects: &Objects{
+				Items: []*Object{},
+			},
+			expectedOutput: ``,
+		},
+		{
+			name: "single object",
+			inputObjects: &Objects{
+				Items: []*Object{
+					deployment,
+				},
+			},
+			expectedOutput: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend111
+spec:
+  template:
+    spec:
+      containers:
+      - image: gcr.io/google-samples/gb-frontend:v4
+        name: php-redis
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := tt.inputObjects.ToYAML()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(tt.expectedOutput, out); diff != "" {
+				t.Errorf("output yaml mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
