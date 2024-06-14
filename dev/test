@@ -27,6 +27,13 @@ cd "${REPO_ROOT}"
 
 set -x
 
+# We need go.work to test with our "sub" modules
+if [[ -z go.work ]]; then
+  go work init .
+fi
+#go work use ./applylib
+#go work use ./mockkubeapiserver
+
 pushd mockkubeapiserver
 CGO_ENABLED=0 go test -count=1 -v ./...
 popd
