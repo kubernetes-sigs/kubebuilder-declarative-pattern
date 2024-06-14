@@ -22,6 +22,15 @@ import (
 	"k8s.io/klog/v2"
 )
 
+type ObjectStatus struct {
+	GVK           schema.GroupVersionKind
+	NameNamespace types.NamespacedName
+	IsHealthy     bool
+	IsPruned      bool
+	Message       string
+	Error         error
+}
+
 // ApplyResults contains the results of an Apply operation.
 type ApplyResults struct {
 	total             int
@@ -31,6 +40,7 @@ type ApplyResults struct {
 	pruneFailCount    int
 	healthyCount      int
 	unhealthyCount    int
+	Objects           []ObjectStatus
 }
 
 // AllApplied is true if the desired state has been successfully applied for all objects.
@@ -62,6 +72,14 @@ func (r *ApplyResults) checkInvariants() {
 // applyError records that the apply of an object failed with an error.
 func (r *ApplyResults) applyError(gvk schema.GroupVersionKind, nn types.NamespacedName, err error) {
 	r.applyFailCount++
+	r.Objects = append(r.Objects, ObjectStatus{
+		GVK:           gvk,
+		NameNamespace: nn,
+		IsHealthy:     false,
+		IsPruned:      false,
+		Message:       "Apply Error",
+		Error:         err,
+	})
 	klog.Warningf("error from apply on %s %s: %v", gvk, nn, err)
 }
 
@@ -72,17 +90,37 @@ func (r *ApplyResults) applySuccess(gvk schema.GroupVersionKind, nn types.Namesp
 
 // pruneError records that the prune of an object failed with an error.
 func (r *ApplyResults) pruneError(gvk schema.GroupVersionKind, nn types.NamespacedName, err error) {
+	r.Objects = append(r.Objects, ObjectStatus{
+		GVK:           gvk,
+		NameNamespace: nn,
+		IsHealthy:     true,
+		IsPruned:      true,
+		Message:       "Prune Error",
+		Error:         err,
+	})
 	r.pruneFailCount++
 	klog.Warningf("error from pruning on %s %s: %v", gvk, nn, err)
 }
 
 // pruneSuccess records that an object was pruned and this succeeded.
 func (r *ApplyResults) pruneSuccess(gvk schema.GroupVersionKind, nn types.NamespacedName) {
+	r.Objects = append(r.Objects, ObjectStatus{
+		GVK:           gvk,
+		NameNamespace: nn,
+		IsPruned:      true,
+	})
 	r.pruneSuccessCount++
 }
 
 // reportHealth records the health of an object.
-func (r *ApplyResults) reportHealth(gvk schema.GroupVersionKind, nn types.NamespacedName, isHealthy bool) {
+func (r *ApplyResults) reportHealth(gvk schema.GroupVersionKind, nn types.NamespacedName, isHealthy bool, message string) {
+	r.Objects = append(r.Objects, ObjectStatus{
+		GVK:           gvk,
+		NameNamespace: nn,
+		IsHealthy:     isHealthy,
+		IsPruned:      false,
+		Message:       message,
+	})
 	if isHealthy {
 		r.healthyCount++
 	} else {

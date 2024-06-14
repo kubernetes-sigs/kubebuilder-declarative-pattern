@@ -257,8 +257,9 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		visitedUids.Insert(lastApplied.GetUID())
 		tracker.lastApplied = lastApplied
 		results.applySuccess(gvk, nn)
-		tracker.isHealthy = isHealthy(lastApplied)
-		results.reportHealth(gvk, nn, tracker.isHealthy)
+		message := ""
+		tracker.isHealthy, message = isHealthy(lastApplied)
+		results.reportHealth(gvk, nn, tracker.isHealthy, message)
 	}
 
 	// We want to be more cautions on pruning and only do it if all manifests are applied.
