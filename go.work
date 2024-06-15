@@ -4,5 +4,6 @@ use (
 	.
 	./applylib
 	./examples/guestbook-operator
+	./ktest
 	./mockkubeapiserver
 )

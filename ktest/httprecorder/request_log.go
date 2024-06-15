@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -242,17 +243,19 @@ func (l *RequestLog) RemoveUserAgent() {
 	l.RemoveHeader("user-agent")
 }
 
-func (l *RequestLog) RegexReplaceURL(find string, replace string) {
+func (l *RequestLog) RegexReplaceURL(t *testing.T, find string, replace string) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
+
+	r, err := regexp.Compile(find)
+	if err != nil {
+		t.Fatalf("failed to compile regex %q: %v", find, err)
+	}
 
 	for i := range l.entries {
 		request := &l.entries[i].Request
 		u := request.URL
-		r, err := regexp.Compile(find)
-		if err != nil {
-			klog.Fatalf("failed to compile regex %q: %v", find, err)
-		}
+
 		u = r.ReplaceAllString(u, replace)
 		request.URL = u
 	}

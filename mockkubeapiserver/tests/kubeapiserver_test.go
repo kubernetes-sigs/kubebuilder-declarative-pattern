@@ -10,11 +10,10 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/httprecorder"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/testharness"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
 
 func TestGoldenTests(t *testing.T) {
@@ -47,27 +46,28 @@ func TestGoldenTests(t *testing.T) {
 			WrapTransport: wrapTransport,
 		}
 
-		httpClient := &http.Client{
-			Transport: wrapTransport(http.DefaultTransport),
+		httpClient, err := rest.HTTPClientFor(restConfig)
+		if err != nil {
+			t.Fatalf("error from rest.HTTPClientFor: %v", err)
 		}
 
 		p := filepath.Join(testdir, "manifest.yaml")
 		manifestYAML := string(h.MustReadFile(p))
-		objects, err := manifest.ParseObjects(ctx, manifestYAML)
+		objects, err := testharness.ParseObjects(ctx, manifestYAML)
 		if err != nil {
 			t.Errorf("error parsing manifest %q: %v", p, err)
 		}
 
-		restMapper, err := restmapper.NewForTest(restConfig)
+		restMapper, err := apiutil.NewDynamicRESTMapper(restConfig, httpClient)
 		if err != nil {
-			t.Fatalf("error from controllerrestmapper.NewForTest: %v", err)
+			t.Fatalf("error from apiutil.NewDynamicRESTMapper: %v", err)
 		}
 
 		dynamicClient, err := dynamic.NewForConfigAndClient(restConfig, httpClient)
 		if err != nil {
 			t.Fatalf("building dynamic client: %v", err)
 		}
-		for _, obj := range objects.GetItems() {
+		for _, obj := range objects {
 			gvk := obj.GroupVersionKind()
 			restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
@@ -78,7 +78,7 @@ func TestGoldenTests(t *testing.T) {
 			applyOptions.FieldManager = "test"
 			resource := dynamicClient.Resource(restMapping.Resource).Namespace(obj.GetNamespace())
 
-			if _, err := resource.Apply(ctx, obj.GetName(), obj.UnstructuredObject(), applyOptions); err != nil {
+			if _, err := resource.Apply(ctx, obj.GetName(), obj, applyOptions); err != nil {
 				t.Fatalf("error applying resource %v: %v", gvk, err)
 			}
 		}

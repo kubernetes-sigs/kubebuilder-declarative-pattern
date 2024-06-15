@@ -15,13 +15,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/httprecorder"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/testharness"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 
 	api "sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testreconciler/simpletest/v1alpha1"
 )
@@ -125,7 +125,7 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 	requestLog.RemoveUserAgent()
 	requestLog.SortGETs()
 	// Workaround for non-determinism in https://github.com/kubernetes/kubernetes/blob/79a62d62350fb600f97d1f6309c3274515b3587a/staging/src/k8s.io/client-go/tools/cache/reflector.go#L301
-	requestLog.RegexReplaceURL("&timeoutSeconds=.*&", "&timeoutSeconds=<replaced>&")
+	requestLog.RegexReplaceURL(h.T, "&timeoutSeconds=.*&", "&timeoutSeconds=<replaced>&")
 	h.Logf("replacing real timestamp in request and response to a fake value")
 	requestLog.ReplaceTimestamp()
 

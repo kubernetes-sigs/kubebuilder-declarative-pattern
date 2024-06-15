@@ -17,11 +17,11 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/httprecorder"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/testharness"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/httprecorder"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
 
 func fakeParent() runtime.Object {
