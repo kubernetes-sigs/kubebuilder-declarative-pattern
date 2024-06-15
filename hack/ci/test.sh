@@ -41,6 +41,7 @@ echo "kubectl version is $(kubectl version --client)"
 rm -f go.work go.work.sum
 go work init .
 go work use applylib
+go work use ktest
 go work use mockkubeapiserver
 go work use examples/guestbook-operator
 
