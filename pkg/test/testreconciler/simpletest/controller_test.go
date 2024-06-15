@@ -129,7 +129,7 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 	h.Logf("replacing real timestamp in request and response to a fake value")
 	requestLog.ReplaceTimestamp()
 
-	requests := requestLog.FormatHTTP()
+	requests := requestLog.FormatHTTP(false)
 
 	h.CompareGoldenFile(filepath.Join(testdir, "expected-http.yaml"), requests)
 }

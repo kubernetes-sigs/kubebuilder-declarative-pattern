@@ -1,6 +1,7 @@
 GET http://kube-apiserver/api/v1
 Accept: application/json, */*
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Length: 1926

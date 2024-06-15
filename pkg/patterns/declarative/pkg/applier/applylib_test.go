@@ -119,7 +119,7 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 		requestLog.RemoveUserAgent()
 		requestLog.SortGETs()
 
-		requests := requestLog.FormatHTTP()
+		requests := requestLog.FormatHTTP(false)
 		h.CompareGoldenFile(filepath.Join(testdir, "expected.yaml"), requests)
 
 		if interceptHTTPServer {
@@ -128,7 +128,7 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 			apiserverRequestLog.RemoveUserAgent()
 			apiserverRequestLog.SortGETs()
 			apiserverRequestLog.RemoveHeader("Kubectl-Session")
-			apiserverRequests := apiserverRequestLog.FormatHTTP()
+			apiserverRequests := apiserverRequestLog.FormatHTTP(false)
 			h.CompareGoldenFile(filepath.Join(testdir, "expected-apiserver.yaml"), apiserverRequests)
 		}
 	})

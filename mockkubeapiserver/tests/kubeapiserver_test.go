@@ -88,7 +88,7 @@ func TestGoldenTests(t *testing.T) {
 		requestLog.RemoveUserAgent()
 		requestLog.SortGETs()
 
-		requests := requestLog.FormatHTTP()
+		requests := requestLog.FormatHTTP(true)
 		h.CompareGoldenFile(filepath.Join(testdir, "expected.yaml"), requests)
 	})
 }
