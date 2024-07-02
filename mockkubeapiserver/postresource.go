@@ -18,6 +18,7 @@ package mockkubeapiserver
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -73,8 +74,55 @@ func (req *postResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		obj.SetGeneration(1)
 	}
 
+	if err := beforeObjectCreation(ctx, obj); err != nil {
+		return err
+	}
+
 	if err := resource.CreateObject(ctx, id, obj); err != nil {
 		return err
 	}
 	return req.writeResponse(obj)
+}
+
+var secretGVK = schema.GroupVersionKind{
+	Group:   "",
+	Version: "v1",
+	Kind:    "Secret",
+}
+
+func beforeObjectCreation(ctx context.Context, obj *unstructured.Unstructured) error {
+	gvk := obj.GroupVersionKind()
+	if gvk == secretGVK {
+		return beforeSecretCreation(ctx, obj)
+	}
+	return nil
+}
+
+func beforeSecretCreation(ctx context.Context, obj *unstructured.Unstructured) error {
+	// If there is any stringData, merge it into data
+	stringData, _, err := unstructured.NestedStringMap(obj.Object, "stringData")
+	if err != nil {
+		return fmt.Errorf("getting Secret stringData: %w", err)
+	}
+	if len(stringData) == 0 {
+		return nil
+	}
+
+	// Get a copy of data
+	data, _, err := unstructured.NestedStringMap(obj.Object, "data")
+	if err != nil {
+		return fmt.Errorf("getting Secret data: %w", err)
+	}
+	if data == nil {
+		data = make(map[string]string)
+	}
+	for k, v := range stringData {
+		data[k] = base64.StdEncoding.EncodeToString([]byte(v))
+	}
+	if err := unstructured.SetNestedStringMap(obj.Object, data, "data"); err != nil {
+		return fmt.Errorf("setting Secret data: %w", err)
+	}
+	unstructured.RemoveNestedField(obj.Object, "stringData")
+
+	return nil
 }

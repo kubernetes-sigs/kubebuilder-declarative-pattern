@@ -6,20 +6,16 @@ name: CI
 
 env:
   GOPROXY: https://proxy.golang.org
-  GOPATH: ${{ github.workspace }}/go
 
 jobs:
   verify-goimports:
     runs-on: ubuntu-latest
     steps:
       - name: Set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: '1.22'
           stable: true
-
-      - run: |
-          echo "GOPATH=${HOME}/go" >> $GITHUB_ENV
 
       - uses: actions/checkout@v2
 
@@ -37,13 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: '1.22'
           stable: true
-
-      - run: |
-          echo "GOPATH=${HOME}/go" >> $GITHUB_ENV
 
       - uses: actions/checkout@v2
 
@@ -52,7 +45,9 @@ jobs:
       - run: |
           changes=$(git status --porcelain)
           if [[ -n "${changes}" ]]; then
-            echo "::error Changes detected from go mod tidy:"
+            echo "::error Changes detected from dev/format-gomod:"
+            echo "::error (You may need to run go clean -cache -modcache)"
+            git diff | head -n60
             echo "${changes}"
             exit 1
           fi
@@ -62,15 +57,15 @@ jobs:
     runs-on: [ubuntu-latest]
     steps:
     - uses: actions/checkout@v1
-    - uses: actions/setup-go@v1
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.22'
     - name: Install latest version of Kind
       run: |
-        GO111MODULE=on go get sigs.k8s.io/kind
+        go get sigs.k8s.io/kind
     - name: Create Kind cluster
       run: |
-        PATH=$(go env GOPATH)/bin:$PATH kind create cluster --config .github/workflows/kind-config.yaml
+        kind create cluster --config .github/workflows/kind-config.yaml
     - name: Run some sanity checks
       # kubectl is already installed on the Github Ubuntu worker
       run: |

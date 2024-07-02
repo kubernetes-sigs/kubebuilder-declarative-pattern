@@ -6,9 +6,9 @@ package simpletest
 import (
 	"testing"
 
+	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/testharness"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/status"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/applier"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/test/testharness"
 )
 
 func TestDirectSimpleReconciler(t *testing.T) {

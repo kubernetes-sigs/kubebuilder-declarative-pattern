@@ -20,3 +20,6 @@ export PATH="${REPO_ROOT}/bin:$PATH"
 echo "kubectl version is $(kubectl version --client)"
 
 WRITE_GOLDEN_OUTPUT=1 go test -count=1 -v ./...
+
+cd "${REPO_ROOT}/mockkubeapiserver"
+WRITE_GOLDEN_OUTPUT=1 go test -count=1 -v ./...

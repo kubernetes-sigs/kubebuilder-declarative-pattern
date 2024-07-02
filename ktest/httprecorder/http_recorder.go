@@ -29,7 +29,7 @@ func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) 
 	if request.Body != nil {
 		requestBody, err := io.ReadAll(request.Body)
 		if err != nil {
-			panic("failed to read request body")
+			return nil, fmt.Errorf("HTTPRecorder failed to read request body")
 		}
 		entry.Request.Body = string(requestBody)
 		request.Body = io.NopCloser(bytes.NewReader(requestBody))

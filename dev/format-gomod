@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-# CI script to run all the test commands
+# CI script to keep all our go.mod/go.sum updated
 
 set -o errexit
 set -o nounset
@@ -25,10 +25,14 @@ set -o pipefail
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "${REPO_ROOT}"
 
-# Run go mod tidy in each go module
-for module in $(find . -name "go.mod"); do
-  dir="$(dirname ${module})"
-  pushd "${dir}"
-    go mod tidy
-  popd
-done
+# Print the go version
+go version
+
+# Updates the go.mod in each go module
+# Note: go work sync is not entirely deterministic; I had to clear my modcache with `go clean -cache -modcache`
+go work sync
+
+# Pin mockkubeapiserver an older version of kube, so mockkubeapiserver can be used from repos that aren't on the latest kube
+cd ${REPO_ROOT}/mockkubeapiserver
+go get k8s.io/client-go@v0.26.2
+go get k8s.io/apimachinery@v0.26.2

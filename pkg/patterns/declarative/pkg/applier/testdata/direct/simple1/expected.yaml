@@ -1,6 +1,7 @@
 GET http://kube-apiserver/api/v1
 Accept: application/json, */*
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Length: 1926
@@ -13,6 +14,7 @@ Date: (removed)
 
 GET http://kube-apiserver/api/v1/namespaces/ns1
 Accept: application/json
+
 
 404 Not Found
 Content-Length: 10
@@ -44,6 +46,7 @@ Date: (removed)
 
 GET http://kube-apiserver/api/v1/namespaces/ns2
 Accept: application/json
+
 
 404 Not Found
 Content-Length: 10

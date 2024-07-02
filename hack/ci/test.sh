@@ -37,11 +37,4 @@ chmod +x bin/kubectl
 export PATH="${REPO_ROOT}/bin:$PATH"
 echo "kubectl version is $(kubectl version --client)"
 
-# Run with a go workspace
-rm -f go.work go.work.sum
-go work init .
-go work use applylib
-go work use mockkubeapiserver
-go work use examples/guestbook-operator
-
 dev/test

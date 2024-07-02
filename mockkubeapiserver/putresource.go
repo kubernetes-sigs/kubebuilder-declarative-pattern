@@ -98,6 +98,10 @@ func (req *putResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		}
 	}
 
+	if err := beforeObjectCreation(ctx, updated); err != nil {
+		return err
+	}
+
 	if err := resource.UpdateObject(ctx, id, updated); err != nil {
 		return err
 	}

@@ -1,0 +1,14 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: default
+
+---
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: config
+  namespace: default
+data:
+  foo: bar

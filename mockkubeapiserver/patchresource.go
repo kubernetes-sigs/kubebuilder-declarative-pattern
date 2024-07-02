@@ -85,6 +85,10 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 			patched.SetGeneration(1)
 		}
 
+		if err := beforeObjectCreation(ctx, patched); err != nil {
+			return err
+		}
+
 		if err := resource.CreateObject(ctx, id, patched); err != nil {
 			return err
 		}
@@ -130,6 +134,10 @@ func (req *patchResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 		klog.Infof("skipping write, object not changed")
 		return req.writeResponse(existingObj)
 	} else {
+		if err := beforeObjectCreation(ctx, updated); err != nil {
+			return err
+		}
+
 		if resource.SetsGeneration() {
 			specIsSame := reflect.DeepEqual(existingObj.Object["spec"], updated.Object["spec"])
 			if !specIsSame {
