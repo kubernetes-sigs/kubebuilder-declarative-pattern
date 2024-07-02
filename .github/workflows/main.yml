@@ -52,7 +52,9 @@ jobs:
       - run: |
           changes=$(git status --porcelain)
           if [[ -n "${changes}" ]]; then
-            echo "::error Changes detected from go mod tidy:"
+            echo "::error Changes detected from dev/format-gomod:"
+            echo "::error (You may need to run go clean -cache -modcache)"
+            git diff | head -n60
             echo "${changes}"
             exit 1
           fi
