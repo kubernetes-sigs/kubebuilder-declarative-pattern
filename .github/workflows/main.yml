@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: '1.22'
           stable: true
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: '1.22'
           stable: true
@@ -57,15 +57,15 @@ jobs:
     runs-on: [ubuntu-latest]
     steps:
     - uses: actions/checkout@v1
-    - uses: actions/setup-go@v1
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.22'
     - name: Install latest version of Kind
       run: |
-        go build -o /usr/local/bin/kind sigs.k8s.io/kind
+        go get sigs.k8s.io/kind
     - name: Create Kind cluster
       run: |
-        PATH=/usr/local/bin/:$PATH kind create cluster --config .github/workflows/kind-config.yaml
+        kind create cluster --config .github/workflows/kind-config.yaml
     - name: Run some sanity checks
       # kubectl is already installed on the Github Ubuntu worker
       run: |
