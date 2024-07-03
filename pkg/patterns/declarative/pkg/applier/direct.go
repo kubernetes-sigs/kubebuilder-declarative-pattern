@@ -170,6 +170,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		applyOpts.PruneResources = append(applyOpts.PruneResources, r...)
 	}
 
+	applyOpts.ServerSideApply = true
 	applyOpts.ForceConflicts = opt.Force
 	applyOpts.Namespace = opt.Namespace
 	applyOpts.SetObjects(infos)
