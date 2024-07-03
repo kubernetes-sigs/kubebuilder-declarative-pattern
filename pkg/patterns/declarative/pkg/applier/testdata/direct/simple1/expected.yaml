@@ -11,62 +11,34 @@ Date: (removed)
 
 ---
 
-GET http://kube-apiserver/api/v1/namespaces/ns1
+PATCH http://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kubectl-client-side-apply&fieldValidation=Strict&force=false
 Accept: application/json
+Content-Type: application/apply-patch+yaml
 
-404 Not Found
-Content-Length: 10
-Content-Type: text/plain; charset=utf-8
-Date: (removed)
-X-Content-Type-Options: nosniff
-
-Not Found
-
-
----
-
-POST http://kube-apiserver/api/v1/namespaces?fieldManager=kubectl-client-side-apply&fieldValidation=Strict
-Accept: application/json
-Content-Type: application/json
-
-{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"},"name":"ns1"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns1"}}
 
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 455
+Content-Length: 286
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"},"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"kubernetes.io/metadata.name":"ns1"},"name":"ns1","resourceVersion":"1","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"kubernetes.io/metadata.name":"ns1"},"name":"ns1","resourceVersion":"1","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
 
 ---
 
-GET http://kube-apiserver/api/v1/namespaces/ns2
+PATCH http://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kubectl-client-side-apply&fieldValidation=Strict&force=false
 Accept: application/json
+Content-Type: application/apply-patch+yaml
 
-404 Not Found
-Content-Length: 10
-Content-Type: text/plain; charset=utf-8
-Date: (removed)
-X-Content-Type-Options: nosniff
-
-Not Found
-
-
----
-
-POST http://kube-apiserver/api/v1/namespaces?fieldManager=kubectl-client-side-apply&fieldValidation=Strict
-Accept: application/json
-Content-Type: application/json
-
-{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"},"name":"ns2"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns2"}}
 
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 455
+Content-Length: 286
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"kubernetes.io/metadata.name":"ns2"},"name":"ns2","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"kubernetes.io/metadata.name":"ns2"},"name":"ns2","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}

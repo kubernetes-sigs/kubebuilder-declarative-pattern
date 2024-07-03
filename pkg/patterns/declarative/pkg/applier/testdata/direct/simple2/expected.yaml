@@ -11,8 +11,12 @@ Date: (removed)
 
 ---
 
-GET http://kube-apiserver/api/v1/namespaces/ns1
+PATCH http://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kubectl-client-side-apply&fieldValidation=Strict&force=false
 Accept: application/json
+Content-Type: application/apply-patch+yaml
+
+{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns1"}}
+
 
 200 OK
 Cache-Control: no-cache, private
@@ -24,24 +28,12 @@ Date: (removed)
 
 ---
 
-PATCH http://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kubectl-client-side-apply&fieldValidation=Strict
+PATCH http://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kubectl-client-side-apply&fieldValidation=Strict&force=false
 Accept: application/json
-Content-Type: application/strategic-merge-patch+json
+Content-Type: application/apply-patch+yaml
 
-{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"}}}
+{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"ns2"}}
 
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 677
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"},"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"kubernetes.io/metadata.name":"ns1"},"managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:metadata":{"f:annotations":{"f:kubectl.kubernetes.io/last-applied-configuration":{}}}},"manager":"kubectl-client-side-apply","operation":"Apply"}],"name":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
-
----
-
-GET http://kube-apiserver/api/v1/namespaces/ns2
-Accept: application/json
 
 200 OK
 Cache-Control: no-cache, private
@@ -50,19 +42,3 @@ Content-Type: application/json
 Date: (removed)
 
 {"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"kubernetes.io/metadata.name":"ns2"},"name":"ns2","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
-
----
-
-PATCH http://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kubectl-client-side-apply&fieldValidation=Strict
-Accept: application/json
-Content-Type: application/strategic-merge-patch+json
-
-{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"}}}
-
-200 OK
-Cache-Control: no-cache, private
-Content-Length: 677
-Content-Type: application/json
-Date: (removed)
-
-{"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"},"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"kubernetes.io/metadata.name":"ns2"},"managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:metadata":{"f:annotations":{"f:kubectl.kubernetes.io/last-applied-configuration":{}}}},"manager":"kubectl-client-side-apply","operation":"Apply"}],"name":"ns2","resourceVersion":"4","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
