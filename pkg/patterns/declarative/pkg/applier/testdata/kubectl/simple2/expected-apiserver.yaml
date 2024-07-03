@@ -10,7 +10,6 @@ Accept-Encoding: gzip
 GET /openapi/v2?timeout=32s
 Accept: application/com.github.proto-openapi.spec.v2@v1.0+protobuf
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -18,9 +17,8 @@ Kubectl-Command: kubectl apply
 ---
 
 GET /api?timeout=32s
-Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
+Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -30,7 +28,15 @@ Kubectl-Command: kubectl apply
 GET /api/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
+
+
+
+
+---
+
+GET /api/v1?timeout=32s
+Accept: application/json, */*
+Accept-Encoding: gzip
 
 
 
@@ -38,9 +44,8 @@ Kubectl-Command: kubectl apply
 ---
 
 GET /apis?timeout=32s
-Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
+Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -50,7 +55,6 @@ Kubectl-Command: kubectl apply
 GET /apis/admissionregistration.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -60,7 +64,6 @@ Kubectl-Command: kubectl apply
 GET /apis/apiextensions.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -70,7 +73,6 @@ Kubectl-Command: kubectl apply
 GET /apis/apiregistration.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -80,7 +82,6 @@ Kubectl-Command: kubectl apply
 GET /apis/apps/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -90,7 +91,6 @@ Kubectl-Command: kubectl apply
 GET /apis/autoscaling/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -100,7 +100,6 @@ Kubectl-Command: kubectl apply
 GET /apis/autoscaling/v2?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -110,7 +109,6 @@ Kubectl-Command: kubectl apply
 GET /apis/autoscaling/v2beta2?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -120,7 +118,6 @@ Kubectl-Command: kubectl apply
 GET /apis/batch/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -130,7 +127,6 @@ Kubectl-Command: kubectl apply
 GET /apis/certificates.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -140,7 +136,6 @@ Kubectl-Command: kubectl apply
 GET /apis/coordination.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -150,7 +145,6 @@ Kubectl-Command: kubectl apply
 GET /apis/discovery.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -160,7 +154,6 @@ Kubectl-Command: kubectl apply
 GET /apis/events.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -170,7 +163,6 @@ Kubectl-Command: kubectl apply
 GET /apis/flowcontrol.apiserver.k8s.io/v1beta1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -180,7 +172,6 @@ Kubectl-Command: kubectl apply
 GET /apis/flowcontrol.apiserver.k8s.io/v1beta2?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -190,7 +181,6 @@ Kubectl-Command: kubectl apply
 GET /apis/networking.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -200,7 +190,6 @@ Kubectl-Command: kubectl apply
 GET /apis/node.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -210,7 +199,6 @@ Kubectl-Command: kubectl apply
 GET /apis/policy/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -220,7 +208,6 @@ Kubectl-Command: kubectl apply
 GET /apis/rbac.authorization.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -230,7 +217,6 @@ Kubectl-Command: kubectl apply
 GET /apis/scheduling.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -240,7 +226,6 @@ Kubectl-Command: kubectl apply
 GET /apis/storage.k8s.io/v1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -250,7 +235,6 @@ Kubectl-Command: kubectl apply
 GET /apis/storage.k8s.io/v1beta1?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
@@ -260,19 +244,17 @@ Kubectl-Command: kubectl apply
 GET /api/v1/namespaces/ns1
 Accept: application/json
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
 
 ---
 
-PATCH /api/v1/namespaces/ns1?fieldManager=kubectl-client-side-apply&fieldValidation=Ignore
+PATCH /api/v1/namespaces/ns1
 Accept: application/json
 Accept-Encoding: gzip
 Content-Length: 183
 Content-Type: application/strategic-merge-patch+json
-Kubectl-Command: kubectl apply
 
 {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"}}}
 
@@ -284,19 +266,17 @@ Kubectl-Command: kubectl apply
 GET /api/v1/namespaces/ns2
 Accept: application/json
 Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
 
 
 
 
 ---
 
-PATCH /api/v1/namespaces/ns2?fieldManager=kubectl-client-side-apply&fieldValidation=Ignore
+PATCH /api/v1/namespaces/ns2
 Accept: application/json
 Accept-Encoding: gzip
 Content-Length: 183
 Content-Type: application/strategic-merge-patch+json
-Kubectl-Command: kubectl apply
 
 {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"}}}
 
