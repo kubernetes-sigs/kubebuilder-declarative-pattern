@@ -599,6 +599,47 @@ func (r *Reconciler) transformManifest(ctx context.Context, instance Declarative
 			return err
 		}
 	}
+	if r.options.nestedManifestFn != nil {
+		if err := r.transformNestedManifests(ctx, instance, objects); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Reconciler) transformNestedManifests(ctx context.Context, instance DeclarativeObject, objects *manifest.Objects) error {
+	for _, item := range objects.Items {
+		paths, err := r.options.nestedManifestFn(item)
+		if err != nil {
+			return err
+		}
+		if paths == nil {
+			continue
+		}
+		for _, path := range paths {
+			nestedString, found, err := unstructured.NestedString(item.UnstructuredObject().Object, path...)
+			if err != nil {
+				return err
+			}
+			if !found { // Should this not be treated as an error?
+				return fmt.Errorf("expected object to have path %v", err)
+			}
+			nestedManifest, err := manifest.ParseObjects(ctx, nestedString)
+			if err != nil {
+				return err
+			}
+			if err := r.transformManifest(ctx, instance, nestedManifest); err != nil {
+				return err
+			}
+			updatedString, err := nestedManifest.ToYAML()
+			if err != nil {
+				return err
+			}
+			if err := unstructured.SetNestedField(item.UnstructuredObject().Object, updatedString, path...); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
