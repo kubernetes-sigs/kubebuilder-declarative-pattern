@@ -87,7 +87,9 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 	}
 
 	shouldComputeHealthFromObjects := info.Manifest != nil && info.LiveObjects != nil
+	currentStatus.Errors = []string{}
 	if info.Err != nil {
+		currentStatus.Errors = []string{info.Err.Error()}
 		switch info.KnownError {
 		case declarative.KnownErrorApplyFailed:
 			currentStatus.Phase = "Applying"
