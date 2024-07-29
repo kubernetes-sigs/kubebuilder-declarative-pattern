@@ -1,0 +1,226 @@
+GET http://kube-apiserver/api/v1
+Accept: application/json, */*
+
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 1820
+Content-Type: application/json
+Date: (removed)
+
+{
+  "apiVersion": "v1",
+  "groupVersion": "v1",
+  "kind": "APIResourceList",
+  "resources": [
+    {
+      "kind": "ComponentStatus",
+      "name": "componentstatuses",
+      "namespaced": false,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "configmaps",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "Endpoints",
+      "name": "endpoints",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "Event",
+      "name": "events",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "LimitRange",
+      "name": "limitranges",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "Namespace",
+      "name": "namespaces",
+      "namespaced": false,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "Node",
+      "name": "nodes",
+      "namespaced": false,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "PersistentVolume",
+      "name": "persistentvolumes",
+      "namespaced": false,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "PersistentVolumeClaim",
+      "name": "persistentvolumeclaims",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "Pod",
+      "name": "pods",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "PodTemplate",
+      "name": "podtemplates",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "ReplicationController",
+      "name": "replicationcontrollers",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "ResourceQuota",
+      "name": "resourcequotas",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "Secret",
+      "name": "secrets",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "Service",
+      "name": "services",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    },
+    {
+      "kind": "ServiceAccount",
+      "name": "serviceaccounts",
+      "namespaced": true,
+      "singularName": "",
+      "verbs": null,
+      "version": "v1"
+    }
+  ]
+}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/default?fieldManager=test&force=false
+Accept: application/json
+Content-Type: application/apply-patch+yaml
+
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "name": "default"
+  }
+}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 294
+Content-Type: application/json
+Date: (removed)
+
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "creationTimestamp": "2022-01-01T00:00:00Z",
+    "labels": {
+      "kubernetes.io/metadata.name": "default"
+    },
+    "name": "default",
+    "resourceVersion": "1",
+    "uid": "00000000-0000-0000-0000-000000000001"
+  },
+  "spec": {
+    "finalizers": [
+      "kubernetes"
+    ]
+  },
+  "status": {
+    "phase": "Active"
+  }
+}
+
+---
+
+PATCH http://kube-apiserver/api/v1/namespaces/default/configmaps/config?fieldManager=test&force=false
+Accept: application/json
+Content-Type: application/apply-patch+yaml
+
+{
+  "apiVersion": "v1",
+  "data": {
+    "foo": "bar"
+  },
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "config",
+    "namespace": "default"
+  }
+}
+
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 220
+Content-Type: application/json
+Date: (removed)
+
+{
+  "apiVersion": "v1",
+  "data": {
+    "foo": "bar"
+  },
+  "kind": "ConfigMap",
+  "metadata": {
+    "creationTimestamp": "2022-01-01T00:00:01Z",
+    "name": "config",
+    "namespace": "default",
+    "resourceVersion": "2",
+    "uid": "00000000-0000-0000-0000-000000000002"
+  }
+}

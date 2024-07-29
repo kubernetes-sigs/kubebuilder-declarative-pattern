@@ -3,12 +3,14 @@ package httprecorder
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -36,16 +38,17 @@ type Response struct {
 	Body       string      `json:"body,omitempty"`
 }
 
-func (e *LogEntry) FormatHTTP() string {
+func (e *LogEntry) FormatHTTP(pretty bool) string {
 	var b strings.Builder
-	b.WriteString(e.Request.FormatHTTP())
-	b.WriteString(e.Response.FormatHTTP())
+	b.WriteString(e.Request.FormatHTTP(pretty))
+	b.WriteString("\n")
+	b.WriteString(e.Response.FormatHTTP(pretty))
 	return b.String()
 }
 
-func (r *Request) FormatHTTP() string {
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("%s %s\n", r.Method, r.URL))
+func (r *Request) FormatHTTP(pretty bool) string {
+	var w strings.Builder
+	w.WriteString(fmt.Sprintf("%s %s\n", r.Method, r.URL))
 	var keys []string
 	for k := range r.Header {
 		keys = append(keys, k)
@@ -53,15 +56,31 @@ func (r *Request) FormatHTTP() string {
 	sort.Strings(keys)
 	for _, k := range keys {
 		for _, v := range r.Header[k] {
-			b.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+			w.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 		}
 	}
-	b.WriteString("\n")
-	if r.Body != "" {
-		b.WriteString(r.Body)
-		b.WriteString("\n\n")
+	w.WriteString("\n")
+	writeBody(&w, r.Body, pretty)
+	return w.String()
+}
+
+func writeBody(w io.StringWriter, body string, pretty bool) {
+	if body == "" {
+		return
 	}
-	return b.String()
+
+	if pretty {
+		var obj interface{}
+		if err := json.Unmarshal([]byte(body), &obj); err == nil {
+			b, err := json.MarshalIndent(obj, "", "  ")
+			if err == nil {
+				body = string(b)
+			}
+		}
+	}
+
+	w.WriteString(body)
+	w.WriteString("\n")
 }
 
 func (l *RequestLog) ReplaceTimestamp() {
@@ -101,7 +120,12 @@ func resetTimestamp(body string) string {
 	return string(b)
 }
 
-func (r *Response) FormatHTTP() string {
+func (r *Response) FormatHTTP(pretty bool) string {
+	// Skip empty responses (e.g. from streaming watch)
+	if r.Status == "" && r.StatusCode == 0 && r.Body == "" {
+		return ""
+	}
+
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("%s\n", r.Status))
 	var keys []string
@@ -115,10 +139,7 @@ func (r *Response) FormatHTTP() string {
 		}
 	}
 	b.WriteString("\n")
-	if r.Body != "" {
-		b.WriteString(r.Body)
-		b.WriteString("\n")
-	}
+	writeBody(&b, r.Body, pretty)
 	return b.String()
 }
 
@@ -136,13 +157,13 @@ func (l *RequestLog) AddEntry(entry *LogEntry) {
 	l.entries = append(l.entries, entry)
 }
 
-func (l *RequestLog) FormatHTTP() string {
+func (l *RequestLog) FormatHTTP(pretty bool) string {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
 	var actual []string
 	for _, entry := range l.entries {
-		s := entry.FormatHTTP()
+		s := entry.FormatHTTP(pretty)
 		actual = append(actual, s)
 	}
 	return strings.Join(actual, "\n---\n\n")
@@ -222,17 +243,19 @@ func (l *RequestLog) RemoveUserAgent() {
 	l.RemoveHeader("user-agent")
 }
 
-func (l *RequestLog) RegexReplaceURL(find string, replace string) {
+func (l *RequestLog) RegexReplaceURL(t *testing.T, find string, replace string) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
+
+	r, err := regexp.Compile(find)
+	if err != nil {
+		t.Fatalf("failed to compile regex %q: %v", find, err)
+	}
 
 	for i := range l.entries {
 		request := &l.entries[i].Request
 		u := request.URL
-		r, err := regexp.Compile(find)
-		if err != nil {
-			klog.Fatalf("failed to compile regex %q: %v", find, err)
-		}
+
 		u = r.ReplaceAllString(u, replace)
 		request.URL = u
 	}

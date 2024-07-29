@@ -1,6 +1,7 @@
 GET http://kube-apiserver/apis/addons.example.org/v1alpha1
 Accept: application/json, */*
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Length: 245
@@ -13,6 +14,7 @@ Date: (removed)
 
 GET http://kube-apiserver/apis/addons.example.org/v1alpha1/simpletests?limit=500&resourceVersion=0
 Accept: application/json, */*
+
 
 200 OK
 Cache-Control: no-cache, private
@@ -27,6 +29,7 @@ Date: (removed)
 GET http://kube-apiserver/apis/addons.example.org/v1alpha1/simpletests?allowWatchBookmarks=true&resourceVersion=2&timeoutSeconds=<replaced>&watch=true
 Accept: application/json, */*
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Type: application/json
@@ -38,6 +41,7 @@ Date: (removed)
 
 GET http://kube-apiserver/api/v1
 Accept: application/json, */*
+
 
 200 OK
 Cache-Control: no-cache, private
@@ -52,6 +56,7 @@ Date: (removed)
 GET http://kube-apiserver/apis/apps/v1
 Accept: application/json, */*
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Length: 831
@@ -64,6 +69,7 @@ Date: (removed)
 
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
 Accept: application/json
+
 
 404 Not Found
 Content-Length: 10
@@ -79,6 +85,7 @@ Not Found
 GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
 
+
 404 Not Found
 Content-Length: 10
 Content-Type: text/plain; charset=utf-8
@@ -93,6 +100,7 @@ Not Found
 GET http://kube-apiserver/api/v1/configmaps?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
 Accept: application/json
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Type: application/json
@@ -104,6 +112,7 @@ Date: (removed)
 
 GET http://kube-apiserver/apis/apps/v1/deployments?allowWatchBookmarks=true&labelSelector=addons.example.org%2Fsimpletest%3Dsimple1&watch=true
 Accept: application/json
+
 
 200 OK
 Cache-Control: no-cache, private
@@ -166,6 +175,7 @@ Date: (removed)
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
 Accept: application/json
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Length: 583
@@ -178,6 +188,7 @@ Date: (removed)
 
 GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
+
 
 200 OK
 Cache-Control: no-cache, private
@@ -208,6 +219,7 @@ Date: (removed)
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
 Accept: application/json
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Length: 583
@@ -220,6 +232,7 @@ Date: (removed)
 
 GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
+
 
 200 OK
 Cache-Control: no-cache, private
@@ -234,6 +247,7 @@ Date: (removed)
 GET http://kube-apiserver/api
 Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Length: 74
@@ -246,6 +260,7 @@ Date: (removed)
 
 GET http://kube-apiserver/apis
 Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
+
 
 200 OK
 Cache-Control: no-cache, private
@@ -292,6 +307,7 @@ Date: (removed)
 GET http://kube-apiserver/api/v1/namespaces/ns1/configmaps/foo
 Accept: application/json
 
+
 200 OK
 Cache-Control: no-cache, private
 Content-Length: 583
@@ -304,6 +320,7 @@ Date: (removed)
 
 GET http://kube-apiserver/apis/apps/v1/namespaces/ns1/deployments/mydeployment
 Accept: application/json
+
 
 200 OK
 Cache-Control: no-cache, private
