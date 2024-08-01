@@ -77,6 +77,10 @@ func (req *postResource) Run(ctx context.Context, s *MockKubeAPIServer) error {
 	if err := beforeObjectCreation(ctx, obj); err != nil {
 		return err
 	}
+	obj, err = s.admissionHooks.BeforeCreate(ctx, resource, obj)
+	if err != nil {
+		return fmt.Errorf("error from before-create hooks: %w", err)
+	}
 
 	if err := resource.CreateObject(ctx, id, obj); err != nil {
 		return err
