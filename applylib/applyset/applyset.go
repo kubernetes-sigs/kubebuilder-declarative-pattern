@@ -36,6 +36,8 @@ import (
 	kubectlapply "sigs.k8s.io/kubebuilder-declarative-pattern/applylib/forked/github.com/kubernetes/kubectl/pkg/cmd/apply"
 )
 
+type ComputeHealthCallback func(*unstructured.Unstructured) (bool, string)
+
 // ApplySet is a set of objects that we want to apply to the cluster.
 //
 // An ApplySet has a few cases which it tries to optimize for:
@@ -72,6 +74,9 @@ type ApplySet struct {
 	parent Parent
 	// If not given, the tooling value will be the `Parent` Kind.
 	tooling kubectlapply.ApplySetTooling
+
+	// Health callback
+	computeHealth ComputeHealthCallback
 }
 
 // Options holds the parameters for building an ApplySet.
@@ -88,6 +93,7 @@ type Options struct {
 	Prune         bool
 	Parent        Parent
 	Tooling       string
+	ComputeHealth ComputeHealthCallback
 }
 
 // New constructs a new ApplySet
@@ -107,6 +113,11 @@ func New(options Options) (*ApplySet, error) {
 	if options.PatchOptions.FieldManager == "" {
 		options.PatchOptions.FieldManager = kapplyset.FieldManager()
 	}
+
+	if options.ComputeHealth == nil {
+		options.ComputeHealth = IsHealthy
+	}
+
 	a := &ApplySet{
 		parentClient:  options.ParentClient,
 		client:        options.Client,
@@ -116,6 +127,7 @@ func New(options Options) (*ApplySet, error) {
 		prune:         options.Prune,
 		parent:        parent,
 		tooling:       tooling,
+		computeHealth: options.ComputeHealth,
 	}
 	a.trackers = &objectTrackerList{}
 	return a, nil
@@ -258,7 +270,7 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		tracker.lastApplied = lastApplied
 		results.applySuccess(gvk, nn)
 		message := ""
-		tracker.isHealthy, message = isHealthy(lastApplied)
+		tracker.isHealthy, message = a.computeHealth(lastApplied)
 		results.reportHealth(gvk, nn, tracker.isHealthy, message)
 	}
 
