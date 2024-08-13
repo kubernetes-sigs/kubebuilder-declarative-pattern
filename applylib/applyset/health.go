@@ -24,9 +24,8 @@ import (
 	"sigs.k8s.io/kustomize/kstatus/status"
 )
 
-// isHealthy reports whether the object should be considered "healthy"
-// TODO: Replace with kstatus library
-func isHealthy(u *unstructured.Unstructured) (bool, string) {
+// IsHealthy reports whether the object should be considered "healthy"
+func IsHealthy(u *unstructured.Unstructured) (bool, string) {
 	result, err := status.Compute(u)
 	if err != nil {
 		klog.Infof("unable to compute condition for %s", humanName(u))
