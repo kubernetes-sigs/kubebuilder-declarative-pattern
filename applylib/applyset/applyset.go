@@ -36,7 +36,7 @@ import (
 	kubectlapply "sigs.k8s.io/kubebuilder-declarative-pattern/applylib/forked/github.com/kubernetes/kubectl/pkg/cmd/apply"
 )
 
-type ComputeHealthCallback func(*unstructured.Unstructured) (bool, string)
+type ComputeHealthCallback func(*unstructured.Unstructured) (bool, string, error)
 
 // ApplySet is a set of objects that we want to apply to the cluster.
 //
@@ -270,8 +270,8 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		tracker.lastApplied = lastApplied
 		results.applySuccess(gvk, nn)
 		message := ""
-		tracker.isHealthy, message = a.computeHealth(lastApplied)
-		results.reportHealth(gvk, nn, tracker.isHealthy, message)
+		tracker.isHealthy, message, err = a.computeHealth(lastApplied)
+		results.reportHealth(gvk, nn, tracker.isHealthy, message, err)
 	}
 
 	// We want to be more cautions on pruning and only do it if all manifests are applied.

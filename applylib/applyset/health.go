@@ -25,27 +25,27 @@ import (
 )
 
 // IsHealthy reports whether the object should be considered "healthy"
-func IsHealthy(u *unstructured.Unstructured) (bool, string) {
+func IsHealthy(u *unstructured.Unstructured) (bool, string, error) {
 	result, err := status.Compute(u)
 	if err != nil {
 		klog.Infof("unable to compute condition for %s", humanName(u))
-		return false, result.Message
+		return false, result.Message, err
 	}
 	switch result.Status {
 	case status.InProgressStatus:
-		return false, result.Message
+		return false, result.Message, nil
 	case status.FailedStatus:
-		return false, result.Message
+		return false, result.Message, nil
 	case status.TerminatingStatus:
-		return false, result.Message
+		return false, result.Message, nil
 	case status.UnknownStatus:
 		klog.Warningf("unknown status for %s", humanName(u))
-		return false, result.Message
+		return false, result.Message, nil
 	case status.CurrentStatus:
-		return true, result.Message
+		return true, result.Message, nil
 	default:
 		klog.Warningf("unknown status value %s", result.Status)
-		return false, result.Message
+		return false, result.Message, nil
 	}
 }
 
