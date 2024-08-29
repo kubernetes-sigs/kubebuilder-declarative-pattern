@@ -17,6 +17,7 @@ limitations under the License.
 package applyset
 
 import (
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
@@ -39,6 +40,7 @@ type ObjectStatus struct {
 	NameNamespace types.NamespacedName
 	Apply         ApplyInfo
 	Health        HealthInfo
+	LastApplied   *unstructured.Unstructured
 }
 
 // ApplyResults contains the results of an Apply operation.
@@ -136,7 +138,7 @@ func (r *ApplyResults) pruneSuccess(gvk schema.GroupVersionKind, nn types.Namesp
 }
 
 // reportHealth records the health of an object.
-func (r *ApplyResults) reportHealth(gvk schema.GroupVersionKind, nn types.NamespacedName, isHealthy bool, message string, err error) {
+func (r *ApplyResults) reportHealth(gvk schema.GroupVersionKind, nn types.NamespacedName, lastApplied *unstructured.Unstructured, isHealthy bool, message string, err error) {
 	r.Objects = append(r.Objects, ObjectStatus{
 		GVK:           gvk,
 		NameNamespace: nn,
@@ -148,6 +150,7 @@ func (r *ApplyResults) reportHealth(gvk schema.GroupVersionKind, nn types.Namesp
 		Apply: ApplyInfo{
 			IsPruned: false,
 		},
+		LastApplied: lastApplied,
 	})
 	if isHealthy {
 		r.healthyCount++
