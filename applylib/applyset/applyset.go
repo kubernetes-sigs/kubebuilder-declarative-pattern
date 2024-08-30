@@ -271,7 +271,7 @@ func (a *ApplySet) ApplyOnce(ctx context.Context) (*ApplyResults, error) {
 		results.applySuccess(gvk, nn)
 		message := ""
 		tracker.isHealthy, message, err = a.computeHealth(lastApplied)
-		results.reportHealth(gvk, nn, tracker.isHealthy, message, err)
+		results.reportHealth(gvk, nn, lastApplied, tracker.isHealthy, message, err)
 	}
 
 	// We want to be more cautions on pruning and only do it if all manifests are applied.
