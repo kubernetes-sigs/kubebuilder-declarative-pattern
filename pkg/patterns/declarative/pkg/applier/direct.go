@@ -27,13 +27,20 @@ import (
 )
 
 type DirectApplier struct {
-	inner directApplierSite
+	// Whether to apply the KRM resources using server-side apply. https://kubernetes.io/docs/reference/using-api/server-side-apply/
+	// Note: The server-side apply is stable in Kubernetes v1.22, users should take the responsibility to make sure the cluster
+	// server can support this feature.
+	serverSideApplyPreferred bool
+	inner                    directApplierSite
+}
+
+func (d *DirectApplier) UseServerSideApply() {
+	d.serverSideApplyPreferred = true
 }
 
 var _ Applier = &DirectApplier{}
 
-type directApplier struct {
-}
+type directApplier struct{}
 
 type directApplierSite interface {
 	Run(a *apply.ApplyOptions) error
@@ -170,6 +177,7 @@ func (d *DirectApplier) Apply(ctx context.Context, opt ApplierOptions) error {
 		applyOpts.PruneResources = append(applyOpts.PruneResources, r...)
 	}
 
+	applyOpts.ServerSideApply = d.serverSideApplyPreferred
 	applyOpts.ForceConflicts = opt.Force
 	applyOpts.Namespace = opt.Namespace
 	applyOpts.SetObjects(infos)
