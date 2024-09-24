@@ -18,6 +18,7 @@ package declarative
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -320,11 +321,10 @@ func newEmptyNamespaceErr(gvk schema.GroupVersionKind, name string) emptyNamespa
 }
 
 type gvkTracker struct {
-	list         *items
-	src          source.Source
-	eventHandler handler.EventHandler
-	predicate    predicate.Predicate
-	recorder     objectRecorder
+	list      *items
+	src       source.Source
+	predicate predicate.Predicate
+	recorder  objectRecorder
 }
 
 func (gvkt *gvkTracker) insert(namespace string, names ...string) {
@@ -355,14 +355,13 @@ func newGVKTracker(mgr manager.Manager, obj *unstructured.Unstructured, namespac
 	gvkt = &gvkTracker{}
 	gvkt.list = newItems()
 	gvkt.recorder = objectRecorderFor(obj.GroupVersionKind())
-	gvkt.src = commonclient.SourceKind(mgr.GetCache(), obj)
+	gvkt.src = commonclient.SourceKindWithHandler(mgr.GetCache(), obj, &recordTrigger{gvkt.list, namespaced, gvkt.recorder})
 	gvkt.predicate = predicate.Funcs{}
-	gvkt.eventHandler = commonclient.WrapEventHandler(recordTrigger{gvkt.list, namespaced, gvkt.recorder})
 
-	return
+	return gvkt
 }
 
-var _ workqueue.RateLimitingInterface = dummyQueue{}
+var _ workqueue.TypedRateLimitingInterface[any] = dummyQueue{}
 
 type dummyQueue struct{}
 
@@ -535,7 +534,7 @@ func (r record) DeleteIfNeeded(name string, limit int) bool {
 	return false
 }
 
-var _ commonclient.EventHandler = recordTrigger{}
+var _ handler.TypedEventHandler[client.Object, reconcile.Request] = recordTrigger{}
 
 type recordTrigger struct {
 	list       *items

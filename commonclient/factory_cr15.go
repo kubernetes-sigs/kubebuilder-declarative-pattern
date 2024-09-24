@@ -9,6 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -17,9 +18,9 @@ func SourceKind(cache cache.Cache, obj client.Object) source.Source {
 	return source.Kind(cache, obj, &handler.TypedEnqueueRequestForObject[client.Object]{})
 }
 
-// WrapEventHandler is a version-indendenent abstraction over handler.EventHandler
-func WrapEventHandler(h handler.EventHandler) handler.EventHandler {
-	return h
+// SourceKind is a version-indendenent abstraction over calling source.Kind
+func SourceKindWithHandler(cache cache.Cache, obj client.Object, handler handler.TypedEventHandler[client.Object, reconcile.Request]) source.Source {
+	return source.Kind(cache, obj, handler)
 }
 
 // GetHTTPClient returns the http.Client associated with the Cluster
