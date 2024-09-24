@@ -77,7 +77,7 @@ func (r *GuestbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to Guestbook
-	err = c.Watch(source.Kind(mgr.GetCache(), &api.Guestbook{}), &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.TypedKind[*api.Guestbook](mgr.GetCache(), &api.Guestbook{}, &handler.TypedEnqueueRequestForObject[*api.Guestbook]{}))
 	if err != nil {
 		return err
 	}

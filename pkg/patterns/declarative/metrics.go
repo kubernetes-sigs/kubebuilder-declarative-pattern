@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -345,7 +346,10 @@ func (gvkt *gvkTracker) deleteMetricsIfNeeded(metricsDuration int) {
 }
 
 func (gvkt *gvkTracker) start(ctx context.Context) error {
-	return gvkt.src.Start(ctx, gvkt.eventHandler, dummyQueue{}, gvkt.predicate)
+	// return gvkt.src.Start(ctx, gvkt.eventHandler, dummyQueue{}, gvkt.predicate)
+	return gvkt.src.Start(ctx, workqueue.NewTypedRateLimitingQueueWithConfig(
+		workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](),
+		workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{}))
 }
 
 func newGVKTracker(mgr manager.Manager, obj *unstructured.Unstructured, namespaced bool) (gvkt *gvkTracker) {
@@ -540,7 +544,27 @@ type recordTrigger struct {
 	recorder   objectRecorder
 }
 
-func (rt recordTrigger) Create(ctx context.Context, ev event.CreateEvent, _ workqueue.RateLimitingInterface) {
+// // Create implements handler.TypedEventHandler.
+// func (r recordTrigger) Create(context.Context, event.TypedCreateEvent[object], workqueue.TypedRateLimitingInterface[request]) {
+// 	panic("unimplemented")
+// }
+
+// // Delete implements handler.TypedEventHandler.
+// func (r recordTrigger) Delete(context.Context, event.TypedDeleteEvent[object], workqueue.TypedRateLimitingInterface[request]) {
+// 	panic("unimplemented")
+// }
+
+// // Generic implements handler.TypedEventHandler.
+// func (r recordTrigger) Generic(context.Context, event.TypedGenericEvent[object], workqueue.TypedRateLimitingInterface[request]) {
+// 	panic("unimplemented")
+// }
+
+// // Update implements handler.TypedEventHandler.
+// func (r recordTrigger) Update(context.Context, event.TypedUpdateEvent[object], workqueue.TypedRateLimitingInterface[request]) {
+// 	panic("unimplemented")
+// }
+
+func (rt recordTrigger) Create(ctx context.Context, ev event.TypedCreateEvent[client.Object], _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	ns, name := ev.Object.GetNamespace(), ev.Object.GetName()
 
 	if rt.namespaced {
@@ -556,7 +580,7 @@ func (rt recordTrigger) Create(ctx context.Context, ev event.CreateEvent, _ work
 	}
 }
 
-func (rt recordTrigger) Update(ctx context.Context, ev event.UpdateEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Update(ctx context.Context, ev event.TypedUpdateEvent[client.Object], _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	var nsnp nsnPairs = make(map[string][]string)
 	ons, oname := ev.ObjectOld.GetNamespace(), ev.ObjectOld.GetName()
 	nns, nname := ev.ObjectNew.GetNamespace(), ev.ObjectNew.GetName()
@@ -590,7 +614,7 @@ func (rt recordTrigger) Update(ctx context.Context, ev event.UpdateEvent, _ work
 	rt.recorder.Set(nns, nname, float64(1))
 }
 
-func (rt recordTrigger) Delete(ctx context.Context, ev event.DeleteEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Delete(ctx context.Context, ev event.TypedDeleteEvent[client.Object], _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	ns, name := ev.Object.GetNamespace(), ev.Object.GetName()
 
 	if rt.namespaced {
@@ -606,5 +630,5 @@ func (rt recordTrigger) Delete(ctx context.Context, ev event.DeleteEvent, _ work
 	}
 }
 
-func (rt recordTrigger) Generic(ctx context.Context, ev event.GenericEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Generic(ctx context.Context, ev event.GenericEvent, _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 }

@@ -14,7 +14,7 @@ import (
 
 // SourceKind is a version-indendenent abstraction over calling source.Kind
 func SourceKind(cache cache.Cache, obj client.Object) source.Source {
-	return source.Kind(cache, obj)
+	return source.Kind(cache, obj, &handler.TypedEnqueueRequestForObject[client.Object]{})
 }
 
 // WrapEventHandler is a version-indendenent abstraction over handler.EventHandler
