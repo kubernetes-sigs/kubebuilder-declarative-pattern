@@ -544,26 +544,6 @@ type recordTrigger struct {
 	recorder   objectRecorder
 }
 
-// // Create implements handler.TypedEventHandler.
-// func (r recordTrigger) Create(context.Context, event.TypedCreateEvent[object], workqueue.TypedRateLimitingInterface[request]) {
-// 	panic("unimplemented")
-// }
-
-// // Delete implements handler.TypedEventHandler.
-// func (r recordTrigger) Delete(context.Context, event.TypedDeleteEvent[object], workqueue.TypedRateLimitingInterface[request]) {
-// 	panic("unimplemented")
-// }
-
-// // Generic implements handler.TypedEventHandler.
-// func (r recordTrigger) Generic(context.Context, event.TypedGenericEvent[object], workqueue.TypedRateLimitingInterface[request]) {
-// 	panic("unimplemented")
-// }
-
-// // Update implements handler.TypedEventHandler.
-// func (r recordTrigger) Update(context.Context, event.TypedUpdateEvent[object], workqueue.TypedRateLimitingInterface[request]) {
-// 	panic("unimplemented")
-// }
-
 func (rt recordTrigger) Create(ctx context.Context, ev event.TypedCreateEvent[client.Object], _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	ns, name := ev.Object.GetNamespace(), ev.Object.GetName()
 
