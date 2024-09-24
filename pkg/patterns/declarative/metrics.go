@@ -346,7 +346,6 @@ func (gvkt *gvkTracker) deleteMetricsIfNeeded(metricsDuration int) {
 }
 
 func (gvkt *gvkTracker) start(ctx context.Context) error {
-	// return gvkt.src.Start(ctx, gvkt.eventHandler, dummyQueue{}, gvkt.predicate)
 	return gvkt.src.Start(ctx, workqueue.NewTypedRateLimitingQueueWithConfig(
 		workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](),
 		workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{}))
