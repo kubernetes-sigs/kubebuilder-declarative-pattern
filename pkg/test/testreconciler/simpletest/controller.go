@@ -43,9 +43,9 @@ var _ reconcile.Reconciler = &SimpleTestReconciler{}
 type SimpleTestReconciler struct {
 	declarative.Reconciler
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
-	TestSuffix   string
+	Log        logr.Logger
+	Scheme     *runtime.Scheme
+	TestSuffix string
 
 	watchLabels declarative.LabelMaker
 
