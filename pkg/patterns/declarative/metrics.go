@@ -18,7 +18,6 @@ package declarative
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
