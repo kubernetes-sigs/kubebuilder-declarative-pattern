@@ -87,6 +87,7 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 	}
 
 	reconciler := &SimpleTestReconciler{
+		TestSuffix: testdir,
 		Client:  mgr.GetClient(),
 		Scheme:  mgr.GetScheme(),
 		applier: applier,

@@ -18,6 +18,7 @@ package simpletest
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -44,6 +45,7 @@ type SimpleTestReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
+	TestSuffix   string
 
 	watchLabels declarative.LabelMaker
 
@@ -89,7 +91,7 @@ func (r *SimpleTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	c, err := controller.New("simpletest-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(fmt.Sprintf("simpletest-controller-%s", r.TestSuffix), mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
