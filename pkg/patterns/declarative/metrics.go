@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -319,11 +320,10 @@ func newEmptyNamespaceErr(gvk schema.GroupVersionKind, name string) emptyNamespa
 }
 
 type gvkTracker struct {
-	list         *items
-	src          source.Source
-	eventHandler handler.EventHandler
-	predicate    predicate.Predicate
-	recorder     objectRecorder
+	list      *items
+	src       source.Source
+	predicate predicate.Predicate
+	recorder  objectRecorder
 }
 
 func (gvkt *gvkTracker) insert(namespace string, names ...string) {
@@ -345,21 +345,22 @@ func (gvkt *gvkTracker) deleteMetricsIfNeeded(metricsDuration int) {
 }
 
 func (gvkt *gvkTracker) start(ctx context.Context) error {
-	return gvkt.src.Start(ctx, gvkt.eventHandler, dummyQueue{}, gvkt.predicate)
+	return gvkt.src.Start(ctx, workqueue.NewTypedRateLimitingQueueWithConfig(
+		workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](),
+		workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{}))
 }
 
 func newGVKTracker(mgr manager.Manager, obj *unstructured.Unstructured, namespaced bool) (gvkt *gvkTracker) {
 	gvkt = &gvkTracker{}
 	gvkt.list = newItems()
 	gvkt.recorder = objectRecorderFor(obj.GroupVersionKind())
-	gvkt.src = commonclient.SourceKind(mgr.GetCache(), obj)
+	gvkt.src = commonclient.SourceKindWithHandler(mgr.GetCache(), obj, &recordTrigger{gvkt.list, namespaced, gvkt.recorder})
 	gvkt.predicate = predicate.Funcs{}
-	gvkt.eventHandler = commonclient.WrapEventHandler(recordTrigger{gvkt.list, namespaced, gvkt.recorder})
 
 	return
 }
 
-var _ workqueue.RateLimitingInterface = dummyQueue{}
+var _ workqueue.TypedRateLimitingInterface[any] = dummyQueue{}
 
 type dummyQueue struct{}
 
@@ -532,7 +533,7 @@ func (r record) DeleteIfNeeded(name string, limit int) bool {
 	return false
 }
 
-var _ commonclient.EventHandler = recordTrigger{}
+var _ handler.TypedEventHandler[client.Object, reconcile.Request] = recordTrigger{}
 
 type recordTrigger struct {
 	list       *items
@@ -540,7 +541,7 @@ type recordTrigger struct {
 	recorder   objectRecorder
 }
 
-func (rt recordTrigger) Create(ctx context.Context, ev event.CreateEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Create(ctx context.Context, ev event.TypedCreateEvent[client.Object], _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	ns, name := ev.Object.GetNamespace(), ev.Object.GetName()
 
 	if rt.namespaced {
@@ -556,7 +557,7 @@ func (rt recordTrigger) Create(ctx context.Context, ev event.CreateEvent, _ work
 	}
 }
 
-func (rt recordTrigger) Update(ctx context.Context, ev event.UpdateEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Update(ctx context.Context, ev event.TypedUpdateEvent[client.Object], _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	var nsnp nsnPairs = make(map[string][]string)
 	ons, oname := ev.ObjectOld.GetNamespace(), ev.ObjectOld.GetName()
 	nns, nname := ev.ObjectNew.GetNamespace(), ev.ObjectNew.GetName()
@@ -590,7 +591,7 @@ func (rt recordTrigger) Update(ctx context.Context, ev event.UpdateEvent, _ work
 	rt.recorder.Set(nns, nname, float64(1))
 }
 
-func (rt recordTrigger) Delete(ctx context.Context, ev event.DeleteEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Delete(ctx context.Context, ev event.TypedDeleteEvent[client.Object], _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	ns, name := ev.Object.GetNamespace(), ev.Object.GetName()
 
 	if rt.namespaced {
@@ -606,5 +607,5 @@ func (rt recordTrigger) Delete(ctx context.Context, ev event.DeleteEvent, _ work
 	}
 }
 
-func (rt recordTrigger) Generic(ctx context.Context, ev event.GenericEvent, _ workqueue.RateLimitingInterface) {
+func (rt recordTrigger) Generic(ctx context.Context, ev event.GenericEvent, _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 }

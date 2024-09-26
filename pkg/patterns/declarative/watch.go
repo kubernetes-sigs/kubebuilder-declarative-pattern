@@ -136,8 +136,8 @@ func WatchChildren(options WatchChildrenOptions) error {
 		return fmt.Errorf("creating dynamic watch: %v", err)
 	}
 
-	src := &source.Channel{Source: events}
-	if err := options.Controller.Watch(src, &handler.EnqueueRequestForObject{}); err != nil {
+	src := source.TypedChannel(events, &handler.EnqueueRequestForObject{})
+	if err := options.Controller.Watch(src); err != nil {
 		return fmt.Errorf("setting up dynamic watch on the controller: %w", err)
 	}
 

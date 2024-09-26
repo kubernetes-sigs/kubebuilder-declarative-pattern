@@ -87,10 +87,11 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 	}
 
 	reconciler := &SimpleTestReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		applier: applier,
-		status:  status,
+		TestSuffix: testdir,
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		applier:    applier,
+		status:     status,
 	}
 
 	mc, err := loaders.NewManifestLoader("testdata/channels")

@@ -18,6 +18,7 @@ package simpletest
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -27,7 +28,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/commonclient"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
@@ -43,8 +43,9 @@ var _ reconcile.Reconciler = &SimpleTestReconciler{}
 type SimpleTestReconciler struct {
 	declarative.Reconciler
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log        logr.Logger
+	Scheme     *runtime.Scheme
+	TestSuffix string
 
 	watchLabels declarative.LabelMaker
 
@@ -90,13 +91,13 @@ func (r *SimpleTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	c, err := controller.New("simpletest-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(fmt.Sprintf("simpletest-controller-%s", r.TestSuffix), mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
 	// Watch for changes to SimpleTest objects
-	err = c.Watch(commonclient.SourceKind(mgr.GetCache(), &api.SimpleTest{}), &handler.EnqueueRequestForObject{})
+	err = c.Watch(commonclient.SourceKind(mgr.GetCache(), &api.SimpleTest{}))
 	if err != nil {
 		return err
 	}
