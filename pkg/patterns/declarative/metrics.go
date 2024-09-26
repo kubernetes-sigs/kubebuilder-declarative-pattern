@@ -357,7 +357,7 @@ func newGVKTracker(mgr manager.Manager, obj *unstructured.Unstructured, namespac
 	gvkt.src = commonclient.SourceKindWithHandler(mgr.GetCache(), obj, &recordTrigger{gvkt.list, namespaced, gvkt.recorder})
 	gvkt.predicate = predicate.Funcs{}
 
-	return gvkt
+	return
 }
 
 var _ workqueue.TypedRateLimitingInterface[any] = dummyQueue{}
