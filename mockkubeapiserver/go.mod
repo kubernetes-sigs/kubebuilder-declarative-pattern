@@ -6,10 +6,11 @@ toolchain go1.23.1
 
 require (
 	github.com/google/go-cmp v0.6.0
-	k8s.io/apimachinery v0.26.2
-	k8s.io/client-go v0.26.2
+	k8s.io/apimachinery v0.31.1
+	k8s.io/client-go v0.31.1
 	k8s.io/klog/v2 v2.130.1
-	sigs.k8s.io/controller-runtime v0.14.6
+	sigs.k8s.io/controller-runtime v0.19.0
+	sigs.k8s.io/kubebuilder-declarative-pattern/ktest v0.0.0-20240926141202-cf8082c623b8
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -46,8 +47,8 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.26.2 // indirect
-	k8s.io/apiextensions-apiserver v0.26.2 // indirect
+	k8s.io/api v0.31.1 // indirect
+	k8s.io/apiextensions-apiserver v0.31.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240903163716-9e1beecbcb38 // indirect
 	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
