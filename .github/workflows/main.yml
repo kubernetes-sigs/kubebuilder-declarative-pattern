@@ -19,15 +19,9 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      - name: verify goimports
-        run: |
-          files=$(go run golang.org/x/tools/cmd/goimports -format-only -l .)
-          # Sadly goimports doesn't use exit codes
-          if [[ -n "${files}" ]]; then
-            echo "::error ::goimports should be run on these files:"
-            echo "${files}"
-            exit 1
-          fi
+      - name: verify-goimports
+        run: dev/ci/presubmits/verify-goimports
+
 
   verify-gomod:
     runs-on: ubuntu-latest
@@ -40,17 +34,8 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      - run: dev/format-gomod
-
-      - run: |
-          changes=$(git status --porcelain)
-          if [[ -n "${changes}" ]]; then
-            echo "::error Changes detected from dev/format-gomod:"
-            echo "::error (You may need to run go clean -cache -modcache)"
-            git diff | head -n60
-            echo "${changes}"
-            exit 1
-          fi
+      - name: verify-gomod
+        run: dev/ci/presubmits/verify-gomod
 
   kind-e2e:
     name: Test with a Kind cluster
