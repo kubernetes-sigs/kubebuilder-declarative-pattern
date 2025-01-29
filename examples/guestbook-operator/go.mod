@@ -2,7 +2,7 @@ module sigs.k8s.io/kubebuilder-declarative-pattern/examples/guestbook-operator
 
 go 1.22.0
 
-toolchain go1.22.4
+toolchain go1.23.5
 
 require (
 	github.com/go-logr/logr v1.4.2
