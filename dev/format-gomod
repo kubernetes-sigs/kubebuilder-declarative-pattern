@@ -25,14 +25,16 @@ set -o pipefail
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "${REPO_ROOT}"
 
-# Print the go version
+# Print the go version for diagnostics
 go version
 
 # Updates the go.mod in each go module
 # Note: go work sync is not entirely deterministic; I had to clear my modcache with `go clean -cache -modcache`
 go work sync
 
-# Pin mockkubeapiserver an older version of kube, so mockkubeapiserver can be used from repos that aren't on the latest kube
-cd ${REPO_ROOT}/mockkubeapiserver
-go get k8s.io/client-go@v0.26.2
-go get k8s.io/apimachinery@v0.26.2
+# Tidy each individual go.mod
+for gomod_file in $(find "${REPO_ROOT}" -name "go.mod"); do
+    dir=$(dirname ${gomod_file})
+    cd "${dir}"
+    go mod tidy
+done
