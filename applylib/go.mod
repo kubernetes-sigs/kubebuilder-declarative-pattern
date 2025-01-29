@@ -2,7 +2,7 @@ module sigs.k8s.io/kubebuilder-declarative-pattern/applylib
 
 go 1.22.0
 
-toolchain go1.23.1
+toolchain go1.23.5
 
 // Sometimes handy for development, but breaks usage as a library
 // Instead, please break apart commits to this module
