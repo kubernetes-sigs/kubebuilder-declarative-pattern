@@ -127,16 +127,16 @@ PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simple
 Accept: application/json, */*
 Content-Type: application/json
 
-{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","generation":1,"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"}},"spec":{"channel":"stable"},"status":{"healthy":false}}
+{"kind":"SimpleTest","apiVersion":"addons.example.org/v1alpha1","metadata":{"name":"simple1","namespace":"ns1","uid":"00000000-0000-0000-0000-000000000002","resourceVersion":"2","generation":1,"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"}},"spec":{"channel":"stable"},"status":{"healthy":false,"observedGeneration":0}}
 
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 576
+Content-Length: 599
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"},"creationTimestamp":"2022-01-01T00:00:01Z","generation":1,"labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"name":"simple1","namespace":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"},"creationTimestamp":"2022-01-01T00:00:01Z","generation":1,"labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"name":"simple1","namespace":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"healthy":false,"observedGeneration":0}}
 
 ---
 
@@ -204,15 +204,15 @@ PUT http://kube-apiserver/apis/addons.example.org/v1alpha1/namespaces/ns1/simple
 Accept: application/json, */*
 Content-Type: application/json
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"},"creationTimestamp":"2022-01-01T00:00:01Z","generation":1,"labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"name":"simple1","namespace":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"all manifests are reconciled.","reason":"Normal","status":"True","type":"Ready"}],"healthy":true,"phase":"Current"}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"},"creationTimestamp":"2022-01-01T00:00:01Z","generation":1,"labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"name":"simple1","namespace":"ns1","resourceVersion":"3","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"all manifests are reconciled.","reason":"Normal","status":"True","type":"Ready"}],"healthy":true,"observedGeneration":1,"phase":"Current"}}
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 745
+Content-Length: 768
 Content-Type: application/json
 Date: (removed)
 
-{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"},"creationTimestamp":"2022-01-01T00:00:01Z","generation":1,"labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"name":"simple1","namespace":"ns1","resourceVersion":"6","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"all manifests are reconciled.","reason":"Normal","status":"True","type":"Ready"}],"healthy":true,"phase":"Current"}}
+{"apiVersion":"addons.example.org/v1alpha1","kind":"SimpleTest","metadata":{"annotations":{"applyset.kubernetes.io/additional-namespaces":"","applyset.kubernetes.io/contains-group-kinds":"ConfigMap,Deployment.apps","applyset.kubernetes.io/tooling":"SimpleTest/"},"creationTimestamp":"2022-01-01T00:00:01Z","generation":1,"labels":{"applyset.kubernetes.io/id":"applyset-xbxAWnAItX3p1Gxrs86F-ZQAGwGoys9xxQGK3IED7bY-v1"},"name":"simple1","namespace":"ns1","resourceVersion":"6","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"channel":"stable"},"status":{"conditions":[{"lastTransitionTime":"2022-01-01T00:00:00Z","message":"all manifests are reconciled.","reason":"Normal","status":"True","type":"Ready"}],"healthy":true,"observedGeneration":1,"phase":"Current"}}
 
 ---
 

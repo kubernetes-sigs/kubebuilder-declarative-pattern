@@ -96,6 +96,7 @@ func (a *aggregator) BuildStatus(ctx context.Context, info *declarative.StatusIn
 	status := currentStatus
 	status.Healthy = statusHealthy
 	status.Errors = statusErrors
+	status.ObservedGeneration = info.Subject.GetGeneration()
 
 	if !reflect.DeepEqual(status, currentStatus) {
 		err := utils.SetCommonStatus(info.Subject, status)
