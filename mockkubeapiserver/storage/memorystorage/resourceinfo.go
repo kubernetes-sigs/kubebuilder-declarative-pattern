@@ -26,6 +26,10 @@ func (r *memoryResourceInfo) GVK() schema.GroupVersionKind {
 	return r.gvk
 }
 
+func (r *memoryResourceInfo) GVR() schema.GroupVersionResource {
+	return r.gvr
+}
+
 func (r *memoryResourceInfo) ListGVK() schema.GroupVersionKind {
 	return r.listGVK
 }

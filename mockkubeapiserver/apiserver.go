@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/admissionhooks"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/hooks"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/storage"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver/storage/memorystorage"
@@ -50,10 +51,13 @@ func NewMockKubeAPIServer(addr string, options ...Option) (*MockKubeAPIServer, e
 		s.storage = storage
 	}
 
+	s.admissionHooks = admissionhooks.New()
+
 	// These hooks mock behaviour that would otherwise require full controllers
 	s.storage.AddStorageHook(&hooks.CRDHook{Storage: s.storage})
 	s.storage.AddStorageHook(&hooks.NamespaceHook{})
 	s.storage.AddStorageHook(&hooks.DeploymentHook{})
+	s.storage.AddStorageHook(s.admissionHooks.StorageListener())
 
 	return s, nil
 }
@@ -64,11 +68,15 @@ type MockKubeAPIServer struct {
 
 	storage storage.Storage
 
-	hooks []Hook
+	// requestHooks are used for testing, and are invoked before every http request
+	requestHooks []Hook
+
+	// admissionHooks manages kubernetes admission webhooks (validating and mutating)
+	admissionHooks *admissionhooks.Webhooks
 }
 
 func (s *MockKubeAPIServer) AddHook(hook Hook) {
-	s.hooks = append(s.hooks, hook)
+	s.requestHooks = append(s.requestHooks, hook)
 }
 
 func (s *MockKubeAPIServer) StartServing() (net.Addr, error) {
@@ -95,7 +103,7 @@ func (s *MockKubeAPIServer) Stop() error {
 func (s *MockKubeAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	for _, hook := range s.hooks {
+	for _, hook := range s.requestHooks {
 		op := &HTTPOperation{
 			Request: r,
 		}
