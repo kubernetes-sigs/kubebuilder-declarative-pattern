@@ -47,6 +47,8 @@ type CommonStatus struct {
 	Healthy bool     `json:"healthy"`
 	Errors  []string `json:"errors,omitempty"`
 	Phase   string   `json:"phase,omitempty"`
+	// +kubebuilder:default:=0
+	ObservedGeneration int64 `json:"observedGeneration"`
 }
 
 // Patchable is a trait for addon CRDs that expose a raw set of Patches to be

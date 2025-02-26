@@ -161,6 +161,7 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 		}
 	}
 	currentStatus.Healthy = currentStatus.Phase == string(status.CurrentStatus)
+	currentStatus.ObservedGeneration = info.Subject.GetGeneration()
 	if err = utils.SetCommonStatus(info.Subject, currentStatus); err != nil {
 		return err
 	}
