@@ -106,10 +106,17 @@ func (e *ErrorResult) Error() string {
 var defaultApplier = applier.DefaultApplier
 
 func (r *Reconciler) Init(mgr manager.Manager, prototype DeclarativeObject, opts ...ReconcilerOption) error {
+	controllerName := "addon-controller"
+	if commonName, err := utils.GetCommonName(prototype); err == nil {
+		controllerName = commonName + "-controller"
+	}
+
+	return r.InitWithName(mgr, prototype, controllerName, opts...)
+}
+
+func (r *Reconciler) InitWithName(mgr manager.Manager, prototype DeclarativeObject, controllerName string, opts ...ReconcilerOption) error {
 	r.prototype = prototype
 
-	// TODO: Can we derive the name from prototype?
-	controllerName := "addon-controller"
 	r.recorder = mgr.GetEventRecorderFor(controllerName)
 
 	r.client = mgr.GetClient()
