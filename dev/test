@@ -27,6 +27,9 @@ cd "${REPO_ROOT}"
 
 set -x
 
+# Download the kubebuilder assets for envtest
+export KUBEBUILDER_ASSETS=$(go run sigs.k8s.io/controller-runtime/tools/setup-envtest@latest use -p path)
+
 pushd mockkubeapiserver
 CGO_ENABLED=0 go test -count=1 -v ./...
 popd
