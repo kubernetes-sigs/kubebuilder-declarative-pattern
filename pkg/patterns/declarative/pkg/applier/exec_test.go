@@ -29,6 +29,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"k8s.io/klog/v2/klogr"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 )
 
@@ -147,6 +149,8 @@ metadata:
 }
 
 func TestKubectlApplier(t *testing.T) {
+	log.SetLogger(klogr.New())
+
 	kubectlPath, err := exec.LookPath("kubectl")
 	if err != nil {
 		t.Fatalf("failed to find kubectl on path: %v", err)

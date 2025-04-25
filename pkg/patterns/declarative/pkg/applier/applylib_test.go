@@ -1,30 +1,22 @@
 package applier
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"net/http"
 	"path/filepath"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/applylib/applyset"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/httprecorder"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/testharness"
-	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/declarative/pkg/manifest"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/restmapper"
 )
 
-func fakeParent() runtime.Object {
+func fakeParent() *unstructured.Unstructured {
 	parent := &unstructured.Unstructured{}
 	parent.SetKind("ConfigMap")
 	parent.SetAPIVersion("v1")
@@ -42,40 +34,23 @@ func TestApplySetApplier(t *testing.T) {
 func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer bool, applier Applier) {
 	testharness.RunGoldenTests(t, testDir, func(h *testharness.Harness, testdir string) {
 		ctx := context.Background()
+		t := h.T
 
-		k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
-		if err != nil {
-			t.Fatalf("error building mock kube-apiserver: %v", err)
+		env := &envtest.Environment{}
+		k8s := testharness.NewTestKubeAPIServer(t, ctx, env)
+
+		var apiserverRequestLog httprecorder.RequestLog
+		if interceptHTTPServer {
+			k8s.AddProxyAndRecordToLog(&apiserverRequestLog)
 		}
 
-		k8s.RegisterType(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, "namespaces", meta.RESTScopeRoot)
-
-		defer func() {
-			if err := k8s.Stop(); err != nil {
-				t.Fatalf("error closing mock kube-apiserver: %v", err)
-			}
-		}()
-
-		addr, err := k8s.StartServing()
-		if err != nil {
-			t.Errorf("error starting mock kube-apiserver: %v", err)
-		}
-
-		klog.Infof("mock kubeapiserver will listen on %v", addr)
+		restConfig := k8s.RESTConfig()
 
 		var requestLog httprecorder.RequestLog
 		wrapTransport := func(rt http.RoundTripper) http.RoundTripper {
 			return httprecorder.NewRecorder(rt, &requestLog)
 		}
-		restConfig := &rest.Config{
-			Host:          addr.String(),
-			WrapTransport: wrapTransport,
-		}
-
-		var apiserverRequestLog httprecorder.RequestLog
-		if interceptHTTPServer {
-			k8s.AddHook(&logKubeRequestsHook{log: &apiserverRequestLog})
-		}
+		restConfig.WrapTransport = wrapTransport
 
 		if h.FileExists(filepath.Join(testdir, "before.yaml")) {
 			before := string(h.MustReadFile(filepath.Join(testdir, "before.yaml")))
@@ -96,67 +71,33 @@ func runApplierGoldenTests(t *testing.T, testDir string, interceptHTTPServer boo
 		}
 
 		parent := fakeParent()
-		gvk := parent.GetObjectKind().GroupVersionKind()
-		restmapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		parentGVK := parent.GroupVersionKind()
+		parentRESTMapping, err := restMapper.RESTMapping(parentGVK.GroupKind(), parentGVK.Version)
 		if err != nil {
-			t.Errorf("error getting restmapping for parent %v", err)
+			t.Fatalf("error getting restmapping for parent %v", err)
 		}
+		k8s.AddObject(parent)
 
-		client := fake.NewClientBuilder().WithRuntimeObjects(parent).Build()
+		client := k8s.Client()
 		options := ApplierOptions{
 			Objects:    objects.GetItems(),
 			RESTConfig: restConfig,
 			RESTMapper: restMapper,
-			ParentRef:  applyset.NewParentRef(parent, "test", "default", restmapping),
+			ParentRef:  applyset.NewParentRef(parent, parent.GetName(), parent.GetNamespace(), parentRESTMapping),
 			Client:     client,
 		}
 		if err := applier.Apply(ctx, options); err != nil {
 			t.Fatalf("error from applier.Apply: %v", err)
 		}
 
-		t.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
-		requestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
-		requestLog.RemoveUserAgent()
-		requestLog.SortGETs()
-
+		httprecorder.NormalizeKubeRequestLog(t, &requestLog, restConfig)
 		requests := requestLog.FormatHTTP(false)
 		h.CompareGoldenFile(filepath.Join(testdir, "expected.yaml"), requests)
 
 		if interceptHTTPServer {
-			t.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
-			apiserverRequestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
-			apiserverRequestLog.RemoveUserAgent()
-			apiserverRequestLog.SortGETs()
-			apiserverRequestLog.RemoveHeader("Kubectl-Session")
+			httprecorder.NormalizeKubeRequestLog(t, &apiserverRequestLog, restConfig)
 			apiserverRequests := apiserverRequestLog.FormatHTTP(false)
 			h.CompareGoldenFile(filepath.Join(testdir, "expected-apiserver.yaml"), apiserverRequests)
 		}
 	})
-}
-
-// logKubeRequestsHook is a hook to record mock-kubeapiserver requests to a RequestLog
-type logKubeRequestsHook struct {
-	log *httprecorder.RequestLog
-}
-
-var _ mockkubeapiserver.BeforeHTTPOperation = &logKubeRequestsHook{}
-
-func (h *logKubeRequestsHook) BeforeHTTPOperation(op *mockkubeapiserver.HTTPOperation) {
-	req := op.Request
-	entry := &httprecorder.LogEntry{}
-	entry.Request = httprecorder.Request{
-		Method: req.Method,
-		URL:    req.URL.String(),
-		Header: req.Header,
-	}
-
-	if req.Body != nil {
-		requestBody, err := io.ReadAll(req.Body)
-		if err != nil {
-			panic("failed to read request body")
-		}
-		entry.Request.Body = string(requestBody)
-		req.Body = io.NopCloser(bytes.NewReader(requestBody))
-	}
-	h.log.AddEntry(entry)
 }

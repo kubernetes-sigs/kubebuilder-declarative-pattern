@@ -58,7 +58,8 @@ func ApplyPatches(ctx context.Context, object declarative.DeclarativeObject, obj
 			patch := &unstructured.Unstructured{}
 
 			if err := decoder.Decode(patch); err != nil {
-				return fmt.Errorf("error parsing json into unstructured object: %v", err)
+				log.Info("invalid patch", "patch", string(p.Raw))
+				return fmt.Errorf("error parsing patch json into unstructured object: %v", err)
 			}
 			log.WithValues("patch", patch).V(1).Info("parsed patch")
 

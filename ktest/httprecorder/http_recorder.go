@@ -54,8 +54,6 @@ func (m *HTTPRecorder) RoundTrip(request *http.Request) (*http.Response, error) 
 			switch strings.ToLower(k) {
 			case "authorization":
 				entry.Response.Header[k] = []string{"(redacted)"}
-			case "date":
-				entry.Response.Header[k] = []string{"(removed)"}
 			default:
 				entry.Response.Header[k] = values
 			}

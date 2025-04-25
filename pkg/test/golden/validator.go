@@ -24,17 +24,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
+	"testing"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/scheme"
+	"sigs.k8s.io/kubebuilder-declarative-pattern/ktest/testharness"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon"
 	"sigs.k8s.io/kubebuilder-declarative-pattern/pkg/patterns/addon/pkg/loaders"
@@ -59,47 +61,38 @@ type T interface {
 	Helper()
 	Logf(format string, args ...interface{})
 	TempDir() string
+
+	Run(name string, testFunc func(t *testing.T)) bool
 }
 
-func NewValidator(t T, b *scheme.Builder) *validator {
-	v := &validator{T: t, scheme: runtime.NewScheme()}
-	if err := b.AddToScheme(v.scheme); err != nil {
-		t.Fatalf("error from AddToScheme: %v", err)
+type AddToSchemeFunc func(s *runtime.Scheme) error
+
+type ValidatorOptions struct {
+	EnvtestEnvironment   *envtest.Environment
+	AddToSchemeFunctions []AddToSchemeFunc
+	ManagerOptions       manager.Options
+
+	// RewriteObjects allows us to replace values in objects
+	RewriteObjects func(o *unstructured.Unstructured)
+}
+
+func (opt *ValidatorOptions) WithSchema(addToSchemeFuncs ...AddToSchemeFunc) *ValidatorOptions {
+	opt.AddToSchemeFunctions = append(opt.AddToSchemeFunctions, addToSchemeFuncs...)
+	return opt
+}
+
+func NewValidator(t T, opt ValidatorOptions) *validator {
+	v := &validator{T: t, scheme: runtime.NewScheme(), options: opt}
+	for _, addToSchemeFunc := range opt.AddToSchemeFunctions {
+		if err := addToSchemeFunc(v.scheme); err != nil {
+			t.Fatalf("error from AddToScheme: %v", err)
+		}
 	}
 
 	v.T.Helper()
 	addon.Init()
 	v.findChannelsPath()
 
-	k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
-	if err != nil {
-		t.Fatalf("error building mock kube-apiserver: %v", err)
-	}
-
-	addr, err := k8s.StartServing()
-	if err != nil {
-		t.Errorf("error starting mock kube-apiserver: %v", err)
-	}
-	v.k8s = k8s
-
-	t.Cleanup(func() {
-		if err := k8s.Stop(); err != nil {
-			t.Errorf("error stopping mock kube-apiserver: %v", err)
-		}
-	})
-
-	restConfig := &rest.Config{
-		Host: addr.String(),
-	}
-
-	mgr, err := manager.New(restConfig, manager.Options{
-		Scheme: v.scheme,
-	})
-	if err != nil {
-		t.Fatalf("error building manager: %v", err)
-	}
-	v.client = mgr.GetClient()
-	v.mgr = mgr
 	return v
 }
 
@@ -108,10 +101,99 @@ type validator struct {
 	scheme  *runtime.Scheme
 	TestDir string
 
-	k8s *mockkubeapiserver.MockKubeAPIServer
+	options ValidatorOptions
+}
 
-	mgr    manager.Manager
-	client client.Client
+type kubeInstance struct {
+	restConfig *rest.Config
+	mgr        manager.Manager
+	client     client.Client
+}
+
+func deepCopyEnvtestEnvironment(in *envtest.Environment) *envtest.Environment {
+	out := &envtest.Environment{}
+	*out = *in
+
+	out.CRDInstallOptions.CRDs = nil
+	for _, crd := range in.CRDInstallOptions.CRDs {
+		out.CRDInstallOptions.CRDs = append(out.CRDInstallOptions.CRDs, crd.DeepCopy())
+	}
+
+	return out
+}
+
+func (v *kubeInstance) startKube(t T, opt ValidatorOptions) {
+	useEnvtest := opt.EnvtestEnvironment != nil
+	if useEnvtest {
+		env := deepCopyEnvtestEnvironment(opt.EnvtestEnvironment)
+		rc, err := env.Start()
+		if err != nil {
+			t.Fatalf("failed to start envtest kube-apiserver: %v", err)
+		}
+		v.restConfig = rc
+		t.Cleanup(func() {
+			if err := env.Stop(); err != nil {
+				t.Errorf("error stopping envtest: %v", err)
+			}
+		})
+
+	} else {
+		k8s, err := mockkubeapiserver.NewMockKubeAPIServer(":0")
+		if err != nil {
+			t.Fatalf("error building mock kube-apiserver: %v", err)
+		}
+
+		addr, err := k8s.StartServing()
+		if err != nil {
+			t.Errorf("error starting mock kube-apiserver: %v", err)
+		}
+		// v.k8s = k8s
+
+		t.Cleanup(func() {
+			if err := k8s.Stop(); err != nil {
+				t.Errorf("error stopping mock kube-apiserver: %v", err)
+			}
+		})
+
+		v.restConfig = &rest.Config{
+			Host: addr.String(),
+		}
+	}
+}
+
+func (v *kubeInstance) startControllerRuntime(t T, scheme *runtime.Scheme, opt ValidatorOptions) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	mgrOptions := opt.ManagerOptions
+	mgrOptions.Scheme = scheme
+	mgr, err := manager.New(v.restConfig, mgrOptions)
+	if err != nil {
+		t.Fatalf("error building manager: %v", err)
+	}
+	v.client = mgr.GetClient()
+	v.mgr = mgr
+
+	managerError := make(chan error)
+	go func() {
+		err := v.mgr.Start(ctx)
+		if err != nil {
+			t.Errorf("starting manager: %v", err)
+		}
+		managerError <- err
+	}()
+
+	// Wait for the manager to start
+	if !v.mgr.GetCache().WaitForCacheSync(ctx) {
+		t.Fatalf("error waiting for cache sync")
+	}
+
+	t.Cleanup(func() {
+		// Cancel the context so the manager exits
+		cancel()
+		// Wait for manager to exit
+		<-managerError
+	})
 }
 
 // findChannelsPath will search for a channels directory, which is helpful when running under bazel
@@ -178,15 +260,9 @@ func (v *validator) findChannelsPath() {
 	t.Logf("flagChannel = %s", loaders.FlagChannel)
 }
 
-func (v *validator) Manager() manager.Manager {
-	return v.mgr
-}
+func (v *validator) Validate(reconcilerFactory func(mgr manager.Manager) (*declarative.Reconciler, error)) {
+	ctx := context.TODO()
 
-func (v *validator) Client() client.Client {
-	return v.client
-}
-
-func (v *validator) Validate(r declarative.Reconciler) {
 	t := v.T
 	t.Helper()
 
@@ -195,115 +271,122 @@ func (v *validator) Validate(r declarative.Reconciler) {
 
 	metadataAccessor := meta.NewAccessor()
 
-	basedir := "tests"
+	basedir := "testdata/golden"
 	if v.TestDir != "" {
 		basedir = v.TestDir
 	}
 
-	files, err := os.ReadDir(basedir)
-	if err != nil {
-		t.Fatalf("error reading dir %s: %v", basedir, err)
+	var testNames []string
+	if err := filepath.WalkDir(basedir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if d.Name() == "input.yaml" {
+			testName, err := filepath.Rel(basedir, filepath.Dir(path))
+			if err != nil {
+				t.Fatalf("getting relative path for %q: %v", path, err)
+			}
+			testNames = append(testNames, testName)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("error listing tests in %q: %v", basedir, err)
 	}
 
-	ctx := context.TODO()
-
-	for _, f := range files {
-		p := filepath.Join(basedir, f.Name())
-		t.Logf("Filepath: %s", p)
-		if f.IsDir() {
-			// TODO: support fs trees?
-			t.Errorf("unexpected directory in tests directory: %s", p)
-			continue
-		}
-
-		if strings.HasSuffix(p, "~") {
-			// Ignore editor temp files (for sanity)
-			t.Logf("ignoring editor temp file %s", p)
-			continue
-		}
-
-		// Ignore any files that are not input - we want to find .side_in and .out files
-		// that correspond to given .in file
-		if !strings.HasSuffix(p, ".in.yaml") {
-			continue
-		}
+	runTest := func(testDir string, t T) {
+		kube := &kubeInstance{}
+		kube.startKube(t, v.options)
+		kube.startControllerRuntime(t, v.scheme, v.options)
 
 		objectsToCleanup := []client.Object{}
 		// Check if there is a file containing side inputs for this test
-		sideInputPath := strings.Replace(p, ".in.yaml", ".side_in.yaml", -1)
-		sideInputRead, err := os.ReadFile(sideInputPath)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				t.Errorf("Could not read side input file %s: %v", sideInputPath, err)
-			}
-		} else {
-			objs, err := manifest.ParseObjects(ctx, string(sideInputRead))
+		for _, name := range []string{"side_in.yaml", "dependencies.yaml"} {
+			sideInputPath := filepath.Join(testDir, name)
+			sideInputRead, err := os.ReadFile(sideInputPath)
 			if err != nil {
-				t.Errorf("error parsing file %s: %v", p, err)
-				continue
-			}
+				if !os.IsNotExist(err) {
+					t.Errorf("Could not read side input file %s: %v", sideInputPath, err)
+				}
+			} else {
+				objs, err := manifest.ParseObjects(ctx, string(sideInputRead))
+				if err != nil {
+					t.Fatalf("error parsing file %s: %v", sideInputPath, err)
+				}
 
-			for _, obj := range objs.Items {
-				json, err := obj.JSON()
-				if err != nil {
-					t.Errorf("error converting resource to json in %s: %v", p, err)
-					continue
+				for _, obj := range objs.Items {
+					json, err := obj.JSON()
+					if err != nil {
+						t.Errorf("error converting resource to json in %s: %v", sideInputPath, err)
+						continue
+					}
+					decoded, _, err := serializer.Decode(json, nil, nil)
+					if err != nil {
+						t.Errorf("error parsing resource in %s: %v", sideInputPath, err)
+						continue
+					}
+					obj := decoded.(client.Object)
+					if err := kube.client.Create(ctx, obj); err != nil {
+						t.Errorf("error creating resource in %s: %v", sideInputPath, err)
+					}
+					t.Logf("created object %v %v/%v", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName())
+					objectsToCleanup = append(objectsToCleanup, obj)
 				}
-				decoded, _, err := serializer.Decode(json, nil, nil)
-				if err != nil {
-					t.Errorf("error parsing resource in %s: %v", p, err)
-					continue
-				}
-				obj := decoded.(client.Object)
-				if err := v.client.Create(ctx, obj); err != nil {
-					t.Errorf("error creating resource in %s: %v", p, err)
-				}
-				objectsToCleanup = append(objectsToCleanup, obj)
 			}
 		}
 
-		b, err := os.ReadFile(p)
+		inputPath := filepath.Join(testDir, "input.yaml")
+		b, err := os.ReadFile(inputPath)
 		if err != nil {
-			t.Errorf("error reading file %s: %v", p, err)
-			continue
+			t.Fatalf("error reading file %s: %v", inputPath, err)
 		}
 
 		objs, err := manifest.ParseObjects(ctx, string(b))
 		if err != nil {
-			t.Errorf("error parsing file %s: %v", p, err)
-			continue
+			t.Fatalf("error parsing file %s: %v", inputPath, err)
 		}
 
 		if len(objs.Items) != 1 {
-			t.Errorf("expected exactly one item in %s", p)
-			continue
+			t.Fatalf("expected exactly one item in %s", inputPath)
 		}
 
 		crJSON, err := objs.Items[0].JSON()
 		if err != nil {
-			t.Errorf("error converting CR to json in %s: %v", p, err)
-			continue
+			t.Fatalf("error converting CR to json in %s: %v", inputPath, err)
 		}
 
 		cr, _, err := serializer.Decode(crJSON, nil, nil)
 		if err != nil {
-			t.Errorf("error parsing CR in %s: %v", p, err)
-			continue
+			t.Fatalf("error parsing CR in %s: %v", inputPath, err)
+		}
+
+		{
+			obj := cr.(client.Object)
+			if err := kube.client.Create(ctx, obj); err != nil {
+				t.Errorf("error creating resource in %s: %v", inputPath, err)
+			}
+			t.Logf("created object %v %v/%v", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName())
+			objectsToCleanup = append(objectsToCleanup, obj)
 		}
 
 		namespace, err := metadataAccessor.Namespace(cr)
 		if err != nil {
-			t.Errorf("error getting namespace in %s: %v", p, err)
-			continue
+			t.Fatalf("error getting namespace in %s: %v", inputPath, err)
 		}
 
 		name, err := metadataAccessor.Name(cr)
 		if err != nil {
-			t.Errorf("error getting name in %s: %v", p, err)
-			continue
+			t.Fatalf("error getting name in %s: %v", inputPath, err)
 		}
 
 		nsn := types.NamespacedName{Namespace: namespace, Name: name}
+
+		r, err := reconcilerFactory(kube.mgr)
+		if err != nil {
+			t.Fatalf("building reconcile: %v", err)
+		}
 
 		var fs filesys.FileSystem
 		if r.IsKustomizeOptionUsed() {
@@ -311,8 +394,7 @@ func (v *validator) Validate(r declarative.Reconciler) {
 		}
 		objects, err := r.BuildDeploymentObjectsWithFs(ctx, nsn, cr.(declarative.DeclarativeObject), fs)
 		if err != nil {
-			t.Errorf("error building deployment objects: %v", err)
-			continue
+			t.Fatalf("error building deployment objects: %v", err)
 		}
 
 		var actualYAML string
@@ -324,6 +406,9 @@ func (v *validator) Validate(r declarative.Reconciler) {
 					b.WriteString("---\n")
 				}
 				u := o.UnstructuredObject()
+				if v.options.RewriteObjects != nil {
+					v.options.RewriteObjects(u)
+				}
 				if err := yamlizer.Encode(u, &b); err != nil {
 					t.Fatalf("error encoding to yaml: %v", err)
 				}
@@ -331,41 +416,57 @@ func (v *validator) Validate(r declarative.Reconciler) {
 			actualYAML = b.String()
 		}
 
-		expectedPath := strings.Replace(p, ".in.yaml", ".out.yaml", -1)
+		expectedPath := filepath.Join(testDir, "_expected.yaml")
 		var expectedYAML string
 		{
 			b, err := os.ReadFile(expectedPath)
 			if err != nil {
-				t.Errorf("error reading file %s: %v", expectedPath, err)
-				continue
+				if os.IsNotExist(err) && ShouldWriteGoldenOutput(t) {
+					// We'll create the file below
+				} else {
+					t.Fatalf("error reading file %s: %v", expectedPath, err)
+				}
 			}
 			expectedYAML = string(b)
 		}
 
 		if actualYAML != expectedYAML {
-			if os.Getenv("HACK_AUTOFIX_EXPECTED_OUTPUT") != "" {
-				t.Logf("HACK_AUTOFIX_EXPECTED_OUTPUT is set; replacing expected output in %s", expectedPath)
+			if ShouldWriteGoldenOutput(t) {
+				t.Logf("WRITE_GOLDEN_OUTPUT is set; replacing expected output in %s", expectedPath)
 				if err := os.WriteFile(expectedPath, []byte(actualYAML), 0644); err != nil {
 					t.Fatalf("error writing expected output to %s: %v", expectedPath, err)
 				}
-				continue
-			}
+			} else {
+				if err := diffFiles(t, expectedPath, actualYAML); err != nil {
+					t.Logf("failed to run system diff, falling back to string diff: %v", err)
+					t.Logf("diff: %s", diff.StringDiff(actualYAML, expectedYAML))
+				}
 
-			if err := diffFiles(t, expectedPath, actualYAML); err != nil {
-				t.Logf("failed to run system diff, falling back to string diff: %v", err)
-				t.Logf("diff: %s", diff.StringDiff(actualYAML, expectedYAML))
+				t.Errorf("unexpected diff between actual and expected YAML. See previous output for details.")
+				t.Logf(`To regenerate the output based on this result, rerun this test with WRITE_GOLDEN_OUTPUT="true"`)
 			}
-
-			t.Errorf("unexpected diff between actual and expected YAML. See previous output for details.")
-			t.Logf(`To regenerate the output based on this result, rerun this test with HACK_AUTOFIX_EXPECTED_OUTPUT="true"`)
 		}
 
 		for _, objectToCleanup := range objectsToCleanup {
-			if err := v.client.Delete(ctx, objectToCleanup); err != nil {
+			if err := kube.client.Delete(ctx, objectToCleanup); err != nil {
 				t.Errorf("error deleting object: %v", err)
 			}
 		}
 	}
+
+	for _, testName := range testNames {
+		t.Run(testName, func(t *testing.T) {
+			runTest(filepath.Join(basedir, testName), t)
+		})
+	}
+}
+
+func ShouldWriteGoldenOutput(t T) bool {
+	if os.Getenv("HACK_AUTOFIX_EXPECTED_OUTPUT") != "" {
+		t.Logf("HACK_AUTOFIX_EXPECTED_OUTPUT is set, please switch to use WRITE_GOLDEN_OUTPUT.  This may be an test failure in future versions.")
+		return true
+	}
+	return testharness.ShouldWriteGoldenOutput()
 }
 
 func diffFiles(t T, expectedPath, actual string) error {

@@ -129,6 +129,7 @@ func testSimpleReconciler(h *testharness.Harness, testdir string, applier applie
 	requestLog.RegexReplaceURL(h.T, "&timeoutSeconds=.*&", "&timeoutSeconds=<replaced>&")
 	h.Logf("replacing real timestamp in request and response to a fake value")
 	requestLog.ReplaceTimestamp()
+	requestLog.ReplaceHeader("Date", "(removed)")
 
 	requests := requestLog.FormatHTTP(false)
 
