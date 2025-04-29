@@ -31,7 +31,7 @@ REPO_ROOT=$(pwd)
 if [[ ! -f "bin/kubectl" ]]; then
   echo "Downloading kubectl to bin/kubectl"
   mkdir -p bin/
-  curl -L -o bin/kubectl https://dl.k8s.io/release/v1.27.0/bin/linux/amd64/kubectl
+  curl -L -o bin/kubectl https://dl.k8s.io/release/v1.32.2/bin/linux/amd64/kubectl
 fi
 chmod +x bin/kubectl
 export PATH="${REPO_ROOT}/bin:$PATH"
