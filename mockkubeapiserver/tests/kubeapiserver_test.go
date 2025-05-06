@@ -86,6 +86,7 @@ func TestGoldenTests(t *testing.T) {
 		t.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
 		requestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
 		requestLog.RemoveUserAgent()
+		requestLog.ReplaceHeader("Date", "(removed)")
 		requestLog.SortGETs()
 
 		requests := requestLog.FormatHTTP(true)

@@ -1,281 +1,479 @@
-GET /api/v1
+GET https://kube-apiserver/api/v1
 Accept: application/json, */*
 Accept-Encoding: gzip
 
 
+200 OK
+Cache-Control: no-cache, private
+Content-Type: application/json
+
+// discovery response removed for length
 
 ---
 
-GET /api?timeout=32s
+GET https://kube-apiserver/api?timeout=32s
 Accept: application/json;g=apidiscovery.k8s.io;v=v2;as=APIGroupDiscoveryList,application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
 
+200 OK
+Cache-Control: public
+Content-Type: application/json;g=apidiscovery.k8s.io;v=v2;as=APIGroupDiscoveryList
+Etag: (removed)
+Vary: Accept
+
+// discovery response removed for length
 
 ---
 
-GET /api/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis?timeout=32s
+GET https://kube-apiserver/apis?timeout=32s
 Accept: application/json;g=apidiscovery.k8s.io;v=v2;as=APIGroupDiscoveryList,application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList,application/json
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
 
+200 OK
+Cache-Control: public
+Content-Type: application/json;g=apidiscovery.k8s.io;v=v2;as=APIGroupDiscoveryList
+Etag: (removed)
+Vary: Accept
+
+// discovery response removed for length
 
 ---
 
-GET /apis/admissionregistration.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/apiextensions.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/apiregistration.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/apps/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/autoscaling/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/autoscaling/v2?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/autoscaling/v2beta2?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/batch/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/certificates.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/coordination.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/discovery.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/events.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/flowcontrol.apiserver.k8s.io/v1beta1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/flowcontrol.apiserver.k8s.io/v1beta2?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/networking.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/node.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/policy/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/rbac.authorization.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/scheduling.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/storage.k8s.io/v1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /apis/storage.k8s.io/v1beta1?timeout=32s
-Accept: application/json, */*
-Accept-Encoding: gzip
-Kubectl-Command: kubectl apply
-
-
-
----
-
-GET /api/v1/namespaces/ns1
+GET https://kube-apiserver/api/v1/namespaces/ns1
 Accept: application/json
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
 
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 510
+Content-Type: application/json
+
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "creationTimestamp": "2025-04-01T00:00:00Z",
+    "labels": {
+      "kubernetes.io/metadata.name": "ns1"
+    },
+    "managedFields": [
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:labels": {
+              ".": {},
+              "f:kubernetes.io/metadata.name": {}
+            }
+          }
+        },
+        "manager": "applier.test",
+        "operation": "Update",
+        "time": "2025-04-01T00:00:00Z"
+      }
+    ],
+    "name": "ns1",
+    "resourceVersion": "1000",
+    "uid": "fake-uid"
+  },
+  "spec": {
+    "finalizers": [
+      "kubernetes"
+    ]
+  },
+  "status": {
+    "phase": "Active"
+  }
+}
 
 ---
 
-GET /openapi/v3?timeout=32s
+GET https://kube-apiserver/openapi/v3?timeout=32s
 Accept: application/json, */*
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
 
+200 OK
+Accept-Ranges: bytes
+Cache-Control: no-cache, private
+Content-Length: 9769
+Content-Type: text/plain; charset=utf-8
+Last-Modified: (removed)
+
+{
+  "paths": {
+    ".well-known/openid-configuration": {
+      "serverRelativeURL": "/openapi/v3/.well-known/openid-configuration?hash=EE65D1A37384FBD70BF57F8552262A036A609B6A321D9F5D350FC54DF8481C8EAF31EF2AA05C9079D1AB2D38EA511DE0D15BB3490EF072C9C8F4D1D4F36198E2"
+    },
+    "api": {
+      "serverRelativeURL": "/openapi/v3/api?hash=5859118BDAA9799546B244E571E7A7CEE84237E82D1336E74F000D98A4B589EF4DC3B69581C1CF58BC951164235E893B8A7086937D8EEC12B4EDBE9CD84CD3E3"
+    },
+    "api/v1": {
+      "serverRelativeURL": "/openapi/v3/api/v1?hash=9D037856EC2C3B81B3BAE97858BC6D123E6FAE87C4E324F952582BDFD96BAEB1AFD2232C1F69E85DA5B707E4BCDCB7B6A160010E7A90A6444C493ADC3185AB39"
+    },
+    "apis": {
+      "serverRelativeURL": "/openapi/v3/apis?hash=2A5D35596DBFE91EB2ACA2160DBDCBB3E818B5601C1EB3CBD00AE04776C517F0D02021B9DBBDB8A82FB120CE3AEC44781A8C6916603307105AB256D8C46C8E82"
+    },
+    "apis/admissionregistration.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/admissionregistration.k8s.io?hash=1A7DDE3D62EBD746188F58D8045564A23507D95AFF8291F4E184A1CE51DA62762D5EF0615F7CD7E11C11D555FD5F11998440A571E157DA29521D00A673D927C4"
+    },
+    "apis/admissionregistration.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/admissionregistration.k8s.io/v1?hash=CF8E09DF1A6ED071D829FC4567247029D5FF9FC14A5625D4119E19F2E9476DD120DD77F273262E0EE37CB9D0E56557D4C9EF317B6FEC11FA723EDB3C510E0E57"
+    },
+    "apis/apiextensions.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/apiextensions.k8s.io?hash=BE295FE4F13F51E640B2F7426F0F08A531E23A167BD15F63045936EFEC6E778E9DE301E112FA1A8C3B8E2BF03C0A1514F4CB824372E295047B6EFA8A20BF7D56"
+    },
+    "apis/apiextensions.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/apiextensions.k8s.io/v1?hash=B1556A6BA7C79C53ACF20DAE2B7B500320B9080B69BAB28633D8C9E066C37BE7F7830C11EB6C76AE0BCDD54913675FFAD77539BAEC095668027A6DD8709D4BDC"
+    },
+    "apis/apiregistration.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/apiregistration.k8s.io?hash=B30FFE35A074599BB09DF397800656793B3189C49E10398F5AA921436751797A12124065541577646EB5E75FA1593BEEF9E7E2191AC09FEC31945E3FBA582A77"
+    },
+    "apis/apiregistration.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/apiregistration.k8s.io/v1?hash=C6E795C6230BD7215A054B5F3BF15AA34DDE577474EDF776BB892D6A19264FA32A5CAEC0C33BEE28109CE270E813EFB01C51929CF6307223AB3A03D5C98C30BE"
+    },
+    "apis/apps": {
+      "serverRelativeURL": "/openapi/v3/apis/apps?hash=486C9060ABEEE16CEA6B4C5A118F3EAABD54FAEB95AED413A8DD40883664E9A1C7558FDEAFE9376407A4B8F093A33E4A6628659C0F8E1D48967C906724843016"
+    },
+    "apis/apps/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/apps/v1?hash=3A554FFC7B8C9D3A7D7FFB71404E158FA1A319F8F8B78B8BBA92CB242E30DB15224AE02DF1ED96FC8E568B21EE0C5CED00D6E763E9D756687B8A211A71D84BE4"
+    },
+    "apis/authentication.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/authentication.k8s.io?hash=61203E11CF3105293D5C82886166389DA599B1105B2E73BF69F545216344C161DCFDDFFC4B4F76847BDF9A4C08B757389F1571C129BCEA7F84EF1CE33C337BB4"
+    },
+    "apis/authentication.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/authentication.k8s.io/v1?hash=38014E592BB03509DC75546A3EBC545576DC664B391C7202C6760E01E70F1D325950F5E3DD1E46060F81AF814931628A0F70EDBA3E643D344181EBF408DD3E41"
+    },
+    "apis/authorization.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/authorization.k8s.io?hash=9ED511234AA53C376605E3475CFC4CEEE7B2048499BD69536278EDD59FD13ED0F86FDEC1FFF5F5105B4AE709CFD1ABBBAC19500D9790E21B42B16882CBE975B4"
+    },
+    "apis/authorization.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/authorization.k8s.io/v1?hash=3D1E81F97614D8DAF028947B0C3B7D248069F037E6F5D98770706D9FD641F98842F5C88096C364CF46961693471C9B79409CB1E04AD326627AFE6C8CE202DA06"
+    },
+    "apis/autoscaling": {
+      "serverRelativeURL": "/openapi/v3/apis/autoscaling?hash=736DF8FCF594FC4E152178CE0B94FD4B0D6D1D2ECFDD920D51F7C85FCFB037DAF9763E1C58563F460F477F0DAB67AA144075F0A7EC7B0EC53AAE95EDB105CCA4"
+    },
+    "apis/autoscaling/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/autoscaling/v1?hash=2538EE84E6E6017D88FF1BF560FD218DC73F62DBBA2F5747C70AF9C318AA0C0CE0B7900B7496FEBD4687A7B64D348D3C227F991DDA3A5F8A446C1C739571D097"
+    },
+    "apis/autoscaling/v2": {
+      "serverRelativeURL": "/openapi/v3/apis/autoscaling/v2?hash=93D2217692FD2BA9EFD0BA9B4B9C8D8C7CA8141A86FE7380C4F212357CBCEB614FEB2D3C277E8B2FE659C273C021EBD01A99FEB204632BEFBB067F443CFD06A9"
+    },
+    "apis/batch": {
+      "serverRelativeURL": "/openapi/v3/apis/batch?hash=F2325C8C4273B98D447D53857C64A9C4C519ACE0E883AB68B0459638E00E10C2A21DC8AAA843B825308A1A0553412A982DCEA4028662B7B1D3E2E147ACC7C0D7"
+    },
+    "apis/batch/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/batch/v1?hash=6BD474B10222CBC7248DF3EBB8A0DEDDC8EBC4CB457A26DA97EB7260C8B350927E642C02E50485F47A8D485344284CFF4ED916359FCD07A27C13C6373700FAEB"
+    },
+    "apis/certificates.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/certificates.k8s.io?hash=0488D2212BA502969A7C2EFF68A02F9E7D33D7F623F756F2E1612E825AAFA76B7EA34636DF66007CCC2E4DEEDEB8D0081BA5F6C5A77BD920BE7F37B5392AEBDE"
+    },
+    "apis/certificates.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/certificates.k8s.io/v1?hash=D9E3DAC0E7D1483FCD606A563A0EBCB418B149B1D031188C334B50A75E5E2BEE3391114262B5F9EBF8101C0D4A36A35FC9683114564E57792856DA1709E87C01"
+    },
+    "apis/coordination.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/coordination.k8s.io?hash=D0505BA2C4DC6B62C8F0DA7BC63D311B69484A3AA7BE23B90BFAA4474E17E62CA853A23AE08AF62636EA2DC22DF8379B330A961BC022177FC375136EDECFA957"
+    },
+    "apis/coordination.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/coordination.k8s.io/v1?hash=DC723668A2967670C7E38D34B12FF0E243F4CD5D4BF2E34C1D163FE6AE0B0F6A243A2CF52E6772CE05E70E8EA77985D0F01A5A8A37E8F0DE953B897496AA9A2F"
+    },
+    "apis/discovery.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/discovery.k8s.io?hash=46E9EAD047F2D8453FBCD843CBF444550D2FB9A713044A03F20E37A8AE910AB3F7CA9F5F95776A2042A5AE49910DF68D94E6ECC6114A910035F3FA8FE884702C"
+    },
+    "apis/discovery.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/discovery.k8s.io/v1?hash=1916FDE50902F1736D7A3ADD52F7FD2052A224C3EEA523A4EEBB1E039D5C3BC6E361E13E29CF6BC5A533379A24BE06B056C0C057E3228213026F2D347BE5E27E"
+    },
+    "apis/events.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/events.k8s.io?hash=54DFE40AE371BC997A4E3EB69ED31D6288ACF7F40F1760C287F0ED1F136F3D1C3F370D1CD00B656182BEEF4C74F235A4FD1ED4332FC6A6FF6B595D6D3FEACB67"
+    },
+    "apis/events.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/events.k8s.io/v1?hash=9082EE83826F90DD752D28AEB0CFB3DAB37894D31FAA323D06A7E654F37873AA17BEBA6207A28ADD90A5E897E3563F6A959E234D67BB6A9AFD07841F7999EF05"
+    },
+    "apis/flowcontrol.apiserver.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/flowcontrol.apiserver.k8s.io?hash=647C32B588A9390B2F24394A7D47A0F2C1211FF3B9A4AD8155B4258A54C68A36327107F3D138313E046213FB438A39AB6337CE2642D91CFB0CD4D7E0340A3FC8"
+    },
+    "apis/flowcontrol.apiserver.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/flowcontrol.apiserver.k8s.io/v1?hash=BCC19B13D3B0611B08EA04B94BF217337973B9EFB5A0EAF1474D33DB720A5CF6990A6F88CAFE4520AF40153D04DED9C74CF23169A29CE97E61774F1651759527"
+    },
+    "apis/networking.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/networking.k8s.io?hash=775337908636C46D0C78DDF6478C6E517B2F0092389FA33F6CDF7BC3AC3201E9ACAFD80F4E64710148FC9CAB25E682DB4211B41CF84ADD3DBC990101BC0EE25D"
+    },
+    "apis/networking.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/networking.k8s.io/v1?hash=867441473FBD51647556A360CEF20FF1DF3F5C24C90C7B041450FB90A35ABF3A339170685EDBBF78B706D480E250394C9D8E77B539FF849441C3EDF66AA4BFFC"
+    },
+    "apis/node.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/node.k8s.io?hash=37FFCF5435C3DC3E3C10FC7110E30636351AFC597F3D2C2B20DD8C326BC5A8ED6DE35D0EEE5B6C3EE80CAAE7F20D684A924F97EB8317C7EE88C6D670599C1720"
+    },
+    "apis/node.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/node.k8s.io/v1?hash=553989A9A87AE1DDBE895C124348D61439E4F51024062A19E547270F6211ECCEA69B308C6F89AA037E11D61E08717D8DE325BCE3EE3F31BB6C0CEF7C7EC8631E"
+    },
+    "apis/policy": {
+      "serverRelativeURL": "/openapi/v3/apis/policy?hash=49945BE88C997E477769E647741A0CF1BE3C49612855FBAC34F64B0DAE971303840CAED4B9E322280E9FE631799230571DB018DFA1A2F1ED3AABB03AAF64AE2B"
+    },
+    "apis/policy/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/policy/v1?hash=58C696989BC640D0BE5100041340EB161EF72D0FDB6CB4F0ED8E1786EECB02D7269AEDA26F103FC0F7C1161075AC6C4FEC0AB0337F63C01560E1BCAFCC03F21C"
+    },
+    "apis/rbac.authorization.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/rbac.authorization.k8s.io?hash=8B2A1F6D28C7494879FDCB05480A9155AE9988C2263FF9ABD61FE4E9A0478ADD7EBA7B8CD5DA0D4E751B5D21582023707F9BE5C0CF06A6D02E7D2484EA82993B"
+    },
+    "apis/rbac.authorization.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/rbac.authorization.k8s.io/v1?hash=1652D7B2CE98219CDB36B58FCE1C716362362822A22FCBFE743A01246BC42CFDB2035C2AB31FE73C8C356087573F0E15A9D80E1996CC5B79EBD239F78DEAB7E1"
+    },
+    "apis/scheduling.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/scheduling.k8s.io?hash=4E4E59C3AC6FA035A1492472A1C5A0D3C773238D91BAE38AF7696A43D2082394BBB4C07554A388757CCD6988C2BD424D0C53DD185443FC9583E449520911C4E2"
+    },
+    "apis/scheduling.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/scheduling.k8s.io/v1?hash=883787A7FB29CB030ED17E3BE98CA699D0628C522D4CAEE8B4B01028CF2F57A215F5166694FB7E4C93818AA844A13A892A8ACE9B0FB4610EEB7EF9CDCFBBEB42"
+    },
+    "apis/storage.k8s.io": {
+      "serverRelativeURL": "/openapi/v3/apis/storage.k8s.io?hash=3A6AE88595DDF01A5F10CF4CEC55E9671E210F304E24A81F681C29C11ABC194BBEED356DBA69C1CE17D2298F9925485C7B64BCC5BE05C9D0F67D31E4E095E883"
+    },
+    "apis/storage.k8s.io/v1": {
+      "serverRelativeURL": "/openapi/v3/apis/storage.k8s.io/v1?hash=B145D2FC5FD4E47E51CD39750EC1776A2D8CBB2121CAA36A4DA4F873547D5E65F12F3EC86EB2019A8DB2D365A00502368C5ED3D89382A988BE9B52E4C953755D"
+    },
+    "openid/v1/jwks": {
+      "serverRelativeURL": "/openapi/v3/openid/v1/jwks?hash=9433A6FE51026FBFF941E46D3E922E718093DFCC4AD9FD280626952A6CA57CE37962EC88433BAA5A0904AE359E98406F6A276AC2E586CEF206FAA57980A9B2A9"
+    },
+    "version": {
+      "serverRelativeURL": "/openapi/v3/version?hash=DCD23CA9A65AF50DFF28E2FFCCDCF0EDBB862CDA349815A6E88A9F7D768163E94077FA6607F0522CB3F09062BD6583E6B82FCEAA7BBCC09663559B8DA3D72998"
+    }
+  }
+}
 
 ---
 
-GET /openapi/v2?timeout=32s
-Accept: application/com.github.proto-openapi.spec.v2@v1.0+protobuf
+GET https://kube-apiserver/openapi/v3/api/v1?hash=9D037856EC2C3B81B3BAE97858BC6D123E6FAE87C4E324F952582BDFD96BAEB1AFD2232C1F69E85DA5B707E4BCDCB7B6A160010E7A90A6444C493ADC3185AB39&timeout=32s
+Accept: application/json
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
 
+200 OK
+Accept-Ranges: bytes
+Cache-Control: public, immutable
+Content-Length: 1428304
+Content-Type: application/json
+Etag: (removed)
+Expires: (removed)
+Last-Modified: (removed)
+Vary: Accept
+
+// discovery response removed for length
 
 ---
 
-PATCH /api/v1/namespaces/ns1?fieldManager=kubectl-client-side-apply&fieldValidation=Ignore
+PATCH https://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kubectl-client-side-apply&fieldValidation=Ignore
 Accept: application/json
 Accept-Encoding: gzip
 Content-Length: 183
 Content-Type: application/strategic-merge-patch+json
 Kubectl-Command: kubectl apply
 
-{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"}}}
+{
+  "metadata": {
+    "annotations": {
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"
+    }
+  }
+}
 
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 921
+Content-Type: application/json
+
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "annotations": {
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns1\"}}\n"
+    },
+    "creationTimestamp": "2025-04-01T00:00:00Z",
+    "labels": {
+      "kubernetes.io/metadata.name": "ns1"
+    },
+    "managedFields": [
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:labels": {
+              ".": {},
+              "f:kubernetes.io/metadata.name": {}
+            }
+          }
+        },
+        "manager": "applier.test",
+        "operation": "Update",
+        "time": "2025-04-01T00:00:00Z"
+      },
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:annotations": {
+              ".": {},
+              "f:kubectl.kubernetes.io/last-applied-configuration": {}
+            }
+          }
+        },
+        "manager": "kubectl-client-side-apply",
+        "operation": "Update",
+        "time": "2025-04-01T00:00:00Z"
+      }
+    ],
+    "name": "ns1",
+    "resourceVersion": "1002",
+    "uid": "fake-uid"
+  },
+  "spec": {
+    "finalizers": [
+      "kubernetes"
+    ]
+  },
+  "status": {
+    "phase": "Active"
+  }
+}
 
 ---
 
-GET /api/v1/namespaces/ns2
+GET https://kube-apiserver/api/v1/namespaces/ns2
 Accept: application/json
 Accept-Encoding: gzip
 Kubectl-Command: kubectl apply
 
 
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 510
+Content-Type: application/json
+
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "creationTimestamp": "2025-04-01T00:00:00Z",
+    "labels": {
+      "kubernetes.io/metadata.name": "ns2"
+    },
+    "managedFields": [
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:labels": {
+              ".": {},
+              "f:kubernetes.io/metadata.name": {}
+            }
+          }
+        },
+        "manager": "applier.test",
+        "operation": "Update",
+        "time": "2025-04-01T00:00:00Z"
+      }
+    ],
+    "name": "ns2",
+    "resourceVersion": "1001",
+    "uid": "fake-uid"
+  },
+  "spec": {
+    "finalizers": [
+      "kubernetes"
+    ]
+  },
+  "status": {
+    "phase": "Active"
+  }
+}
 
 ---
 
-PATCH /api/v1/namespaces/ns2?fieldManager=kubectl-client-side-apply&fieldValidation=Ignore
+PATCH https://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kubectl-client-side-apply&fieldValidation=Ignore
 Accept: application/json
 Accept-Encoding: gzip
 Content-Length: 183
 Content-Type: application/strategic-merge-patch+json
 Kubectl-Command: kubectl apply
 
-{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"}}}
+{
+  "metadata": {
+    "annotations": {
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"
+    }
+  }
+}
 
+200 OK
+Cache-Control: no-cache, private
+Content-Length: 921
+Content-Type: application/json
+
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "annotations": {
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"name\":\"ns2\"}}\n"
+    },
+    "creationTimestamp": "2025-04-01T00:00:00Z",
+    "labels": {
+      "kubernetes.io/metadata.name": "ns2"
+    },
+    "managedFields": [
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:labels": {
+              ".": {},
+              "f:kubernetes.io/metadata.name": {}
+            }
+          }
+        },
+        "manager": "applier.test",
+        "operation": "Update",
+        "time": "2025-04-01T00:00:00Z"
+      },
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:annotations": {
+              ".": {},
+              "f:kubectl.kubernetes.io/last-applied-configuration": {}
+            }
+          }
+        },
+        "manager": "kubectl-client-side-apply",
+        "operation": "Update",
+        "time": "2025-04-01T00:00:00Z"
+      }
+    ],
+    "name": "ns2",
+    "resourceVersion": "1003",
+    "uid": "fake-uid"
+  },
+  "spec": {
+    "finalizers": [
+      "kubernetes"
+    ]
+  },
+  "status": {
+    "phase": "Active"
+  }
+}

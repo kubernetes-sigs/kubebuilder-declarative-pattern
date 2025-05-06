@@ -33,7 +33,7 @@ This means that the output is materialized and checked in to the repo; this
 proves to be very handy for understanding the impact of a change.
 
 There's also a helpful "cheat" function, which rewrite the output when you run
-the tests locally - set the HACK_AUTOFIX_EXPECTED_OUTPUT env var to a non-empty
+the tests locally - set the WRITE_GOLDEN_OUTPUT env var to a non-empty
 string.  This is useful when you have a big set of changes; it's just as easy to
 review the changes yourself in the diff and there's not a ton of value in typing
 them out.
@@ -87,7 +87,7 @@ the env-var cheat code.
    ```bash
    cd pkg/controller/{{operator}}/tests
    touch tests/simple.out.yaml
-   HACK_AUTOFIX_EXPECTED_OUTPUT=1 go test ./...
+   WRITE_GOLDEN_OUTPUT=1 go test ./...
    ```
 
 1. Verify the output is reproducible

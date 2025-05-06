@@ -70,7 +70,7 @@ func writeBody(w io.StringWriter, body string, pretty bool) {
 	}
 
 	if pretty {
-		var obj interface{}
+		var obj any
 		if err := json.Unmarshal([]byte(body), &obj); err == nil {
 			b, err := json.MarshalIndent(obj, "", "  ")
 			if err == nil {
@@ -186,8 +186,28 @@ func (l *RequestLog) RemoveHeader(k string) {
 	defer l.mutex.Unlock()
 
 	for i := range l.entries {
-		r := &l.entries[i].Request
-		r.Header.Del(k)
+		request := &l.entries[i].Request
+		request.Header.Del(k)
+
+		response := &l.entries[i].Response
+		response.Header.Del(k)
+	}
+}
+
+func (l *RequestLog) ReplaceHeader(k string, v string) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	for i := range l.entries {
+		request := &l.entries[i].Request
+		if len(request.Header.Values(k)) != 0 {
+			request.Header.Set(k, v)
+		}
+
+		response := &l.entries[i].Response
+		if len(response.Header.Values(k)) != 0 {
+			response.Header.Set(k, v)
+		}
 	}
 }
 
@@ -259,4 +279,56 @@ func (l *RequestLog) RegexReplaceURL(t *testing.T, find string, replace string) 
 		u = r.ReplaceAllString(u, replace)
 		request.URL = u
 	}
+}
+
+// RewriteBodies rewrites the bodies of the requests and responses.
+// The function fn is called with the body as a map[string]any.
+func (l *RequestLog) RewriteEntries(t *testing.T, fn func(entry *LogEntry)) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	for i := range l.entries {
+		entry := l.entries[i]
+		fn(entry)
+	}
+}
+
+// RewriteBodies rewrites the bodies of the requests and responses.
+// The function fn is called with the body as a map[string]any.
+func (l *RequestLog) RewriteBodies(t *testing.T, fn func(body map[string]any)) {
+	l.RewriteEntries(t, func(entry *LogEntry) {
+		entry.Request.Body = rewriteBody(t, entry.Request.Body, fn)
+		entry.Response.Body = rewriteBody(t, entry.Response.Body, fn)
+	})
+}
+
+// rewriteBody rewrites the body of a request or response, assuming it is a JSON object.
+func rewriteBody(t *testing.T, body string, fn func(body map[string]any)) string {
+	if body == "" {
+		return body
+	}
+
+	// Ignore values we replaced
+	if strings.HasPrefix(body, "// ") {
+		return body
+	}
+
+	var obj any
+	if err := json.Unmarshal([]byte(body), &obj); err != nil {
+		t.Errorf("failed to unmarshal body: %v", err)
+		return body
+	}
+
+	m, ok := obj.(map[string]any)
+	if !ok {
+		return body
+	}
+	fn(m)
+
+	b, err := json.MarshalIndent(obj, "", "  ")
+	if err != nil {
+		t.Errorf("failed to marshal body: %v", err)
+		return body
+	}
+	return string(b)
 }
