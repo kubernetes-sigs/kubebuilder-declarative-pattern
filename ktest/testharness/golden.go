@@ -39,8 +39,12 @@ func RunGoldenTests(t *testing.T, basedir string, fn func(h *Harness, dir string
 	}
 }
 
+func ShouldWriteGoldenOutput() bool {
+	return os.Getenv("WRITE_GOLDEN_OUTPUT") != ""
+}
+
 func (h *Harness) CompareGoldenFile(p string, got string) {
-	if os.Getenv("WRITE_GOLDEN_OUTPUT") != "" {
+	if ShouldWriteGoldenOutput() {
 		// Short-circuit when the output is correct
 		b, err := os.ReadFile(p)
 		if err == nil && bytes.Equal(b, []byte(got)) {

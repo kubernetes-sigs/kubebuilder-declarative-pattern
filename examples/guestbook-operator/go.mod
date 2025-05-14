@@ -8,6 +8,7 @@ require (
 	github.com/go-logr/logr v1.4.2
 	k8s.io/apimachinery v0.32.1
 	k8s.io/client-go v0.32.1
+	k8s.io/klog/v2 v2.130.1
 	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/kubebuilder-declarative-pattern v0.0.0-20210922163802-cac4a6cf1977
 )
@@ -102,13 +103,13 @@ require (
 	k8s.io/apiextensions-apiserver v0.32.1 // indirect
 	k8s.io/cli-runtime v0.29.1 // indirect
 	k8s.io/component-base v0.32.1 // indirect
-	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
 	k8s.io/kubectl v0.29.1 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 	sigs.k8s.io/cli-utils v0.33.0 // indirect
 	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
 	sigs.k8s.io/kubebuilder-declarative-pattern/applylib v0.0.0-20230420203711-4abaa68e1923 // indirect
+	sigs.k8s.io/kubebuilder-declarative-pattern/ktest v0.0.0-20240909164454-57a043fb3ad5 // indirect
 	sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20230303024857-d1f76c15e05b // indirect
 	sigs.k8s.io/kustomize/api v0.14.0 // indirect
 	sigs.k8s.io/kustomize/kstatus v0.0.2-0.20200509233124-065f70705d4d // indirect

@@ -1,43 +1,129 @@
-GET http://kube-apiserver/api/v1
+GET https://kube-apiserver/api/v1
 Accept: application/json, */*
 
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 1926
 Content-Type: application/json
-Date: (removed)
 
-{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"v1","resources":[{"name":"componentstatuses","singularName":"","namespaced":false,"version":"v1","kind":"ComponentStatus","verbs":null},{"name":"configmaps","singularName":"","namespaced":true,"version":"v1","kind":"ConfigMap","verbs":null},{"name":"endpoints","singularName":"","namespaced":true,"version":"v1","kind":"Endpoints","verbs":null},{"name":"events","singularName":"","namespaced":true,"version":"v1","kind":"Event","verbs":null},{"name":"limitranges","singularName":"","namespaced":true,"version":"v1","kind":"LimitRange","verbs":null},{"name":"namespaces","singularName":"","namespaced":false,"version":"v1","kind":"Namespace","verbs":null},{"name":"namespaces","singularName":"","namespaced":false,"version":"v1","kind":"Namespace","verbs":null},{"name":"nodes","singularName":"","namespaced":false,"version":"v1","kind":"Node","verbs":null},{"name":"persistentvolumes","singularName":"","namespaced":false,"version":"v1","kind":"PersistentVolume","verbs":null},{"name":"persistentvolumeclaims","singularName":"","namespaced":true,"version":"v1","kind":"PersistentVolumeClaim","verbs":null},{"name":"pods","singularName":"","namespaced":true,"version":"v1","kind":"Pod","verbs":null},{"name":"podtemplates","singularName":"","namespaced":true,"version":"v1","kind":"PodTemplate","verbs":null},{"name":"replicationcontrollers","singularName":"","namespaced":true,"version":"v1","kind":"ReplicationController","verbs":null},{"name":"resourcequotas","singularName":"","namespaced":true,"version":"v1","kind":"ResourceQuota","verbs":null},{"name":"secrets","singularName":"","namespaced":true,"version":"v1","kind":"Secret","verbs":null},{"name":"services","singularName":"","namespaced":true,"version":"v1","kind":"Service","verbs":null},{"name":"serviceaccounts","singularName":"","namespaced":true,"version":"v1","kind":"ServiceAccount","verbs":null}]}
+// discovery response removed for length
 
 ---
 
-PATCH http://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kdp-test&force=false
+PATCH https://kube-apiserver/api/v1/namespaces/ns1?fieldManager=kdp-test&force=false
 Accept: application/json
 Content-Type: application/apply-patch+yaml
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"labels":{"applyset.kubernetes.io/part-of":"applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1"},"name":"ns1"}}
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "labels": {
+      "applyset.kubernetes.io/part-of": "applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1"
+    },
+    "name": "ns1"
+  }
+}
 
-200 OK
+201 Created
 Cache-Control: no-cache, private
-Content-Length: 377
 Content-Type: application/json
-Date: (removed)
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:00Z","labels":{"applyset.kubernetes.io/part-of":"applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1","kubernetes.io/metadata.name":"ns1"},"name":"ns1","resourceVersion":"1","uid":"00000000-0000-0000-0000-000000000001"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "creationTimestamp": "2025-04-01T00:00:00Z",
+    "labels": {
+      "applyset.kubernetes.io/part-of": "applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1",
+      "kubernetes.io/metadata.name": "ns1"
+    },
+    "managedFields": [
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:labels": {
+              "f:applyset.kubernetes.io/part-of": {}
+            }
+          }
+        },
+        "manager": "kdp-test",
+        "operation": "Apply",
+        "time": "2025-04-01T00:00:00Z"
+      }
+    ],
+    "name": "ns1",
+    "resourceVersion": "1000",
+    "uid": "fake-uid"
+  },
+  "spec": {
+    "finalizers": [
+      "kubernetes"
+    ]
+  },
+  "status": {
+    "phase": "Active"
+  }
+}
 
 ---
 
-PATCH http://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kdp-test&force=false
+PATCH https://kube-apiserver/api/v1/namespaces/ns2?fieldManager=kdp-test&force=false
 Accept: application/json
 Content-Type: application/apply-patch+yaml
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"labels":{"applyset.kubernetes.io/part-of":"applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1"},"name":"ns2"}}
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "labels": {
+      "applyset.kubernetes.io/part-of": "applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1"
+    },
+    "name": "ns2"
+  }
+}
 
-200 OK
+201 Created
 Cache-Control: no-cache, private
-Content-Length: 377
 Content-Type: application/json
-Date: (removed)
 
-{"apiVersion":"v1","kind":"Namespace","metadata":{"creationTimestamp":"2022-01-01T00:00:01Z","labels":{"applyset.kubernetes.io/part-of":"applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1","kubernetes.io/metadata.name":"ns2"},"name":"ns2","resourceVersion":"2","uid":"00000000-0000-0000-0000-000000000002"},"spec":{"finalizers":["kubernetes"]},"status":{"phase":"Active"}}
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "creationTimestamp": "2025-04-01T00:00:00Z",
+    "labels": {
+      "applyset.kubernetes.io/part-of": "applyset-XYWvxXDUlCqMdjmmY1arThcdGiF0cvBW6sAfSMWYUdE-v1",
+      "kubernetes.io/metadata.name": "ns2"
+    },
+    "managedFields": [
+      {
+        "apiVersion": "v1",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:labels": {
+              "f:applyset.kubernetes.io/part-of": {}
+            }
+          }
+        },
+        "manager": "kdp-test",
+        "operation": "Apply",
+        "time": "2025-04-01T00:00:00Z"
+      }
+    ],
+    "name": "ns2",
+    "resourceVersion": "1001",
+    "uid": "fake-uid"
+  },
+  "spec": {
+    "finalizers": [
+      "kubernetes"
+    ]
+  },
+  "status": {
+    "phase": "Active"
+  }
+}

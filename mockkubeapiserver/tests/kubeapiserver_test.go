@@ -32,7 +32,7 @@ func TestGoldenTests(t *testing.T) {
 
 		addr, err := k8s.StartServing()
 		if err != nil {
-			t.Errorf("error starting mock kube-apiserver: %v", err)
+			t.Fatalf("error starting mock kube-apiserver: %v", err)
 		}
 
 		klog.Infof("mock kubeapiserver will listen on %v", addr)
@@ -86,6 +86,7 @@ func TestGoldenTests(t *testing.T) {
 		t.Logf("replacing old url prefix %q", "http://"+restConfig.Host)
 		requestLog.ReplaceURLPrefix("http://"+restConfig.Host, "http://kube-apiserver")
 		requestLog.RemoveUserAgent()
+		requestLog.ReplaceHeader("Date", "(removed)")
 		requestLog.SortGETs()
 
 		requests := requestLog.FormatHTTP(true)

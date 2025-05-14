@@ -1,11 +1,9 @@
-GET http://kube-apiserver/api/v1
+GET https://kube-apiserver/api/v1
 Accept: application/json, */*
 
 
 200 OK
 Cache-Control: no-cache, private
-Content-Length: 1926
 Content-Type: application/json
-Date: (removed)
 
-{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"v1","resources":[{"name":"componentstatuses","singularName":"","namespaced":false,"version":"v1","kind":"ComponentStatus","verbs":null},{"name":"configmaps","singularName":"","namespaced":true,"version":"v1","kind":"ConfigMap","verbs":null},{"name":"endpoints","singularName":"","namespaced":true,"version":"v1","kind":"Endpoints","verbs":null},{"name":"events","singularName":"","namespaced":true,"version":"v1","kind":"Event","verbs":null},{"name":"limitranges","singularName":"","namespaced":true,"version":"v1","kind":"LimitRange","verbs":null},{"name":"namespaces","singularName":"","namespaced":false,"version":"v1","kind":"Namespace","verbs":null},{"name":"namespaces","singularName":"","namespaced":false,"version":"v1","kind":"Namespace","verbs":null},{"name":"nodes","singularName":"","namespaced":false,"version":"v1","kind":"Node","verbs":null},{"name":"persistentvolumes","singularName":"","namespaced":false,"version":"v1","kind":"PersistentVolume","verbs":null},{"name":"persistentvolumeclaims","singularName":"","namespaced":true,"version":"v1","kind":"PersistentVolumeClaim","verbs":null},{"name":"pods","singularName":"","namespaced":true,"version":"v1","kind":"Pod","verbs":null},{"name":"podtemplates","singularName":"","namespaced":true,"version":"v1","kind":"PodTemplate","verbs":null},{"name":"replicationcontrollers","singularName":"","namespaced":true,"version":"v1","kind":"ReplicationController","verbs":null},{"name":"resourcequotas","singularName":"","namespaced":true,"version":"v1","kind":"ResourceQuota","verbs":null},{"name":"secrets","singularName":"","namespaced":true,"version":"v1","kind":"Secret","verbs":null},{"name":"services","singularName":"","namespaced":true,"version":"v1","kind":"Service","verbs":null},{"name":"serviceaccounts","singularName":"","namespaced":true,"version":"v1","kind":"ServiceAccount","verbs":null}]}
+// discovery response removed for length
