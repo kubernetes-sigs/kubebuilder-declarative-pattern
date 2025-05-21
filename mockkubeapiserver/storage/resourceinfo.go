@@ -19,6 +19,7 @@ import (
 // supporting CRUD operations for accessing the objects of that kind.
 type ResourceInfo interface {
 	GVK() schema.GroupVersionKind
+	GVR() schema.GroupVersionResource
 	ListGVK() schema.GroupVersionKind
 	ParseableType() *typed.ParseableType
 
