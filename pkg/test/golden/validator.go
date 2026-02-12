@@ -439,7 +439,7 @@ func (v *validator) Validate(reconcilerFactory func(mgr manager.Manager) (*decla
 			} else {
 				if err := diffFiles(t, expectedPath, actualYAML); err != nil {
 					t.Logf("failed to run system diff, falling back to string diff: %v", err)
-					t.Logf("diff: %s", diff.StringDiff(actualYAML, expectedYAML))
+					t.Logf("diff: %s", diff.Diff(actualYAML, expectedYAML))
 				}
 
 				t.Errorf("unexpected diff between actual and expected YAML. See previous output for details.")
