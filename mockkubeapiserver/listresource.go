@@ -82,8 +82,11 @@ func (req *listResource) doWatch(ctx context.Context, s *MockKubeAPIServer, reso
 	w.Header().Add("Content-Type", contentType)
 	w.Header().Add("Cache-Control", "no-cache, private")
 
+	query := req.r.URL.Query()
+
 	var opt storage.WatchOptions
 	opt.Namespace = req.Namespace
+	opt.SendInitialEvents = query.Get("sendInitialEvents") == "true"
 
 	w.WriteHeader(200)
 	if f, ok := w.(http.Flusher); ok {

@@ -38,6 +38,23 @@ func BuildWatchEvent(gvk schema.GroupVersionKind, evType string, u *unstructured
 	return ev
 }
 
+// BuildInitialEventsEndBookmark creates a BOOKMARK event that signals the end of initial events
+// in the WatchList protocol. The client-go reflector expects this to transition to "synced" state.
+func BuildInitialEventsEndBookmark(gvk schema.GroupVersionKind, resourceVersion string) *WatchEvent {
+	u := &unstructured.Unstructured{}
+	u.SetGroupVersionKind(gvk)
+	u.SetResourceVersion(resourceVersion)
+	u.SetAnnotations(map[string]string{
+		"k8s.io/initial-events-end": "true",
+	})
+
+	return &WatchEvent{
+		gvk:            gvk,
+		internalObject: u,
+		eventType:      "BOOKMARK",
+	}
+}
+
 func (ev *WatchEvent) GroupKind() schema.GroupKind {
 	return ev.gvk.GroupKind()
 }
