@@ -40,7 +40,8 @@ type ListFilter struct {
 }
 
 type WatchOptions struct {
-	Namespace string
+	Namespace         string
+	SendInitialEvents bool
 }
 
 func DoServerSideApply(ctx context.Context, r ResourceInfo, live *unstructured.Unstructured, patchYAML []byte, options metav1.PatchOptions) (*unstructured.Unstructured, bool, error) {

@@ -2,6 +2,7 @@ package memorystorage
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -91,6 +92,20 @@ func (r *resourceStorage) watch(ctx context.Context, gvk schema.GroupVersionKind
 			return err
 		}
 	}
+
+	// If the client requested sendInitialEvents (WatchList protocol), send a BOOKMARK
+	// with the k8s.io/initial-events-end annotation to signal that all initial events
+	// have been sent. Without this, the client-go reflector will wait forever.
+	if opt.SendInitialEvents {
+		rv := fmt.Sprintf("%d", r.resourceVersionClock.Now())
+		ev := storage.BuildInitialEventsEndBookmark(gvk, rv)
+		if err := w.callback(ev); err != nil {
+			klog.Warningf("error sending initial-events-end bookmark; stopping watch: %v", err)
+			r.watches[pos] = nil
+			return err
+		}
+	}
+
 	r.mutex.Unlock()
 
 	return <-w.errChan
