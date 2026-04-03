@@ -131,7 +131,7 @@ func (k *kstatusAggregator) BuildStatus(ctx context.Context, info *declarative.S
 				log.Error(err, "error getting status of resource")
 				statusMap[status.UnknownStatus] = true
 			} else if res != nil {
-				log.WithValues("status", res.Status).WithValues("message", res.Message).Info("Got status of resource:")
+				log.WithValues("status", res.Status).WithValues("message", res.Message).V(2).Info("Got status of resource:")
 				statusMap[res.Status] = true
 			} else {
 				log.Info("resource status was nil")

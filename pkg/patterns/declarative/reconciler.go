@@ -289,7 +289,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, original DeclarativeObjec
 
 func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedName, instance DeclarativeObject) (*StatusInfo, error) {
 	log := log.FromContext(ctx)
-	log.WithValues("object", name.String()).Info("reconciling")
+	log.WithValues("object", name.String()).V(2).Info("reconciling")
 
 	statusInfo := &StatusInfo{
 		Subject: instance,
@@ -311,7 +311,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, name types.NamespacedN
 		log.Error(err, "flattening list objects")
 		return statusInfo, fmt.Errorf("error flattening list objects: %w", err)
 	}
-	log.WithValues("objects", fmt.Sprintf("%d", len(objects.Items))).Info("built deployment objects")
+	log.WithValues("objects", fmt.Sprintf("%d", len(objects.Items))).V(2).Info("built deployment objects")
 	statusInfo.Manifest = objects
 
 	if r.options.status != nil {
@@ -680,7 +680,7 @@ func (r *Reconciler) setNamespaces(ctx context.Context, instance DeclarativeObje
 	}
 
 	log := log.FromContext(ctx)
-	log.WithValues("namespace", ns).Info("setting namespace")
+	log.WithValues("namespace", ns).V(2).Info("setting namespace")
 
 	for _, o := range objects.Items {
 		if o.GetNamespace() != "" {
@@ -706,7 +706,7 @@ func (r *Reconciler) injectOwnerRef(ctx context.Context, instance DeclarativeObj
 	}
 
 	log := log.FromContext(ctx)
-	log.WithValues("object", fmt.Sprintf("%s/%s", instance.GetName(), instance.GetNamespace())).Info("injecting owner references")
+	log.WithValues("object", fmt.Sprintf("%s/%s", instance.GetName(), instance.GetNamespace())).V(2).Info("injecting owner references")
 
 	for _, o := range objects.Items {
 		owner, err := r.options.ownerFn(ctx, instance, *o, *objects)

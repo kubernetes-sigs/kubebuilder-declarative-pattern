@@ -198,7 +198,7 @@ func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget met
 		return
 	}
 
-	log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).Info("watch began")
+	log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).V(2).Info("watch began")
 
 	// Always clean up watchers
 	defer events.Stop()
@@ -231,9 +231,9 @@ func (w *dynamicKindWatch) watchUntilClosed(ctx context.Context, eventTarget met
 			w.lastRV[key] = rv
 		}
 
-		log.WithValues("type", clientEvent.Type).WithValues("kind", w.GVK.String()).WithValues("name", key.Name, "namespace", key.Namespace).Info("broadcasting event")
+		log.WithValues("type", clientEvent.Type).WithValues("kind", w.GVK.String()).WithValues("name", key.Name, "namespace", key.Namespace).V(2).Info("broadcasting event")
 		w.events <- event.GenericEvent{Object: clientObject{Object: clientEvent.Object, ObjectMeta: &eventTarget}}
 	}
 
-	log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).Info("watch closed")
+	log.WithValues("kind", w.GVK.String()).WithValues("namespace", w.FilterNamespace).WithValues("labels", options.LabelSelector).V(2).Info("watch closed")
 }
