@@ -121,7 +121,7 @@ func (r *FSRepository) LoadManifest(ctx context.Context, packageName string, id 
 	}
 
 	log := log.FromContext(ctx)
-	log.WithValues("package", packageName).Info("loading package")
+	log.WithValues("package", packageName).V(2).Info("loading package")
 
 	dirPath := filepath.Join(r.basedir, "packages", packageName, id)
 	filesPath, err := os.ReadDir(dirPath)

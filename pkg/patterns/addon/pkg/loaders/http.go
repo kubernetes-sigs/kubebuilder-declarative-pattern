@@ -74,7 +74,7 @@ func (r *HTTPRepository) LoadManifest(ctx context.Context, packageName string, i
 	}
 
 	log := log.FromContext(ctx)
-	log.WithValues("package", packageName).Info("loading package")
+	log.WithValues("package", packageName).V(2).Info("loading package")
 
 	p := r.makeURL("packages", packageName, id, "manifest.yaml")
 	b, err := r.readURL(ctx, p)
