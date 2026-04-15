@@ -48,8 +48,8 @@ type Status interface {
 type LiveObjectReader func(ctx context.Context, gvk schema.GroupVersionKind, nn types.NamespacedName) (*unstructured.Unstructured, error)
 
 type Reconciled interface {
-	// Reconciled is triggered when Reconciliation has occured.
-	// The caller is encouraged to determine and surface the health of the reconcilation
+	// Reconciled is triggered when Reconciliation has occurred.
+	// The caller is encouraged to determine and surface the health of the reconciliation
 	// on the DeclarativeObject.
 	//
 	// Deprecated: Prefer the BuildStatus method
