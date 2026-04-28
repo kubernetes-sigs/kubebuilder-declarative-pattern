@@ -8,7 +8,7 @@ require (
 	github.com/go-logr/logr v1.4.2
 	k8s.io/apimachinery v0.32.1
 	k8s.io/client-go v0.32.1
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/kubebuilder-declarative-pattern v0.0.0-20210922163802-cac4a6cf1977
 )
