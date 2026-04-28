@@ -13,7 +13,7 @@ require (
 	k8s.io/api v0.32.1
 	k8s.io/apimachinery v0.32.1
 	k8s.io/client-go v0.32.1
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/kubebuilder-declarative-pattern/mockkubeapiserver v0.0.0-20221021151406-9bd3fb842119
 	sigs.k8s.io/kustomize/kstatus v0.0.2-0.20200509233124-065f70705d4d

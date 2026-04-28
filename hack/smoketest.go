@@ -101,7 +101,9 @@ var (
 )
 
 func main() {
-	flag.Set("logtostderr", "true")
+	flag.Set("logtostderr", "true")                       //nolint:errcheck
+	flag.Set("legacy_stderr_threshold_behavior", "false") //nolint:errcheck
+	flag.Set("stderrthreshold", "INFO")                   //nolint:errcheck
 	flag.Parse()
 
 	h, err := NewRealTestHarness()
